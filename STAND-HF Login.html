@@ -253,6 +253,36 @@
       color: var(--on-surface-variant);
     }
 
+    /* Role select and prototype hint */
+    .field select {
+      display: block;
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--outline);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--on-surface);
+      font: inherit;
+      font-size: 15px;
+    }
+
+    .field select:hover {
+      border-color: var(--on-surface);
+    }
+
+    .field select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: inset 0 0 0 1px var(--primary);
+    }
+
+    .hint {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--on-surface-variant);
+    }
+
     @media (max-width: 480px) {
       .card {
         padding: 24px 20px 20px;
@@ -269,18 +299,27 @@
     <p>E-CRF Prototype</p>
   </div>
 
-  <form class="card" id="form" novalidate autocomplete="on">
+  <form class="card" id="form" novalidate>
     <h2>Sign in</h2>
-    <p>Enter your study credentials to continue.</p>
+    <p>Select your role, then enter your username and password.</p>
 
     <div class="error" id="err" role="alert">
       <span class="ms">error</span>
-      <span id="errMsg">Incorrect username or password.</span>
+      <span id="errMsg"></span>
     </div>
 
     <label class="field">
+      <span>Role</span>
+      <select id="role" name="role">
+        <option value="superadmin">Super Admin</option>
+        <option value="investigator" selected>Site Investigator</option>
+        <option value="central">Central</option>
+      </select>
+    </label>
+
+    <label class="field">
       <span>Username</span>
-      <input id="user" name="username" type="text" value="Emily Carter" autocomplete="username">
+      <input id="user" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">
     </label>
 
     <label class="field">
@@ -291,6 +330,7 @@
           <span class="ms">visibility</span>
         </button>
       </div>
+      <small class="hint">Prototype: any non-empty password is accepted.</small>
     </label>
 
     <button class="btn" id="signin" type="submit">
@@ -303,15 +343,30 @@
 </main>
 
 <script>
-const APP='STAND-HF E-CRF prototype ENHANCED.html', AUTH_KEY='standhf_auth', USER_KEY='standhf_user';
+const APP='STAND-HF E-CRF prototype ENHANCED.html', DASH='STAND-HF Investigator Dashboard.html', AUTH_KEY='standhf_auth', USER_KEY='standhf_user', ROLE_KEY='standhf_role';
+const ACCOUNTS=[
+  {user:'michael.johnson',name:'Michael Johnson',role:'superadmin'},
+  {user:'emily.carter',name:'Emily Carter',role:'investigator'},
+  {user:'robert.wilson',name:'Robert Wilson',role:'central'}
+];
 
 const $=id=>document.getElementById(id);
 
-function fail(msg){
+function fail(msg,focusId){
   $('errMsg').textContent=msg;
   $('err').classList.add('show');
-  $('pass').focus();
+  $(focusId).focus();
 }
+
+function accountFor(role){return ACCOUNTS.find(a=>a.role===role)}
+
+$('role').onchange=()=>{
+  $('user').value=accountFor($('role').value).user;
+  $('pass').value='';
+  $('err').classList.remove('show');
+  $('pass').focus();
+};
+$('user').value=accountFor($('role').value).user;
 
 $('togglePw').onclick=()=>{
   const show=$('pass').type==='password';
@@ -323,9 +378,15 @@ $('togglePw').onclick=()=>{
 
 $('form').addEventListener('submit',e=>{
   e.preventDefault();
-  try{sessionStorage.setItem(AUTH_KEY,'1');sessionStorage.setItem(USER_KEY,$('user').value.trim())}
-  catch(err){fail('Browser storage is blocked, so sign-in cannot be kept. Allow site data and try again.');return}
-  location.replace(APP);
+  const u=$('user').value.trim().toLowerCase(),p=$('pass').value,role=$('role').value;
+  if(!u)return fail('Enter your username.','user');
+  if(!p)return fail('Enter your password.','pass');
+  const acc=ACCOUNTS.find(a=>a.user===u);
+  if(!acc)return fail('Unknown username.','user');
+  if(acc.role!==role)return fail('This username does not belong to the selected role.','role');
+  try{sessionStorage.setItem(AUTH_KEY,'1');sessionStorage.setItem(USER_KEY,acc.name);sessionStorage.setItem(ROLE_KEY,acc.role)}
+  catch(err){return fail('Browser storage is blocked, so sign-in cannot be kept. Allow site data and try again.','signin')}
+  location.replace(acc.role==='investigator'?DASH:APP);
 });
 </script>
 </body>
