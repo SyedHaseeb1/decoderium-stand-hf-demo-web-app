@@ -713,6 +713,233 @@
         flex-shrink: 0;
       }
     }
+    /* Side navigation */
+    .shell {
+      display: grid;
+      grid-template-columns: 232px 1fr;
+      align-items: start;
+      transition: grid-template-columns 0.2s ease;
+    }
+
+    .shell.collapsed {
+      grid-template-columns: 72px 1fr;
+    }
+
+    .side {
+      position: sticky;
+      top: 84px;
+      height: calc(100vh - 84px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: var(--surface);
+      border-right: 1px solid var(--outline-variant);
+      padding: 8px 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .side-top {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .shell.collapsed .side-top {
+      justify-content: center;
+    }
+
+    .side-toggle {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--on-surface-variant);
+      cursor: pointer;
+    }
+
+    .side-toggle:hover {
+      background: var(--surface-high);
+      color: var(--on-surface);
+    }
+
+    .side-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .side-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 8px 12px 6px;
+      border: 0;
+      background: transparent;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--on-surface-muted);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .side-head:hover {
+      color: var(--on-surface);
+    }
+
+    .side-head .caret {
+      font-size: 18px;
+      transition: transform 0.2s ease;
+    }
+
+    .side-head[aria-expanded="false"] .caret {
+      transform: rotate(-90deg);
+    }
+
+    .side-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--on-surface-variant);
+      font-size: 14px;
+      text-align: left;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .side-link:hover {
+      background: var(--surface-high);
+      color: var(--on-surface);
+    }
+
+    .side-link:focus-visible,
+    .side-toggle:focus-visible,
+    .side-head:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .side-link.active {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+      font-weight: 500;
+    }
+
+    .side-link .ms {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .side-link.danger {
+      color: var(--error, #b3261e);
+    }
+
+    .side-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .shell:not(.collapsed) .side-items[hidden] {
+      display: none;
+    }
+
+    /* Collapsed rail: icons only, labels kept for screen readers */
+    .shell.collapsed .side-head {
+      display: none;
+    }
+
+    .shell.collapsed .side-group + .side-group {
+      border-top: 1px solid var(--outline-variant);
+      padding-top: 10px;
+    }
+
+    .shell.collapsed .side-items {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .shell.collapsed .side-link {
+      justify-content: center;
+      padding: 10px 0;
+    }
+
+    .shell.collapsed .side-text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+      .shell,
+      .shell.collapsed {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        position: static;
+        height: auto;
+        overflow: visible;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+        padding: 8px 16px;
+        border-right: 0;
+        border-bottom: 1px solid var(--outline-variant);
+      }
+
+      .side-top,
+      .side-head {
+        display: none;
+      }
+
+      .side-group {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .side-items,
+      .side-items[hidden] {
+        display: flex !important;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .side-link {
+        width: auto;
+      }
+
+      .shell.collapsed .side-link {
+        padding: 9px 12px;
+      }
+
+      .shell.collapsed .side-text {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: hidden;
+        clip: auto;
+      }
+    }
+
     /* Searchable combobox */
     .cb { position: relative; }
     label .cb input { padding-right: 40px; }
@@ -792,6 +1019,35 @@
     <button id="bClr"><i class="ms">delete_sweep</i>Clear all</button>
   </div>
 </header>
+<div class="shell">
+<nav class="side" id="sideNav" aria-label="Main navigation">
+  <div class="side-top">
+    <button type="button" class="side-toggle" id="sideToggle" aria-expanded="true" aria-controls="sideNav" title="Collapse navigation" aria-label="Collapse navigation"><i class="ms">menu_open</i></button>
+  </div>
+  <div class="side-group">
+    <button type="button" class="side-head" aria-expanded="true" aria-controls="gRegistry"><span class="side-text">Registry</span><i class="ms caret">expand_more</i></button>
+    <div class="side-items" id="gRegistry">
+      <a href="#tiles" class="side-link" title="Dashboard"><i class="ms">dashboard</i><span class="side-text">Dashboard</span></a>
+      <a href="#list" class="side-link" title="Participants"><i class="ms">groups</i><span class="side-text">Participants</span></a>
+      <a href="#pane" class="side-link" title="Participant record"><i class="ms">assignment_ind</i><span class="side-text">Participant record</span></a>
+    </div>
+  </div>
+  <div class="side-group">
+    <button type="button" class="side-head" aria-expanded="true" aria-controls="gActions"><span class="side-text">Actions</span><i class="ms caret">expand_more</i></button>
+    <div class="side-items" id="gActions">
+      <button type="button" class="side-link" data-act="bNew" title="New participant"><i class="ms">person_add</i><span class="side-text">New participant</span></button>
+      <button type="button" class="side-link" data-act="bCsv" title="Export CSV"><i class="ms">download</i><span class="side-text">Export CSV</span></button>
+      <button type="button" class="side-link" data-act="bDemo" title="Load demo"><i class="ms">dataset</i><span class="side-text">Load demo</span></button>
+      <button type="button" class="side-link danger" data-act="bClr" title="Clear all"><i class="ms">delete_sweep</i><span class="side-text">Clear all</span></button>
+    </div>
+  </div>
+  <div class="side-group">
+    <button type="button" class="side-head" aria-expanded="true" aria-controls="gAccount"><span class="side-text">Account</span><i class="ms caret">expand_more</i></button>
+    <div class="side-items" id="gAccount">
+      <button type="button" class="side-link" data-act="bOut" title="Sign out"><i class="ms">logout</i><span class="side-text">Sign out</span></button>
+    </div>
+  </div>
+</nav>
 <main>
   <section class="tiles" id="tiles"></section>
 
@@ -801,6 +1057,7 @@
   <div class="snack" id="snack" role="status" aria-live="polite"></div>
   </div>
 </main>
+</div>
 
 <dialog id="dlgNew" class="dlg">
   <form id="fNew" novalidate>
@@ -938,7 +1195,7 @@ $('bDemo').onclick=()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x
 $('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.href='STAND-HF Login.html'};
 
 /* Searchable comboboxes (investigator, site) */
-const INVESTIGATORS=['Syed Haseeb'];   // add known investigator names here
+const INVESTIGATORS=['Emily Carter','John Miller','Michael Johnson','Sarah Thompson','David Lee','Jessica Brown','Robert Wilson'];   // add known investigator names here
 function signedIn(){try{return sessionStorage.getItem('standhf_user')||''}catch(e){return ''}}
 function names(){return [...new Set([...INVESTIGATORS,signedIn(),...DB.pts.map(p=>p.inv)].filter(Boolean))].sort((a,b)=>a.localeCompare(b))}
 function sites(){return [...new Set(DB.pts.map(p=>p.site).filter(Boolean))].sort()}
@@ -982,6 +1239,36 @@ fNew.onsubmit=e=>{e.preventDefault();const site=dlgNew.querySelector('[data-cb="
   const p=mk(site,inv,'','','','');DB.pts.push(p);sel=p.id;tab='info';save(p);dlgNew.close();pane();dash()};
 
 $('off').checked=!!DB.off;if(DB.pts.length)sel=DB.pts[0].id;pane();dash();
+
+/* Side navigation: collapsible rail, collapsible groups, section highlighting */
+(()=>{
+  const shell=document.querySelector('.shell'),toggle=$('sideToggle'),links=[...document.querySelectorAll('.side a.side-link')];
+  const setCollapsed=c=>{
+    shell.classList.toggle('collapsed',c);
+    const label=c?'Expand navigation':'Collapse navigation';
+    toggle.setAttribute('aria-expanded',String(!c));toggle.setAttribute('aria-label',label);toggle.title=label;
+    toggle.querySelector('.ms').textContent=c?'menu':'menu_open';
+  };
+  let saved=false;try{saved=localStorage.getItem('standhf_nav_collapsed')==='1'}catch(e){}
+  setCollapsed(saved);
+  toggle.onclick=()=>{const c=!shell.classList.contains('collapsed');setCollapsed(c);try{localStorage.setItem('standhf_nav_collapsed',c?'1':'0')}catch(e){}};
+
+  document.querySelectorAll('.side-head').forEach(h=>h.onclick=()=>{
+    const open=h.getAttribute('aria-expanded')!=='true';
+    h.setAttribute('aria-expanded',String(open));$(h.getAttribute('aria-controls')).hidden=!open;
+  });
+  document.querySelectorAll('.side [data-act]').forEach(b=>b.onclick=()=>$(b.dataset.act).click());
+
+  const setActive=id=>links.forEach(a=>{
+    const on=a.getAttribute('href')==='#'+id;
+    a.classList.toggle('active',on);on?a.setAttribute('aria-current','true'):a.removeAttribute('aria-current');
+  });
+  links.forEach(a=>a.addEventListener('click',()=>setActive(a.getAttribute('href').slice(1))));
+  if('IntersectionObserver' in window){
+    const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)setActive(e.target.id)}),{rootMargin:'-100px 0px -55% 0px'});
+    ['tiles','list','pane'].forEach(id=>io.observe($(id)));
+  }
+})();
 </script>
 </body>
 </html>
