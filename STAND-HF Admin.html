@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>STAND-HF Administration</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+  <link rel="stylesheet" href="STAND-HF base.css">
+</head>
+<body data-page="admin" class="compact">
+<div class="app" id="app">
+  <aside class="side" id="side" aria-label="Main navigation"></aside>
+
+  <div class="main">
+    <header class="topbar">
+      <label class="search"><i class="ms">search</i><input id="search" type="search" placeholder="Search sites, users or patients" autocomplete="off"></label>
+      <div class="profile">
+        <span class="avatar" id="avatar" aria-hidden="true">?</span>
+        <span class="profile-meta"><b id="userName">Signed in</b><span id="userRole">Super Admin</span></span>
+        <button type="button" class="icon-btn" id="bOut" title="Sign out" aria-label="Sign out"><i class="ms">logout</i></button>
+      </div>
+      <button type="button" class="bell" id="bell" aria-label="Overdue follow-ups" title="Overdue follow-ups">
+        <i class="ms">notifications</i><span class="badge" id="bellCount" hidden>0</span>
+      </button>
+    </header>
+
+    <div class="hello">
+      <div>
+        <h1 id="welcome">Super Admin dashboard</h1>
+        <p>Performance across all sites and teams, plus sites, users and permissions.</p>
+      </div>
+      <div class="actions">
+        <a class="btn" href="STAND-HF E-CRF prototype ENHANCED.html"><i class="ms">edit_note</i>Patient records</a>
+      </div>
+    </div>
+
+    <div id="view"></div>
+    <div class="snack" id="snack" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<script src="STAND-HF access.js"></script>
+<script src="STAND-HF nav.js"></script>
+<script>
+const LOGIN='STAND-HF Login.html', ECRF='STAND-HF E-CRF prototype ENHANCED.html', SUPER='superadmin';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const initials=s=>String(s||'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';
+const TABS=['dash','users','sites','perms'];
+const isCentral=()=>session().role==='central';
+const CENTRAL_MSG='Central team can only manage site investigators';
+/* Central team can only manage site investigators */
+const centralMay=(user,newRole)=>!isCentral()||(user.role==='investigator'&&newRole==='investigator');
+const tabFromHash=()=>{if(isCentral())return 'users';const h=location.hash.slice(1);return TABS.includes(h)?h:'dash'};
+let tab=tabFromHash();
+
+/* Only Super Admins may open this page */
+if(sessionVal('standhf_auth')!=='1')location.replace(LOGIN);
+else if(session().role!==SUPER&&!can('assign_investigators'))location.replace(ECRF);
+
+function toast(m){const el=$('snack');el.textContent=m;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2600)}
+function patients(){try{return JSON.parse(localStorage.getItem('standhf_ecrf_v1')||'null')?.pts||[]}catch(e){return []}}
+const activeSupers=s=>s.users.filter(u=>u.role===SUPER&&u.active).length;
+
+/* Apply a change to the stored access data; a returned message blocks the change */
+function commit(mutate){
+  const s=accessStore(),err=mutate(s);
+  if(err){toast(err);render();return false}
+  saveAccess(s);render();return true;
+}
+
+function roleOptions(current){
+  return Object.entries(ROLE_NAMES).map(([k,v])=>`<option value="${k}" ${k===current?'selected':''}>${v}</option>`).join('');
+}
+function siteBoxes(s,user,attr){
+  if(!s.sites.length)return '<span class="muted">Add a site first</span>';
+  return `<div class="site-opts">${s.sites.map(x=>`<label class="check-row"><input type="checkbox" ${attr} value="${esc(x.code)}" ${user&&user.sites.includes(x.code)?'checked':''}><span>${esc(x.code)}</span></label>`).join('')}</div>`;
+}
+
+const ROLE_HINT={superadmin:'Oversees all sites. Does not enter patient data.',investigator:'Enters patients and visits at assigned sites.',central:'Sees all sites. Monitors and exports data.'};
+const slug=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'.').replace(/^\.+|\.+$/g,'');
+let userTouched=false;
+/* Field message: an error (red) or a hint (muted) under a form field */
+function setMsg(id,msg,isErr){
+  const el=document.querySelector(`[data-for="${id}"]`);
+  if(el){el.textContent=msg||'';el.className='fmsg '+(isErr?'e':'hint-txt')}
+  const input=document.getElementById(id);
+  if(input)input.setAttribute('aria-invalid',String(!!isErr));
+}
+function userPreview(){
+  const el=$('userPreview');if(!el)return;
+  const u=($('uUser')?.value||'').trim()||'username';
+  const r=document.querySelector('#fUser input[name="role"]:checked');
+  el.innerHTML=`Will sign in as <code>${esc(u)}</code> · ${esc(r?ROLE_NAMES[r.value]:'')}`;
+}
+function sitePreview(){
+  const el=$('sitePreview');if(!el)return;
+  const c=($('sCode')?.value||'').trim().toUpperCase();
+  el.innerHTML=c?`Patients will be numbered <code>${esc(c)}-001</code>`:'Enter a code, for example RIC';
+}
+
+function usersView(){
+  const s=accessStore(),central=isCentral();
+  const visible=central?s.users.filter(u=>u.role==='investigator'):s.users;
+  const rows=visible.map(u=>`<tr>
+    <td><b>${esc(u.name)}</b><div class="muted">${esc(u.username)}</div></td>
+    <td>${central?esc(ROLE_NAMES[u.role]):`<select data-role-of="${esc(u.username)}" aria-label="Role for ${esc(u.name)}">${roleOptions(u.role)}</select>`}</td>
+    <td>${u.role===SUPER?'<span class="muted">All sites</span>':siteBoxes(s,u,`data-site-of="${esc(u.username)}"`)}</td>
+    <td><label class="check-row"><input type="checkbox" data-active-of="${esc(u.username)}" ${u.active?'checked':''}><span>Active</span></label></td>
+  </tr>`).join('');
+  const roleCards=['investigator','central','superadmin'].map(r=>`<label class="role-card">
+      <input type="radio" name="role" value="${r}" ${r==='investigator'?'checked':''}>
+      <span class="rc-title">${ROLE_NAMES[r]}</span><span class="rc-desc">${ROLE_HINT[r]}</span></label>`).join('');
+  const roleField=central
+    ? `<div class="fld-wide"><span class="field-label">Role</span><span class="rc-desc">Site Investigator. Assign one or more sites below.</span></div>`
+    : `<div class="fld-wide"><span class="field-label">Role</span><div class="role-cards">${roleCards}</div></div>`;
+  return `<section class="card">
+      <div class="card-head"><h2>${central?'Site investigators':'Users'}</h2><small>${visible.length} ${central?'investigators':'accounts'}</small></div>
+      <div class="table-wrap"><table><tr><th>${central?'Investigator':'User'}</th><th>Role</th><th>Sites</th><th>Access</th></tr>${rows||'<tr><td colspan="4" class="muted">No investigators yet.</td></tr>'}</table></div>
+    </section>
+    <section class="card addcard">
+      <div class="addform-head"><h3>${central?'Add a site investigator':'Add a user'}</h3><p>${central?'They sign in with the username set here and can enter patients at their sites.':'They sign in with the username and role set here.'}</p></div>
+      <form id="fUser" class="addform" novalidate style="margin-top:16px">
+        <div class="form-grid">
+          <div class="fld"><label for="uName">Full name</label><input id="uName" name="name" autocomplete="off" placeholder="e.g. Sara Ahmed"><span class="fmsg hint-txt" data-for="uName"></span></div>
+          <div class="fld"><label for="uUser">Username</label><input id="uUser" name="username" autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="e.g. sara.ahmed"><span class="fmsg hint-txt" data-for="uUser">Lowercase letters, numbers, dot or underscore</span></div>
+        </div>
+        ${roleField}
+        <div class="fld-wide" id="siteBlock">
+          <div class="site-head"><span class="field-label">Sites</span><button type="button" class="link-btn" id="allSites">Select all</button></div>
+          ${siteBoxes(s,null,'name="site"')}
+          <span class="fmsg" data-for="sites"></span>
+        </div>
+        <div class="addform-foot"><span class="muted" id="userPreview"></span><button type="submit" class="pri">${central?'Add investigator':'Add user'}</button></div>
+      </form>
+    </section>`;
+}
+
+function sitesView(){
+  const s=accessStore(),ps=patients();
+  const rows=s.sites.map(x=>{
+    const inv=s.users.filter(u=>u.role==='investigator'&&u.active&&u.sites.includes(x.code)).length;
+    const n=ps.filter(p=>p.site===x.code).length;
+    return `<tr><td><b>${esc(x.code)}</b></td><td><input value="${esc(x.name)}" data-site-name="${esc(x.code)}" aria-label="Name of site ${esc(x.code)}"></td><td class="num">${n}</td><td class="num">${inv}</td></tr>`;
+  }).join('');
+  return `<section class="card">
+      <div class="card-head"><h2>Sites</h2><small>${s.sites.length} sites</small></div>
+      <div class="table-wrap"><table><tr><th>Code</th><th>Name</th><th class="num">Patients</th><th class="num">Investigators</th></tr>${rows}</table></div>
+    </section>
+    <section class="card addcard">
+      <div class="addform-head"><h3>Add a site</h3><p>Sites group patients and decide who can see them.</p></div>
+      <form id="fSite" class="addform" novalidate>
+        <div class="form-grid">
+          <div class="fld"><label for="sCode">Site code</label><input id="sCode" name="code" maxlength="5" autocapitalize="characters" autocomplete="off" placeholder="e.g. RIC"><span class="fmsg hint-txt" data-for="sCode">2 to 5 letters or numbers</span></div>
+          <div class="fld"><label for="sName">Site name</label><input id="sName" name="name" autocomplete="off" placeholder="e.g. Riverside Cardiac Centre"><span class="fmsg hint-txt" data-for="sName"></span></div>
+        </div>
+        <div class="addform-foot"><span class="muted" id="sitePreview"></span><button type="submit" class="pri">Add site</button></div>
+      </form>
+    </section>`;
+}
+
+function permsView(){
+  const s=accessStore(),roles=['investigator','central'];
+  const head=`<tr><th>Permission</th>${roles.map(r=>`<th class="num">${ROLE_NAMES[r]}</th>`).join('')}<th class="num">${ROLE_NAMES[SUPER]}</th></tr>`;
+  const rows=PERMS.map(([k,l])=>`<tr><td>${l}</td>
+    ${roles.map(r=>`<td class="num"><input type="checkbox" data-perm-role="${r}" data-perm-key="${k}" ${s.perms[r]&&s.perms[r][k]?'checked':''} aria-label="${ROLE_NAMES[r]}: ${l}"></td>`).join('')}
+    <td class="num"><input type="checkbox" ${SUPER_NO.includes(k)?'':'checked'} disabled aria-label="${ROLE_NAMES[SUPER]}: ${l}"></td></tr>`).join('');
+  return `<section class="card">
+    <div class="card-head"><h2>Role permissions</h2><small>Super Admin oversees all sites and does not enter patient data</small></div>
+    <div class="table-wrap"><table>${head}${rows}</table></div>
+  </section>`;
+}
+
+/* ---------- Statistics ---------- */
+const PL=['arni','bb','mra','sg'], DAY=864e5;
+const day=s=>new Date(s+'T00:00:00');
+const addD=(s,n)=>{const d=day(s);d.setDate(d.getDate()+n);return d};
+const G=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o);
+function has(v){return Object.keys(v).some(k=>k!=='done'&&v[k]!==''&&v[k]!=null&&typeof v[k]!=='object')||(v.g&&Object.values(v.g).some(x=>x.status))}
+function act(v){return PL.filter(q=>G(v,'g.'+q+'.status')==='Active').length}
+function vstat(p,k){
+  const v=p.v[k];if(v.done)return'Completed';
+  const b=p.v.b.done?p.v.b.date:null;let late=false,due=false,missed=false;
+  if(k!=='b'&&b){const t=k==='m3'?90:180,w=k==='m3'?14:21,T=new Date();late=T>addD(b,t+w);due=T>=addD(b,t-w);missed=T>addD(b,t+w+30)&&!has(v)}
+  return missed?'Missed':late?'Overdue':has(v)?'In Progress':due?'Due':'Not Started';
+}
+/* true/false when a follow-up visit has a date and a baseline; null otherwise */
+function onTime(p,k){
+  if(k==='b'||!p.v.b.date||!p.v[k].done||!p.v[k].date)return null;
+  const t=k==='m3'?90:180,w=k==='m3'?14:21;
+  const d=Math.round((day(p.v[k].date)-day(p.v.b.date))/DAY);
+  return Math.abs(d-t)<=w;
+}
+const meanOf=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const pctOf=(a,b)=>b?Math.round(100*a/b):null;
+const fmtPct=x=>x==null?'–':x+'%';
+const fmtDelta=x=>x==null?'–':(x>0?'+':'')+x.toFixed(1);
+const bar=x=>`<span class="mini"><i style="width:${x||0}%"></i></span>${fmtPct(x)}`;
+function stats(list){
+  const fu=list.flatMap(p=>['m3','m6'].map(k=>onTime(p,k))).filter(x=>x!==null);
+  const d=list.filter(p=>p.v.b.msts!==''&&p.v.b.msts!=null&&p.v.m6.msts!==''&&p.v.m6.msts!=null).map(p=>+p.v.m6.msts-+p.v.b.msts);
+  return {
+    n:list.length,
+    b:list.filter(p=>p.v.b.done).length,
+    m3:list.filter(p=>p.v.m3.done).length,
+    m6:list.filter(p=>p.v.m6.done).length,
+    overdue:list.reduce((c,p)=>c+['m3','m6'].filter(k=>['Overdue','Missed'].includes(vstat(p,k))).length,0),
+    ontime:pctOf(fu.filter(Boolean).length,fu.length),
+    msts:meanOf(d),
+    pending:list.filter(p=>p.sync==='Pending').length
+  };
+}
+const PALETTE=['#1a5fb4','#1e7a4c','#9a5b00','#b3261e','#6b4fbb','#0f7c8c','#7a5c3e','#5b616d'];
+const colourOf=i=>PALETTE[i%PALETTE.length];
+
+/* Donut: parts = [{label,value,color}] */
+function donut(parts){
+  const total=parts.reduce((x,p)=>x+p.value,0),R=54,C=2*Math.PI*R;
+  let off=0;
+  const segs=parts.filter(p=>p.value>0).map(p=>{
+    const len=total?C*p.value/total:0;
+    const s=`<circle cx="70" cy="70" r="${R}" fill="none" stroke="${p.color}" stroke-width="18" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${p.label}: ${p.value}</title></circle>`;
+    off+=len;return s;
+  }).join('');
+  return `<div class="donut-wrap">
+    <svg viewBox="0 0 140 140" role="img" aria-label="Visit status breakdown">
+      <circle cx="70" cy="70" r="${R}" fill="none" stroke="var(--soft-2)" stroke-width="18"/>${segs}
+      <text x="70" y="68" text-anchor="middle" font-size="22" font-weight="600" fill="var(--ink)">${total}</text>
+      <text x="70" y="86" text-anchor="middle" font-size="11" fill="var(--ink-3)">visits</text>
+    </svg>
+    <ul class="legend-list">${parts.map(p=>`<li><i style="background:${p.color}"></i><span>${p.label}</span><b>${p.value}</b></li>`).join('')}</ul>
+  </div>`;
+}
+
+/* Grouped bars: rows = [{label, values:[baseline%, 3m%, 6m%]}] */
+function groupedBars(rows){
+  if(!rows.length)return '<div class="empty"><i class="ms">bar_chart</i>No sites yet.</div>';
+  const W=620,H=250,pad=36,top=16,gw=(W-pad-10)/rows.length,bw=Math.min(22,gw/4),cols=['var(--primary)','var(--success)','var(--warning)'];
+  let g='';
+  [0,25,50,75,100].forEach(v=>{const y=H-pad-(H-pad-top)*v/100;g+=`<line x1="${pad}" x2="${W-10}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pad-6}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${v}%</text>`});
+  rows.forEach((r,i)=>{
+    const x0=pad+i*gw+(gw-3*bw-8)/2;
+    r.values.forEach((v,j)=>{const h=(H-pad-top)*(v||0)/100;g+=`<rect x="${x0+j*(bw+4)}" y="${H-pad-h}" width="${bw}" height="${h}" rx="5" fill="${cols[j]}"><title>${esc(r.label)}: ${v==null?'–':v+'%'}</title></rect>`});
+    g+=`<text x="${pad+i*gw+gw/2}" y="${H-pad+18}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${esc(r.label)}</text>`;
+  });
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Completion by site">${g}</svg>
+    <div class="legend-row"><span><i style="background:var(--primary)"></i>Baseline</span><span><i style="background:var(--success)"></i>3 months</span><span><i style="background:var(--warning)"></i>6 months</span></div>`;
+}
+
+/* Stacked bars: new patients per month, coloured by site */
+function enrolChart(pts,sites){
+  const now=new Date(),months=[];
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({y:d.getFullYear(),m:d.getMonth(),lbl:d.toLocaleDateString('en-GB',{month:'short'}),counts:{}})}
+  pts.forEach(p=>{if(!p.consent)return;const d=day(p.consent);const h=months.find(x=>x.y===d.getFullYear()&&x.m===d.getMonth());if(h)h.counts[p.site]=(h.counts[p.site]||0)+1});
+  const codes=sites.map(s=>s.code);
+  const totals=months.map(m=>Object.values(m.counts).reduce((x,y)=>x+y,0));
+  const max=Math.max(1,...totals);
+  const W=620,H=250,pad=36,top=16,gw=(W-pad-10)/6,bw=Math.min(40,gw*0.55);
+  let g='';
+  [0,0.5,1].forEach(f=>{const y=H-pad-(H-pad-top)*f;g+=`<line x1="${pad}" x2="${W-10}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pad-6}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${Math.round(max*f)}</text>`});
+  months.forEach((m,i)=>{
+    const x=pad+i*gw+(gw-bw)/2;let base=H-pad;
+    codes.forEach((c,ci)=>{const v=m.counts[c]||0;if(!v)return;const h=(H-pad-top)*v/max;base-=h;g+=`<rect x="${x}" y="${base}" width="${bw}" height="${h}" fill="${colourOf(ci)}"><title>${esc(c)} · ${m.lbl}: ${v}</title></rect>`});
+    g+=`<text x="${x+bw/2}" y="${H-pad+18}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${m.lbl}</text>`;
+    if(totals[i])g+=`<text x="${x+bw/2}" y="${base-6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${totals[i]}</text>`;
+  });
+  const legend=codes.map((c,ci)=>`<span><i style="background:${colourOf(ci)}"></i>${esc(c)}</span>`).join('');
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="New patients per month by site">${g}</svg><div class="legend-row">${legend}</div>`;
+}
+
+/* Horizontal bars: items = [{label,sub,value,color}] */
+function hbars(items){
+  if(!items.length)return '<div class="empty"><i class="ms">groups</i>No investigators yet.</div>';
+  const max=Math.max(1,...items.map(i=>i.value));
+  return `<div class="hbars">${items.map(i=>`<div class="hbar-row">
+    <div class="hbar-label"><b>${esc(i.label)}</b><small>${esc(i.sub||'')}</small></div>
+    <div class="hbar-track" role="img" aria-label="${esc(i.label)}: ${i.value} patients"><i style="width:${100*i.value/max}%;background:${i.color}"></i></div>
+    <span class="hbar-val">${i.value}</span></div>`).join('')}</div>`;
+}
+
+function overdueTable(pts){
+  const rows=[];
+  pts.forEach(p=>['m3','m6'].forEach(k=>{const s=vstat(p,k);if(s==='Overdue'||s==='Missed')rows.push({p,k,s})}));
+  if(!rows.length)return '<div class="empty"><i class="ms">task_alt</i>No overdue follow-ups.</div>';
+  rows.sort((a,b)=>a.p.site.localeCompare(b.p.site)||a.p.id.localeCompare(b.p.id));
+  return `<div class="table-wrap"><table><tr><th>Patient</th><th>Site</th><th>Investigator</th><th>Visit</th><th>Status</th></tr>
+    ${rows.slice(0,10).map(r=>`<tr><td><b>${esc(r.p.id)}</b></td><td>${esc(r.p.site)}</td><td>${esc(r.p.inv||'–')}</td><td>${r.k==='m3'?'3 months':'6 months'}</td><td><span class="chip Overdue">${r.s}</span></td></tr>`).join('')}
+    </table></div>${rows.length>10?`<p class="muted" style="margin:10px 0 0">Showing 10 of ${rows.length}</p>`:''}`;
+}
+
+function dashView(){
+  const s=accessStore(),pts=patients(),all=stats(pts);
+  const kpi=(ico,l,v,sub)=>`<div class="kpi"><div class="top"><span class="ico"><i class="ms">${ico}</i></span></div><b>${v}</b><span>${l}</span><small>${sub||''}</small></div>`;
+  const rowFor=(label,st)=>`<tr><td>${label}</td><td class="num">${st.n}</td>
+    <td>${bar(pctOf(st.b,st.n))}</td><td>${bar(pctOf(st.m3,st.n))}</td><td>${bar(pctOf(st.m6,st.n))}</td>
+    <td class="num">${fmtPct(st.ontime)}</td><td class="num">${st.overdue}</td><td class="num">${fmtDelta(st.msts)}</td><td class="num">${st.pending}</td></tr>`;
+  const head=label=>`<tr><th>${label}</th><th class="num">Patients</th><th>Baseline</th><th>3 months</th><th>6 months</th><th class="num">On time</th><th class="num">Overdue</th><th class="num">1MSTS change</th><th class="num">Pending</th></tr>`;
+
+  /* Sites */
+  const siteStats=s.sites.map(x=>({code:x.code,name:x.name,st:stats(pts.filter(p=>p.site===x.code))}));
+  const siteRows=siteStats.map(x=>rowFor(`<b>${esc(x.code)}</b><div class="muted">${esc(x.name)}</div>`,x.st)).join('');
+  const bars=siteStats.map(x=>({label:x.code,values:[pctOf(x.st.b,x.st.n),pctOf(x.st.m3,x.st.n),pctOf(x.st.m6,x.st.n)]}));
+
+  /* Team */
+  const team=s.users.filter(u=>u.role==='investigator');
+  const teamRows=team.map(u=>rowFor(`<b>${esc(u.name)}</b><div class="muted">${u.sites.map(esc).join(', ')||'No sites'}${u.active?'':' · inactive'}</div>`,stats(pts.filter(p=>p.inv===u.name)))).join('');
+  const names=new Set(team.map(u=>u.name));
+  const other=pts.filter(p=>!names.has(p.inv));
+  const otherRow=other.length?rowFor('<b>Not on team list</b><div class="muted">Investigator name not in Users</div>',stats(other)):'';
+  const teamBars=team.map((u,i)=>{const n=pts.filter(p=>p.inv===u.name).length;const st=stats(pts.filter(p=>p.inv===u.name));
+    return {label:u.name,sub:`${u.sites.join(', ')||'No sites'} · on time ${fmtPct(st.ontime)}`,value:n,color:colourOf(i)}});
+  if(other.length)teamBars.push({label:'Not on team list',sub:'Investigator not in Users',value:other.length,color:'var(--ink-3)'});
+
+  /* Visit status across all baseline, 3 and 6 month visits */
+  const counts={Completed:0,'In progress':0,Due:0,Overdue:0,'Not started':0};
+  pts.forEach(p=>['b','m3','m6'].forEach(k=>{const v=vstat(p,k);const key=v==='Missed'?'Overdue':v==='In Progress'?'In progress':v==='Not Started'?'Not started':v;counts[key]=(counts[key]||0)+1}));
+  const statusParts=[
+    {label:'Completed',value:counts.Completed,color:'var(--success)'},
+    {label:'In progress',value:counts['In progress'],color:'var(--primary)'},
+    {label:'Due',value:counts.Due,color:'var(--warning)'},
+    {label:'Overdue',value:counts.Overdue,color:'var(--error)'},
+    {label:'Not started',value:counts['Not started'],color:'var(--ink-3)'}
+  ];
+
+  return `<div class="kpis">
+      ${kpi('group','Patients',all.n,'All sites')}
+      ${kpi('location_on','Active sites',s.sites.length)}
+      ${kpi('biotech','Baseline complete',fmtPct(pctOf(all.b,all.n)),all.b+' of '+all.n)}
+      ${kpi('event_upcoming','Follow-ups overdue',all.overdue,'3 and 6 month visits')}
+      ${kpi('schedule','On-time visits',fmtPct(all.ontime),'Within visit window')}
+      ${kpi('cloud_sync','Pending sync',all.pending,all.pending?'Saved on this device':'All synced')}
+    </div>
+    <div class="dash-grid">
+      <section class="card"><div class="card-head"><h2>Completion by site</h2><small>Share of patients with each visit complete</small></div>${groupedBars(bars)}</section>
+      <section class="card"><div class="card-head"><h2>Visit status</h2><small>Baseline, 3 and 6 month visits</small></div>${donut(statusParts)}</section>
+      <section class="card"><div class="card-head"><h2>Enrolment</h2><small>New patients per month, by site</small></div>${enrolChart(pts,s.sites)}</section>
+      <section class="card"><div class="card-head"><h2>Patients by investigator</h2><small>Patients entered by each team member</small></div>${hbars(teamBars)}</section>
+    </div>
+    <section class="card">
+      <div class="card-head"><h2>Overdue follow-ups</h2><small>3 and 6 month visits past their window</small></div>
+      ${overdueTable(pts)}
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Performance by site</h2><small>Completion, timing and follow-up status</small></div>
+      <div class="table-wrap"><table>${head('Site')}${siteRows||'<tr><td colspan="9" class="muted">No sites yet.</td></tr>'}</table></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Performance by team</h2><small>Patients entered by each investigator</small></div>
+      <div class="table-wrap"><table>${head('Investigator')}${teamRows||'<tr><td colspan="9" class="muted">No investigators yet.</td></tr>'}${otherRow}</table></div>
+    </section>`;
+}
+
+let query='';
+function applySearch(){
+  const q=query.trim().toLowerCase();
+  document.querySelectorAll('#view table tr').forEach(r=>{
+    if(!r.querySelector('td'))return;
+    r.hidden=!!q&&!r.textContent.toLowerCase().includes(q);
+  });
+}
+function render(){
+  $('view').innerHTML=tab==='dash'?dashView():tab==='users'?usersView():tab==='sites'?sitesView():permsView();
+  applySearch();
+  userPreview();sitePreview();
+  const od=stats(patients()).overdue;
+  $('bellCount').textContent=od;$('bellCount').hidden=!od;
+}
+$('search').addEventListener('input',()=>{query=$('search').value;applySearch()});
+$('bell').onclick=()=>{const n=$('bellCount').textContent;toast(n==='0'?'No overdue follow-ups':n+' overdue follow-ups. See the Dashboard tab.')};
+
+/* Sections follow the URL hash, set from the side nav */
+window.addEventListener('hashchange',()=>{tab=tabFromHash();render()});
+
+/* Edits in the tables */
+$('view').addEventListener('change',e=>{
+  const t=e.target,me=session().username;
+  if(t.name==='role'){$('siteBlock').hidden=t.value===SUPER;userPreview();return}
+  if(t.dataset.roleOf){
+    const u=t.dataset.roleOf,role=t.value;
+    commit(s=>{
+      const user=s.users.find(x=>x.username===u);if(!user)return '';
+      if(!centralMay(user,user.role))return CENTRAL_MSG;
+      if(!centralMay(user,role))return CENTRAL_MSG;
+      if(u===me&&role!==SUPER)return 'You cannot change your own role';
+      if(user.role===SUPER&&role!==SUPER&&user.active&&activeSupers(s)<=1)return 'At least one active Super Admin is needed';
+      user.role=role;if(role===SUPER)user.sites=[];
+      return '';
+    });
+  }
+  else if(t.dataset.siteOf){
+    const u=t.dataset.siteOf,code=t.value;
+    commit(s=>{
+      const user=s.users.find(x=>x.username===u);if(!user)return '';
+      if(!centralMay(user,user.role))return CENTRAL_MSG;
+      const set=new Set(user.sites);t.checked?set.add(code):set.delete(code);
+      user.sites=[...set];return '';
+    });
+  }
+  else if(t.dataset.activeOf){
+    const u=t.dataset.activeOf,on=t.checked;
+    commit(s=>{
+      const user=s.users.find(x=>x.username===u);if(!user)return '';
+      if(!centralMay(user,user.role))return CENTRAL_MSG;
+      if(u===me&&!on)return 'You cannot deactivate your own account';
+      if(user.role===SUPER&&!on&&activeSupers(s)<=1)return 'At least one active Super Admin is needed';
+      user.active=on;return '';
+    });
+  }
+  else if(t.dataset.siteName){
+    const code=t.dataset.siteName;
+    commit(s=>{
+      const site=s.sites.find(x=>x.code===code);if(!site)return '';
+      const v=t.value.trim();if(!v)return 'Site name cannot be empty';
+      site.name=v;return '';
+    });
+  }
+  else if(t.dataset.permRole){
+    const r=t.dataset.permRole,k=t.dataset.permKey,on=t.checked;
+    commit(s=>{s.perms[r]=s.perms[r]||{};s.perms[r][k]=on;return ''});
+  }
+});
+
+/* Live feedback while typing */
+$('view').addEventListener('input',e=>{
+  const x=e.target;
+  if(x.id==='uName'){
+    if(!userTouched)$('uUser').value=slug(x.value);
+    setMsg('uName','',false);userPreview();
+  }
+  else if(x.id==='uUser'){
+    userTouched=true;
+    const ok=/^[a-z0-9._]*$/.test(x.value);
+    setMsg('uUser',ok?'Lowercase letters, numbers, dot or underscore':'Use lowercase letters, numbers, dot or underscore',!ok);
+    userPreview();
+  }
+  else if(x.id==='sCode'){
+    x.value=x.value.toUpperCase();
+    const c=x.value.trim(),used=accessStore().sites.some(y=>y.code===c);
+    setMsg('sCode',used?'That code is already used':'2 to 5 letters or numbers',used);
+    sitePreview();
+  }
+  else if(x.id==='sName')setMsg('sName','',false);
+});
+
+/* Select all / clear all sites in the new-user form */
+$('view').addEventListener('click',e=>{
+  const btn=e.target.closest('#allSites');if(!btn)return;
+  const boxes=[...document.querySelectorAll('#fUser input[name="site"]')];
+  const all=boxes.some(x=>!x.checked);
+  boxes.forEach(x=>{x.checked=all});
+  btn.textContent=all?'Clear all':'Select all';
+  setMsg('sites','',false);
+});
+
+/* Add user and add site */
+document.addEventListener('submit',e=>{
+  const f=e.target;e.preventDefault();
+  if(f.id==='fUser'){
+    const name=$('uName').value.trim(),username=$('uUser').value.trim().toLowerCase();
+    const role=isCentral()?'investigator':(f.querySelector('input[name="role"]:checked')||{}).value;
+    const sites=[...f.querySelectorAll('input[name="site"]:checked')].map(x=>x.value);
+    const users=accessStore().users;
+    const uMsg=!username?'Enter a username':!/^[a-z0-9._]+$/.test(username)?'Use lowercase letters, numbers, dot or underscore':users.some(u=>u.username===username)?'That username is already used':'';
+    const sMsg=role!==SUPER&&!sites.length?'Choose at least one site':'';
+    setMsg('uName',name?'':'Enter the full name',!name);
+    setMsg('uUser',uMsg||'Lowercase letters, numbers, dot or underscore',!!uMsg);
+    setMsg('sites',sMsg,!!sMsg);
+    if(!name||uMsg||sMsg){(f.querySelector('[aria-invalid="true"]')||$('uName')).focus();return}
+    commit(s=>{s.users.push({username,name,role,sites:role===SUPER?[]:sites,active:true});return ''});
+    userTouched=false;
+    toast(`${name} added as ${ROLE_NAMES[role]}`);
+  }
+  else if(f.id==='fSite'){
+    const code=$('sCode').value.trim().toUpperCase(),name=$('sName').value.trim();
+    const cMsg=!code?'Enter a site code':!/^[A-Z0-9]{2,5}$/.test(code)?'Use 2 to 5 letters or numbers':accessStore().sites.some(x=>x.code===code)?'That code is already used':'';
+    setMsg('sCode',cMsg||'2 to 5 letters or numbers',!!cMsg);
+    setMsg('sName',name?'':'Enter the site name',!name);
+    if(cMsg||!name){(f.querySelector('[aria-invalid="true"]')||$('sCode')).focus();return}
+    commit(s=>{s.sites.push({code,name});return ''});
+    toast(`Site ${code} added`);
+  }
+});
+
+/* Header */
+const name=session().name;
+$('userName').textContent=name||'Signed in';
+$('userRole').textContent=ROLE_NAMES[session().role]||'';
+$('welcome').textContent=name?'Welcome, '+name.split(/\s+/)[0]:'Super Admin dashboard';
+$('avatar').textContent=initials(name);
+$('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.replace(LOGIN)};
+
+render();
+</script>
+</body>
+</html>
