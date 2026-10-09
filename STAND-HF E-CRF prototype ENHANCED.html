@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>STAND-HF E-CRF</title>
+  <script>
+    // Session gate: send anyone without a sign-in back to the login page.
+    try{if(sessionStorage.getItem('standhf_auth')!=='1')location.replace('STAND-HF Login.html')}catch(e){location.replace('STAND-HF Login.html')}
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+  <style>
+    /* Material 3 (light) - full-width clinical data entry layout */
+
+    :root {
+      /* Surfaces */
+      --surface: #ffffff;
+      --surface-low: #f5f7fb;
+      --surface-high: #e9edf4;
+      --outline: #747a86;
+      --outline-variant: #dde1ea;
+
+      /* Text */
+      --on-surface: #1b1d22;
+      --on-surface-variant: #5b616d;
+      --on-surface-muted: #7b8190;
+
+      /* Brand */
+      --primary: #1a5fb4;
+      --on-primary: #ffffff;
+      --primary-container: #d8e5fb;
+      --on-primary-container: #0b2a57;
+
+      /* Status */
+      --success: #1e7a4c;
+      --success-container: #d6f2e2;
+      --on-success-container: #0f4a2c;
+      --warning: #9a5b00;
+      --warning-container: #fdeed0;
+      --on-warning-container: #5e3800;
+      --error: #b3261e;
+      --error-container: #f9dedc;
+      --on-error-container: #740f0b;
+      --info: #0b6e99;
+      --info-container: #d3ebf6;
+      --on-info-container: #053e54;
+
+      --shadow-1: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+      --shadow-2: 0 1px 2px rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
+
+      font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      color-scheme: light;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-padding-top: 96px;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--surface-low);
+      color: var(--on-surface);
+      font: 15px/1.5 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+
+    /* Top app bar */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      width: 100%;
+      background: var(--surface);
+      color: var(--on-surface);
+      padding: 14px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-2);
+    }
+
+    header > div:first-child {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: 0;
+      color: var(--on-surface);
+    }
+
+    header small {
+      display: block;
+      font-size: 13px;
+      margin-top: 2px;
+      color: var(--on-surface-variant);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Buttons */
+    button, select, input {
+      font: inherit;
+      color: var(--on-surface);
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--outline);
+      background: var(--surface);
+      color: var(--primary);
+      border-radius: 20px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      letter-spacing: 0.1px;
+      transition: background-color 0.2s ease, box-shadow 0.2s ease;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: rgba(26, 95, 180, 0.08);
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    button:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      background: var(--surface);
+    }
+
+    button.pri {
+      background: var(--primary);
+      color: var(--on-primary);
+      border-color: var(--primary);
+      box-shadow: var(--shadow-1);
+    }
+
+    button.pri:hover {
+      background: #17539f;
+      box-shadow: var(--shadow-2);
+    }
+
+    #bClr {
+      color: var(--error);
+      border-color: rgba(179, 38, 30, 0.4);
+    }
+
+    #bClr:hover {
+      background: rgba(179, 38, 30, 0.08);
+    }
+
+    .ms {
+      font-family: 'Material Symbols Rounded';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 18px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      direction: ltr;
+      -webkit-font-smoothing: antialiased;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* Layout */
+    main {
+      width: 100%;
+      margin: 0;
+      padding: 24px;
+    }
+
+    /* Summary tiles */
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .tile {
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: 16px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: var(--shadow-1);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .tile:hover {
+      box-shadow: var(--shadow-2);
+    }
+
+    .tile b {
+      display: block;
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--primary);
+      margin-bottom: 2px;
+    }
+
+    .tile span {
+      color: var(--on-surface-variant);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* Two-column layout */
+    .lay {
+      display: grid;
+      grid-template-columns: minmax(280px, 340px) 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .pl {
+      max-height: calc(100vh - 220px);
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .pl::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .pl::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .pl::-webkit-scrollbar-thumb {
+      background: var(--outline-variant);
+      border-radius: 3px;
+    }
+
+    .pl::-webkit-scrollbar-thumb:hover {
+      background: var(--outline);
+    }
+
+    /* Participant list items */
+    .pt {
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      background: var(--surface);
+      border: 1px solid transparent;
+      transition: background-color 0.2s ease;
+    }
+
+    .pt:hover {
+      background: var(--surface-high);
+    }
+
+    .pt.on {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+    }
+
+    .pt.on:hover {
+      background: #c9dbf8;
+    }
+
+    .pt b {
+      display: block;
+      font-weight: 500;
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
+
+    .pt span {
+      color: var(--on-surface-variant);
+      font-size: 12px;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .pt.on span {
+      color: var(--on-primary-container);
+      opacity: 0.8;
+    }
+
+    /* Status chips (assist-chip style) */
+    .chip {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--outline-variant);
+      margin: 2px 4px 2px 0;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      background: var(--surface);
+      color: var(--on-surface-variant);
+    }
+
+    .chip.Completed {
+      color: var(--on-success-container);
+      background: var(--success-container);
+      border-color: transparent;
+    }
+
+    .chip.Overdue, .chip.Missed {
+      color: var(--on-error-container);
+      background: var(--error-container);
+      border-color: transparent;
+    }
+
+    .chip.Due, .chip.In {
+      color: var(--on-warning-container);
+      background: var(--warning-container);
+      border-color: transparent;
+    }
+
+    .chip.Pending {
+      color: var(--on-info-container);
+      background: var(--info-container);
+      border-color: transparent;
+    }
+
+    /* Tabs (primary tabs with indicator) */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--outline-variant);
+    }
+
+    .tabs button {
+      border: none;
+      background: transparent;
+      border-radius: 0;
+      padding: 14px 16px;
+      margin-bottom: -1px;
+      border-bottom: 3px solid transparent;
+      color: var(--on-surface-variant);
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .tabs button:hover {
+      background: var(--surface-high);
+      color: var(--on-surface);
+    }
+
+    .tabs button.on {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* Section headers */
+    .sec {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--on-surface);
+      font-weight: 500;
+      font-size: 16px;
+      letter-spacing: 0;
+      padding: 0 0 8px;
+      margin: 28px 0 16px;
+      border-bottom: 1px solid var(--outline-variant);
+    }
+
+    .sec:first-child {
+      margin-top: 0;
+    }
+
+    /* Grid layouts */
+    .g {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    /* Form controls (outlined text fields) */
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--on-surface-variant);
+      font-weight: 500;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    label input:not([type="checkbox"]), label select {
+      display: block;
+      width: 100%;
+      margin-top: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--outline);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--on-surface);
+      font-size: 14px;
+      font-family: 'Roboto', sans-serif;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    label input:not([type="checkbox"]):hover, label select:hover {
+      border-color: var(--on-surface);
+    }
+
+    label input:not([type="checkbox"]):focus, label select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: inset 0 0 0 1px var(--primary);
+    }
+
+    label input:disabled, label select:disabled {
+      background: var(--surface-high);
+      color: var(--on-surface-muted);
+      border-color: transparent;
+      cursor: not-allowed;
+    }
+
+    /* Checkbox labels */
+    label.ck {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--on-surface);
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0;
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+
+    label.ck input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      flex-shrink: 0;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    /* Offline toggle in the app bar */
+    label.ck.toggle {
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: var(--surface-high);
+    }
+
+    /* Tables */
+    .wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--outline-variant);
+      margin-bottom: 16px;
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+    }
+
+    th, td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--outline-variant);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--on-surface-variant);
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface-low);
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    td label {
+      margin: 0;
+    }
+
+    td input, td select {
+      width: 100%;
+      min-width: 110px;
+      padding: 8px 10px;
+      border: 1px solid var(--outline);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--on-surface);
+      font-size: 14px;
+    }
+
+    td input:focus, td select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: inset 0 0 0 1px var(--primary);
+    }
+
+    td input:disabled, td select:disabled {
+      background: var(--surface-high);
+      border-color: transparent;
+    }
+
+    /* Data validation feedback */
+    .warn, .ok, .err {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .warn {
+      background: var(--warning-container);
+      color: var(--on-warning-container);
+    }
+
+    .ok {
+      background: var(--success-container);
+      color: var(--on-success-container);
+    }
+
+    .err, .e {
+      background: var(--error-container);
+      color: var(--on-error-container);
+    }
+
+    .w {
+      color: var(--warning);
+      font-weight: 500;
+    }
+
+    .e {
+      color: var(--error);
+      font-weight: 500;
+    }
+
+    .mut {
+      color: var(--on-surface-muted);
+    }
+
+    /* Sync status pill */
+    .pill {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill.synced {
+      background: var(--success-container);
+      color: var(--on-success-container);
+    }
+
+    .pill.pending {
+      background: var(--warning-container);
+      color: var(--on-warning-container);
+    }
+
+    .pill.offline {
+      background: var(--surface-high);
+      color: var(--on-surface-variant);
+    }
+
+    /* Surfaces */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: 16px;
+      box-shadow: var(--shadow-1);
+    }
+
+    #pane {
+      padding: 24px;
+      background: var(--surface);
+      border-radius: 16px;
+      border: 1px solid var(--outline-variant);
+      box-shadow: var(--shadow-1);
+      min-width: 0;
+    }
+
+    /* Typography */
+    p {
+      margin: 0 0 12px;
+      color: var(--on-surface-variant);
+      line-height: 1.6;
+    }
+
+    p.mut {
+      color: var(--on-surface-muted);
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    /* Missing fields indicator */
+    #miss {
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 13px;
+      padding: 4px 10px;
+      background: var(--error-container);
+      border-radius: 8px;
+    }
+
+    /* Visit window info */
+    .visit-info {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .lay {
+        grid-template-columns: minmax(240px, 300px) 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .lay {
+        grid-template-columns: 1fr;
+      }
+      .pl {
+        max-height: 360px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 16px;
+      }
+
+      header > div:first-child {
+        min-width: unset;
+      }
+
+      .actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .actions > * {
+        width: 100%;
+      }
+
+      main {
+        padding: 16px;
+      }
+
+      #pane {
+        padding: 16px;
+      }
+
+      .tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+      }
+
+      .tabs button {
+        flex-shrink: 0;
+      }
+    }
+    /* Searchable combobox */
+    .cb { position: relative; }
+    label .cb input { padding-right: 40px; }
+    .cb-ico {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--on-surface-variant); pointer-events: none; font-size: 20px;
+    }
+    .cb-list {
+      position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 200;
+      max-height: 260px; overflow-y: auto; margin: 0; padding: 6px; list-style: none;
+      background: var(--surface); border: 1px solid var(--outline-variant);
+      border-radius: 12px; box-shadow: var(--shadow-2);
+      font-size: 14px; font-weight: 400; letter-spacing: 0; margin-bottom: 0;
+    }
+    .cb-list[hidden] { display: none; }
+    .cb-list li {
+      padding: 10px 12px; border-radius: 8px; color: var(--on-surface);
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+    }
+    .cb-list li:hover, .cb-list li.act { background: var(--primary-container); color: var(--on-primary-container); }
+    .cb-list li.new { color: var(--primary); font-weight: 500; }
+    .cb-list li.none { color: var(--on-surface-muted); font-style: italic; cursor: default; }
+    .cb-list li.none:hover { background: none; }
+    .cb-list .ms { font-size: 18px; }
+
+    /* Selects: consistent chevron across the form */
+    label select, td select {
+      appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235b616d' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center; background-size: 18px;
+    }
+    label select:disabled, td select:disabled { cursor: not-allowed; }
+
+    /* New participant dialog */
+    dialog.dlg {
+      border: none; border-radius: 28px; padding: 28px; width: min(460px, 92vw);
+      background: var(--surface); color: var(--on-surface); box-shadow: var(--shadow-2);
+    }
+    dialog.dlg::backdrop { background: rgba(27, 29, 34, 0.4); }
+    dialog.dlg h2 { margin: 0 0 4px; font-size: 22px; font-weight: 500; }
+    dialog.dlg .lead { margin: 0 0 20px; font-size: 14px; color: var(--on-surface-variant); }
+    dialog.dlg .fld { display: block; margin-bottom: 16px; }
+    .dlg-err { background: var(--error-container); color: var(--on-error-container); padding: 10px 14px; border-radius: 12px; font-size: 14px; margin-bottom: 12px; }
+    .dlg-err[hidden] { display: none; }
+    .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    /* Section navigation + draft */
+    .nav {
+      display: flex; justify-content: flex-end; align-items: center; gap: 12px;
+      margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--outline-variant);
+    }
+    .nav .ms { margin: 0 0 0 6px; font-size: 18px; }
+    .snack {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: #2f3137; color: #ffffff; padding: 12px 20px; border-radius: 8px;
+      font-size: 14px; box-shadow: var(--shadow-2); z-index: 300; max-width: calc(100vw - 32px);
+      opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+    }
+    .snack.show { opacity: 1; }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>STAND-HF Registry</h1>
+    <small>E-CRF Prototype — 3 visits: Baseline, 3M, 6M</small>
+  </div>
+  <div class="actions">
+    <span class="pill" id="sync"></span>
+    <label class="ck toggle">
+      <input type="checkbox" id="off">
+      <span>Offline mode</span>
+    </label>
+    <button id="bNew"><i class="ms">person_add</i>New participant</button>
+    <button id="bDemo"><i class="ms">dataset</i>Load demo</button>
+    <button id="bCsv"><i class="ms">download</i>Export CSV</button>
+    <button id="bOut"><i class="ms">logout</i>Sign out</button>
+    <button id="bClr"><i class="ms">delete_sweep</i>Clear all</button>
+  </div>
+</header>
+<main>
+  <section class="tiles" id="tiles"></section>
+
+  <div class="lay">
+    <aside class="card pl" id="list"></aside>
+    <section id="pane"></section>
+  <div class="snack" id="snack" role="status" aria-live="polite"></div>
+  </div>
+</main>
+
+<dialog id="dlgNew" class="dlg">
+  <form id="fNew" novalidate>
+    <h2>New participant</h2>
+    <p class="lead">The Study ID is generated from the site code. Pick a site and investigator, or type a new name.</p>
+    <div class="dlg-err" id="newErr" hidden></div>
+    <div id="newSite"></div>
+    <div id="newInv"></div>
+    <div class="dlg-actions">
+      <button type="button" id="cNew">Cancel</button>
+      <button type="submit" class="pri">Create participant</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const KEY='standhf_ecrf_v1';
+let DB={pts:[],off:false},sel=null,tab='info';
+try{const s=localStorage.getItem(KEY);if(s)DB=JSON.parse(s)}catch(e){}
+
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const G=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o),S=(o,p,v)=>{const k=p.split('.');let a=o;k.slice(0,-1).forEach(x=>a=a[x]=a[x]||{});a[k.pop()]=v};
+const VK=[['b','Baseline'],['m3','3 Months'],['m6','6 Months']],PL=[['arni','ARNI (sacubitril/valsartan)'],['bb','Evidence-based beta-blocker'],['mra','MRA'],['sg','SGLT2 inhibitor']];
+const RS=[['hypo','Hypotension'],['brady','Bradycardia'],['renal','Renal dysfunction'],['k','Hyperkalemia'],['intol','Intolerance'],['cost','Cost / access'],['pref','Patient preference'],['phys','Physician decision']];
+const STOP=['','Chest pain','Presyncope / syncope','Intolerable dyspnea','Severe dizziness','Loss of balance','Marked pallor / diaphoresis','Participant request','Investigator safety concern'];
+
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}};
+const cur=()=>DB.pts.find(p=>p.id===sel);
+const num=x=>x===''||x==null?NaN:+x,day=s=>s?new Date(s+'T00:00:00'):null,addD=(s,n)=>{const d=day(s);d.setDate(d.getDate()+n);return d},fmt=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+function mk(site,inv,consent,age,sex,etio){const n=DB.pts.filter(p=>p.site===site).length+1;return{id:site+'-'+String(n).padStart(3,'0'),site,inv,consent,age,sex,etio,etioO:'',sync:'Pending',audit:[],v:{b:{},m3:{},m6:{}}}}
+function has(v){return Object.keys(v).some(k=>k!=='done'&&v[k]!==''&&v[k]!=null&&typeof v[k]!=='object')||(v.g&&Object.values(v.g).some(x=>x.status))}
+function vstat(p,k){const v=p.v[k];if(v.done)return'Completed';const b=p.v.b.date;let late=false,due=false,missed=false;
+ if(k!=='b'&&b){const t=k==='m3'?90:180,w=k==='m3'?14:21,T=new Date(),tg=addD(b,t);late=T>addD(b,t+w);due=T>=addD(b,t-w);missed=T>addD(b,t+w+30)&&!has(v)}
+ return missed?'Missed':late?'Overdue':has(v)?'In Progress':due?'Due':'Not Started'}
+function act(v){return PL.filter(([k])=>G(v,'g.'+k+'.status')==='Active').length}
+function warns(p,k){const v=p.v[k],b=p.v.b,w=[],x=n=>num(v[n]);
+ if(v['hr']!==''&&v.hr!=null&&(x('hr')<30||x('hr')>220))w.push(['w','Heart rate outside 30 to 220 bpm: please check']);
+ if(v.sbp&&v.dbp&&(+v.sbp<=+v.dbp))w.push(['e','Systolic BP must be higher than diastolic']);
+ if(v.sbp&&(+v.sbp<50||+v.sbp>260))w.push(['w','Systolic BP looks unusual']);
+ if(v.msts!==''&&v.msts!=null&&(x('msts')<0||x('msts')>60))w.push(['w','1MSTS repetitions outside 0 to 60: please check']);
+ if(v.nyha==='IV')w.push(['w','NYHA IV: check exclusion criteria (IV at rest)']);
+ if(k==='b'&&p.age&&+p.age<18)w.push(['e','Age must be 18 or more']);
+ if(v.lvef&&(+v.lvef<5||+v.lvef>80))w.push(['w','LVEF outside 5 to 80%']);
+ if(k==='b'&&v.lvef&&+v.lvef>40)w.push(['w','LVEF above 40%: outside registry inclusion (LVEF 40% or less)']);
+ if(k==='b'&&v.echoDate&&v.date&&(day(v.echoDate)>day(v.date)||(day(v.date)-day(v.echoDate))/864e5>30))w.push(['w','Baseline echo should be within 30 days before enrollment']);
+ if(k==='b'&&p.consent&&v.date&&day(p.consent)>day(v.date))w.push(['e','Consent date is after the baseline visit date']);
+ if(k!=='b'&&v.date&&b.date&&day(v.date)<=day(b.date))w.push(['e','Visit date must be after the baseline date']);
+ if(k!=='b'&&v.date&&b.date){const t=k==='m3'?90:180,wd=k==='m3'?14:21,d=(day(v.date)-day(b.date))/864e5;if(Math.abs(d-t)>wd)w.push(['w','Outside window (day '+t+' ±'+wd+'): this visit is on day '+Math.round(d)])}
+ PL.forEach(([q,n])=>{const g=G(v,'g.'+q)||{};if(g.status==='Active'&&!g.dose)w.push(['w',n+': daily dose missing']);if(g.status==='Active'&&!g.start)w.push(['w',n+': start date missing']);
+  if(g.status&&g.status!=='Active'&&!Object.values(v.rs||{}).some(Boolean)&&!v.rsO)w.push(['w',n+' is '+g.status.toLowerCase()+': record a reason below'])});
+ return w}
+function missing(p,k){const v=p.v[k],m=[];['date','wt','hr','sbp','dbp','nyha','msts'].forEach(f=>{if(v[f]===''||v[f]==null)m.push(f)});
+ if(k!=='m3'&&!v.lvef)m.push('lvef');PL.forEach(([q])=>{if(!G(v,'g.'+q+'.status'))m.push(q+' status')});
+ if(k==='b'){if(!p.consent)m.push('consent date');if(!p.age)m.push('age');if(!p.sex)m.push('sex');if(!p.etio)m.push('HF etiology')}return m}
+function save(p){p.sync='Pending';persist();if(!DB.off)setTimeout(()=>{DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash()},700)}
+
+const inp=(p,path,l,t,x='')=>`<label>${l}<input data-p="${path}" type="${t||'text'}" value="${esc(G(p,path))}" ${x}></label>`;
+const sel_=(p,path,l,o)=>`<label>${l}<select data-p="${path}">${o.map(a=>`<option ${G(p,path)===a?'selected':''}>${esc(a)}</option>`).join('')}</select></label>`;
+const ck=(p,path,l)=>`<label class="ck"><input type="checkbox" data-p="${path}" ${G(p,path)?'checked':''}> ${l}</label>`;
+
+function dash(){const P=DB.pts,c=k=>P.filter(p=>p.v[k].done).length,od=k=>P.filter(p=>vstat(p,k)==='Overdue'||vstat(p,k)==='Missed').length;
+ const mean=k=>{const a=P.filter(p=>p.v[k].msts!==''&&p.v[k].msts!=null).map(p=>+p.v[k].msts);return a.length?(a.reduce((x,y)=>x+y)/a.length).toFixed(1):'–'};
+ const full=P.filter(p=>{const d=VK.filter(([k])=>p.v[k].done).pop();return d&&act(p.v[d[0]])===4}).length;
+ const pend=P.filter(p=>p.sync==='Pending').length;
+ $('tiles').innerHTML=[['Participants',P.length],['Baseline completed',c('b')],['3M done / overdue',c('m3')+' / '+od('m3')],['6M done / overdue',c('m6')+' / '+od('m6')],['4/4 pillars (latest visit)',full],['Mean 1MSTS',mean('b')+' → '+mean('m3')+' → '+mean('m6')],['Records pending sync',pend]].map(t=>`<div class="tile"><b>${t[1]}</b><span>${t[0]}</span></div>`).join('');
+ $('sync').textContent=(DB.off?'● Offline':'● Online')+' · '+(pend?pend+' pending':'all synced');
+ $('sync').className='pill '+((DB.off||pend)?'pending':'synced');
+ $('list').innerHTML=(P.length?'':'<p class="mut">No participants yet. Add one or load demo data.</p>')+P.map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('');
+ const p=cur();if(p){const w=$('warn');if(w&&tab!=='info'&&tab!=='sum')w.innerHTML=wHtml(p,tab);const pc=$('pc');if(pc&&tab in p.v)pc.textContent=act(p.v[tab])+' / 4';const st=$('vs');if(st&&tab in p.v)st.textContent=vstat(p,tab)}}
+
+function wHtml(p,k){const w=warns(p,k);return w.length?'<div style="margin-bottom:16px">'+w.map(x=>`<div class="${x[0]==='e'?'err':'warn'}">${x[0]==='e'?'✖ Error':'⚠ Warning'}: ${x[1]}</div>`).join('')+'</div>':'<div class="ok">✔ All checks passed</div>'}
+
+const ORDER=['info','b','m3','m6','sum'],ORDER_LABEL={info:'Participant info',b:'Baseline',m3:'3 Months',m6:'6 Months',sum:'Summary & audit'};
+function navBar(k){const i=ORDER.indexOf(k);if(i<0||i>=ORDER.length-1)return'';
+ return `<div class="nav"><button type="button" class="pri" data-a="next" data-k="${k}">Save draft & next: ${ORDER_LABEL[ORDER[i+1]]}<span class="ms">arrow_forward</span></button></div>`}
+function toast(msg){const el=$('snack');el.textContent=msg;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2600)}
+
+function pane(){const p=cur(),el=$('pane');if(p&&!p.inv&&signedIn()){p.inv=signedIn();p.audit.push({t:new Date().toLocaleString('en-GB'),f:'inv',o:'',n:p.inv});persist()}
+ if(!p){el.innerHTML='<p class="mut">Select a participant or create a new one to get started.</p>';return}
+ const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info">Participant info</button>${VK.map(([k,n])=>`<button class="${tab===k?'on':''}" data-t="${k}">${n}</button>`).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum">Summary & audit</button></div>`;
+ let h=tabs;
+ if(tab==='info')h+=`<div class="sec">A. Patient & Site Identification</div><div class="g"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=110')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${navBar('info')}`;
+ else if(tab==='sum')h+=summary(p);
+ else{const k=tab,v=p.v[k],name=VK.find(a=>a[0]===k)[1],b=p.v.b.date;
+  let win='';if(k!=='b'){const t=k==='m3'?90:180,w=k==='m3'?14:21;win=b?`Target day ${t} ±${w}: ${fmt(addD(b,t-w))} to ${fmt(addD(b,t+w))}`:'Enter baseline date first'}
+  h+=`<div class="visit-info">
+    <strong>${name} visit</strong> — Status: <strong>${vstat(p,k)}</strong>${win?'<br>'+win:''}
+  </div>
+  <div class="sec">B. Clinical & Functional Assessment</div>
+  <div class="g">${inp(p,'v.'+k+'.date','Visit date','date')}${inp(p,'v.'+k+'.wt','Weight (kg)','number','step=0.1')}${inp(p,'v.'+k+'.hr','Heart rate (bpm)','number')}${inp(p,'v.'+k+'.sbp','Systolic BP (mmHg)','number')}${inp(p,'v.'+k+'.dbp','Diastolic BP (mmHg)','number')}${sel_(p,'v.'+k+'.nyha','NYHA class',['','I','II','III','IV'])}${inp(p,'v.'+k+'.msts','1MSTS: repetitions in 60 sec','number','min=0')}${sel_(p,'v.'+k+'.stop','1MSTS stopped early? reason',STOP)}</div>
+  <div class="g" style="margin-bottom:12px">${ck(p,'v.'+k+'.rep','1MSTS repeated (non-clinical reason)')}${k==='m3'?'<label>LVEF (%)<input value="N/A at 3 months" disabled></label>':inp(p,'v.'+k+'.lvef','LVEF (%)','number','min=5 max=80')}${k==='m3'?'':inp(p,'v.'+k+'.echoDate','Echo date','date')}</div>
+  <div class="sec">C. Foundational GDMT <span style="float:right">Active: <b id="pc">${act(v)} / 4</b></span></div>
+  <div class="wrap"><table><tr><th>Therapy</th><th>Generic drug</th><th>Daily dose</th><th>Start date</th><th>Status</th></tr>${PL.map(([q,n])=>`<tr><td>${n}</td><td>${inp(p,`v.${k}.g.${q}.drug`,'','text')}</td><td>${inp(p,`v.${k}.g.${q}.dose`,'','text')}</td><td>${inp(p,`v.${k}.g.${q}.start`,'','date')}</td><td>${sel_(p,`v.${k}.g.${q}.status`,'',['','Active','Not started','Stopped'])}</td></tr>`).join('')}</table></div>
+  <div class="g" style="margin-top:12px"><label>If GDMT not initiated/stopped, reason(s):</label><div class="g">${RS.map(([r,l])=>ck(p,`v.${k}.rs.${r}`,l)).join('')}</div>${inp(p,'v.'+k+'.rsO','Other reason')}</div>
+  <div class="sec">D. Clinical Events ${k==='b'?'(prior history)':'(since previous visit)'}</div>
+  <div class="g">${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div>
+  <div class="g" style="margin-top:12px">${inp(p,`v.${k}.ev.int`,'Major intervention / event')}${inp(p,`v.${k}.ini`,'Investigator initials')}</div>
+  <div class="sec">Data Checks</div><div id="warn">${wHtml(p,k)}</div>
+  <div style="margin-top:16px">${v.done?`<button data-a="reopen">↺ Reopen visit</button> <span class="ok">✔ Visit locked as complete</span>`:`<button class="pri" data-a="done">✓ Mark complete</button> <span id="miss" class="e"></span>`}</div>${navBar(k)}`}
+ el.innerHTML=h;if(tab!=='info'&&tab!=='sum'&&p.v[tab].done)el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true)}
+
+function summary(p){const r=(f)=>VK.map(([k])=>`<td>${f(p.v[k],k)||'–'}</td>`).join('');
+ const d=(a,b)=>a!==''&&a!=null&&b!==''&&b!=null?((+b-+a>0?'+':'')+(+b-+a)):'–';
+ const st=PL.map(([q])=>{let s=null;VK.forEach(([k])=>{const x=G(p.v[k],'g.'+q+'.start');if(x&&x>(s||''))s=x});return s}),b=p.v.b.date;
+ let sp='Need baseline date and 4 start dates';if(b&&st.every(Boolean)){const m=Math.max(...st.map(x=>(day(x)-day(b))/864e5));sp=m<=0?'Same-day (all four on or before baseline)':m<=7?'Rapid (within 7 days)':m<=30?'Early (within 30 days)':'Later than 30 days'}
+ return`<div class="sec">Summary (auto-calculated; entered values are never changed)</div><div class="wrap"><table><tr><th></th><th>Baseline</th><th>3 Months</th><th>6 Months</th></tr>
+ <tr><th>Visit date</th>${r(v=>v.date)}</tr><tr><th>1MSTS reps</th>${r(v=>v.msts)}</tr><tr><th>NYHA</th>${r(v=>v.nyha)}</tr><tr><th>LVEF (%)</th>${r(v=>v.lvef)}</tr><tr><th>Active pillars</th>${r((v)=>has(v)?act(v)+' / 4':'')}</tr><tr><th>Status</th>${VK.map(([k])=>`<td>${vstat(p,k)}</td>`).join('')}</tr></table></div>
+ <p style="margin-top:16px"><b>Primary outcomes:</b></p>
+ <p>Δ 1MSTS baseline → 6M: <b>${d(p.v.b.msts,p.v.m6.msts)} reps</b><br>
+ Δ LVEF baseline → 6M: <b>${d(p.v.b.lvef,p.v.m6.lvef)} points</b></p>
+ <p><b>Onboarding speed:</b> ${sp}</p>
+ <div class="sec" style="margin-top:20px">Audit Trail (last 10 changes)</div><div class="wrap"><table><tr><th>Time</th><th>Field</th><th>Old value</th><th>New value</th></tr>${p.audit.slice(-10).reverse().map(a=>`<tr><td style="font-size:12px">${a.t}</td><td style="font-size:12px">${esc(a.f)}</td><td style="font-size:12px">${esc(a.o)}</td><td style="font-size:12px">${esc(a.n)}</td></tr>`).join('')||'<tr><td colspan=4 class="mut">No changes yet</td></tr>'}</table></div>`}
+
+document.addEventListener('change',e=>{const el=e.target;if(el.id==='off'){DB.off=el.checked;persist();if(!DB.off)DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash();return}
+ if(!el.dataset.p)return;const p=cur();if(!p)return;const old=G(p,el.dataset.p),nv=el.type==='checkbox'?el.checked:el.value;if(old===nv)return;
+ S(p,el.dataset.p,nv);p.audit.push({t:new Date().toLocaleString('en-GB'),f:el.dataset.p,o:old??'',n:nv});save(p);dash()});
+
+document.addEventListener('click',e=>{const t=e.target.closest('[data-id],[data-t],[data-a]');if(!t)return;
+ if(t.dataset.id){sel=t.dataset.id;pane();dash()}
+ else if(t.dataset.t){tab=t.dataset.t;pane();dash()}
+ else if(t.dataset.a==='next'){const p=cur(),k=t.dataset.k,i=ORDER.indexOf(k);if(!p)return;save(p);tab=ORDER[i+1];pane();dash();toast('Draft saved · '+ORDER_LABEL[tab]+' is next')}
+ else{const p=cur(),v=p.v[tab];if(t.dataset.a==='done'){const m=missing(p,tab),er=warns(p,tab).filter(x=>x[0]==='e');if(m.length||er.length){$('miss').textContent='Missing: '+m.join(', ');if(er.length)$('miss').textContent+=' | Fix errors above';return}v.done=true;p.audit.push({t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'open',n:'completed'})}else{v.done=false;p.audit.push({t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'completed',n:'reopened'})}save(p);pane();dash()}});
+
+$('bClr').onclick=()=>{if(confirm('Delete all participants?')){DB.pts=[];sel=null;persist();pane();dash()}};
+$('bCsv').onclick=()=>{const H=['study_id','site','investigator','consent','age','sex','etiology'];VK.forEach(([k])=>['status','date','wt','hr','sbp','dbp','nyha','msts','lvef','pillars','hf_hosp','all_hosp','death'].forEach(f=>H.push(k+'_'+f)));
+ const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"',rows=DB.pts.map(p=>{const a=[p.id,p.site,p.inv,p.consent,p.age,p.sex,p.etio];VK.forEach(([k])=>{const v=p.v[k];a.push(vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act(v),G(v,'ev.hf')?1:0,G(v,'ev.all')?1:0,G(v,'ev.death')?1:0)});return a.map(q).join(',')});
+ const b=new Blob([[H.join(','),...rows].join('\n')],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='stand_hf_export.csv';a.click()};
+
+$('bDemo').onclick=()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
+ [[200,'RIC'],[185,'LHR'],[150,'KHI'],[120,'ISB'],[100,'RIC'],[60,'LHR'],[20,'KHI'],[6,'ISB']].forEach(([ago,site],i)=>{const p=mk(site,'Demo investigator',d(ago+3),45+i*3,i%3?'Male':'Female',i%2?'Ischemic':'Non-ischemic');
+  [['b',ago,0],['m3',ago-90,1],['m6',ago-180,2]].forEach(([k,n,j])=>{if(n<0)return;const v=p.v[k];Object.assign(v,{date:d(n),wt:70+i-j,hr:84-j*5,sbp:108+j*4,dbp:68+j*2,nyha:['III','II','II'][j],msts:9+i%4+j*4+i%3,done:true,g:{}});
+   if(k!=='m3'){v.lvef=28+i%5+j*3;v.echoDate=d(n+2)}const na=Math.min(4,2+j+i%2);PL.forEach(([q],x)=>{v.g[q]=x<na?{drug:'demo',dose:'demo dose',start:d(n),status:'Active'}:{status:'Not started'}});if(na<4)v.rs={phys:true};v.ev={}});DB.pts.push(p);p.sync='Synced'});persist();sel=DB.pts[0].id;tab='sum';pane();dash()};
+
+$('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.href='STAND-HF Login.html'};
+
+/* Searchable comboboxes (investigator, site) */
+const INVESTIGATORS=['Syed Haseeb'];   // add known investigator names here
+function signedIn(){try{return sessionStorage.getItem('standhf_user')||''}catch(e){return ''}}
+function names(){return [...new Set([...INVESTIGATORS,signedIn(),...DB.pts.map(p=>p.inv)].filter(Boolean))].sort((a,b)=>a.localeCompare(b))}
+function sites(){return [...new Set(DB.pts.map(p=>p.site).filter(Boolean))].sort()}
+const OPTS={inv:names,site:sites};
+
+function combo(path,key,label,value,ph){
+  return `<label>${label}<div class="cb" data-cb="${key}"><input ${path?`data-p="${path}"`:''} data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" value="${esc(value)}" placeholder="${ph||'Search or type a name'}"><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div></label>`;
+}
+function cbItems(key,q){const all=OPTS[key](),t=q.trim(),lo=t.toLowerCase();
+  const L=all.filter(o=>!lo||o.toLowerCase().includes(lo)).map(o=>({v:o}));
+  if(t&&!all.some(o=>o.toLowerCase()===lo))L.push({v:t,add:1});return L}
+function cbOpen(wrap,q){const ul=wrap.querySelector('.cb-list'),inp=wrap.querySelector('[data-cb-input]');
+  const items=cbItems(wrap.dataset.cb,q||'');wrap._items=items;wrap._act=-1;
+  ul.innerHTML=items.length?items.map((it,i)=>`<li role="option" data-i="${i}" class="${it.add?'new':''}">${it.add?'<span class="ms">add</span>Use "'+esc(it.v)+'"':esc(it.v)}</li>`).join(''):'<li class="none">No matches. Keep typing to add a new name.</li>';
+  ul.hidden=false;inp.setAttribute('aria-expanded','true')}
+function cbClose(wrap){const ul=wrap.querySelector('.cb-list'),inp=wrap.querySelector('[data-cb-input]');ul.hidden=true;wrap._act=-1;inp.setAttribute('aria-expanded','false')}
+function cbOpenNow(wrap){return !wrap.querySelector('.cb-list').hidden}
+function cbChoose(wrap,i){const it=wrap._items&&wrap._items[i];if(!it)return;const inp=wrap.querySelector('[data-cb-input]');
+  inp.value=it.v;cbClose(wrap);if(inp.dataset.p)inp.dispatchEvent(new Event('change',{bubbles:true}))}
+function cbMove(wrap,d){const lis=[...wrap.querySelectorAll('.cb-list li[data-i]')];if(!lis.length)return;
+  wrap._act=(((wrap._act??-1)+d)+lis.length)%lis.length;lis.forEach((li,i)=>li.classList.toggle('act',i===wrap._act));lis[wrap._act].scrollIntoView({block:'nearest'})}
+
+document.addEventListener('focusin',e=>{const i=e.target.closest&&e.target.closest('[data-cb-input]');if(i)cbOpen(i.closest('[data-cb]'),'')});
+document.addEventListener('click',e=>{const i=e.target.closest&&e.target.closest('[data-cb-input]');if(i&&!cbOpenNow(i.closest('[data-cb]')))cbOpen(i.closest('[data-cb]'),i.value)},true);
+document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('[data-cb-input]'))cbOpen(e.target.closest('[data-cb]'),e.target.value)});
+document.addEventListener('mousedown',e=>{const li=e.target.closest&&e.target.closest('.cb-list li[data-i]');if(li){e.preventDefault();cbChoose(li.closest('[data-cb]'),+li.dataset.i)}});
+document.addEventListener('focusout',e=>{const i=e.target.closest&&e.target.closest('[data-cb-input]');if(i)cbClose(i.closest('[data-cb]'))});
+document.addEventListener('keydown',e=>{const i=e.target.closest&&e.target.closest('[data-cb-input]');if(!i)return;const w=i.closest('[data-cb]');
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(!cbOpenNow(w))cbOpen(w,i.value);cbMove(w,e.key==='ArrowDown'?1:-1)}
+  else if(e.key==='Enter'&&cbOpenNow(w)&&w._act>=0){e.preventDefault();cbChoose(w,w._act)}
+  else if(e.key==='Escape'&&cbOpenNow(w)){e.preventDefault();e.stopPropagation();cbClose(w)}
+  else if(e.key==='Tab')cbClose(w)});
+
+/* New participant dialog */
+const dlgNew=$('dlgNew'),fNew=$('fNew');
+$('bNew').onclick=()=>{$('newSite').innerHTML=combo(null,'site','Site code','','e.g. RIC');$('newInv').innerHTML=combo(null,'inv','Investigator name',signedIn());
+  $('newErr').hidden=true;dlgNew.showModal();dlgNew.querySelector('[data-cb="site"] input').focus()};
+$('cNew').onclick=()=>dlgNew.close();
+fNew.onsubmit=e=>{e.preventDefault();const site=dlgNew.querySelector('[data-cb="site"] input').value.toUpperCase().trim(),inv=dlgNew.querySelector('[data-cb="inv"] input').value.trim();
+  if(!site){$('newErr').textContent='Enter a site code to create a participant.';$('newErr').hidden=false;dlgNew.querySelector('[data-cb="site"] input').focus();return}
+  const p=mk(site,inv,'','','','');DB.pts.push(p);sel=p.id;tab='info';save(p);dlgNew.close();pane();dash()};
+
+$('off').checked=!!DB.off;if(DB.pts.length)sel=DB.pts[0].id;pane();dash();
+</script>
+</body>
+</html>
