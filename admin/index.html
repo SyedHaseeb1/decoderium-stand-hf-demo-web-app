@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
-  <link rel="stylesheet" href="STAND-HF base.css">
+  <link rel="stylesheet" href="../assets/base.css">
 </head>
 <body data-page="admin" class="compact">
 <div class="app" id="app">
@@ -31,7 +31,7 @@
         <p>Performance across all sites and teams, plus sites, users and permissions.</p>
       </div>
       <div class="actions">
-        <a class="btn" href="STAND-HF E-CRF prototype ENHANCED.html"><i class="ms">edit_note</i>Patient records</a>
+        <a class="btn" href="../records/"><i class="ms">edit_note</i>Patient records</a>
       </div>
     </div>
 
@@ -40,10 +40,10 @@
   </div>
 </div>
 
-<script src="STAND-HF access.js"></script>
-<script src="STAND-HF nav.js"></script>
+<script src="../assets/access.js"></script>
+<script src="../assets/nav.js"></script>
 <script>
-const LOGIN='STAND-HF Login.html', ECRF='STAND-HF E-CRF prototype ENHANCED.html', SUPER='superadmin';
+const LOGIN='../login/', ECRF='../records/', SUPER='superadmin';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const initials=s=>String(s||'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';

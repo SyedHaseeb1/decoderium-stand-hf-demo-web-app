@@ -7,7 +7,7 @@
   if(!root)return;
   const ss=k=>{try{return sessionStorage.getItem(k)||''}catch(e){return ''}};
   const isInv=ss('standhf_role')==='investigator';
-  const DASH='STAND-HF Investigator Dashboard.html', ECRF='STAND-HF E-CRF prototype ENHANCED.html', LOGIN='STAND-HF Login.html', ADMIN='STAND-HF Admin.html';
+  const DASH='../dashboard/', ECRF='../records/', LOGIN='../login/', ADMIN='../admin/';
   const isSuper=ss('standhf_role')==='superadmin';
   const isCentral=ss('standhf_role')==='central';
   const onNew=/[?&]new=1/.test(location.search);

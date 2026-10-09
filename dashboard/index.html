@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
-  <link rel="stylesheet" href="STAND-HF base.css">
+  <link rel="stylesheet" href="../assets/base.css">
 </head>
 <body data-page="dashboard">
 <div class="app">
@@ -43,8 +43,8 @@
         <p id="meta"></p>
       </div>
       <div class="actions">
-        <a class="btn" href="STAND-HF E-CRF prototype ENHANCED.html"><i class="ms">edit_note</i>Patient records</a>
-        <a class="btn primary" href="STAND-HF E-CRF prototype ENHANCED.html?new=1"><i class="ms">person_add</i>Add patient</a>
+        <a class="btn" href="../records/"><i class="ms">edit_note</i>Patient records</a>
+        <a class="btn primary" href="../records/?new=1"><i class="ms">person_add</i>Add patient</a>
       </div>
     </div>
 
@@ -92,10 +92,10 @@
   </main>
 </div>
 
-<script src="STAND-HF access.js"></script>
-<script src="STAND-HF nav.js"></script>
+<script src="../assets/access.js"></script>
+<script src="../assets/nav.js"></script>
 <script>
-const ECRF='STAND-HF E-CRF prototype ENHANCED.html', LOGIN='STAND-HF Login.html';
+const ECRF='../records/', LOGIN='../login/';
 const KEY='standhf_ecrf_v1', PL=['arni','bb','mra','sg'], VK=[['b','Baseline'],['m3','3 months'],['m6','6 months']];
 const DAY=864e5;
 

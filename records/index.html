@@ -5,12 +5,12 @@
   <title>STAND-HF E-CRF</title>
   <script>
     // Session gate: send anyone without a sign-in back to the login page.
-    try{if(sessionStorage.getItem('standhf_auth')!=='1')location.replace('STAND-HF Login.html')}catch(e){location.replace('STAND-HF Login.html')}
+    try{if(sessionStorage.getItem('standhf_auth')!=='1')location.replace('../login/')}catch(e){location.replace('../login/')}
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
-  <link rel="stylesheet" href="STAND-HF base.css">
+  <link rel="stylesheet" href="../assets/base.css">
 </head>
 <body data-page="records">
 <div class="app" id="app">
@@ -47,8 +47,8 @@
     <div class="snack" id="snack" role="status" aria-live="polite"></div>
   </div>
 </div>
-<script src="STAND-HF access.js"></script>
-<script src="STAND-HF nav.js"></script>
+<script src="../assets/access.js"></script>
+<script src="../assets/nav.js"></script>
 <script>
 const KEY='standhf_ecrf_v1';
 let DB={pts:[],off:false},sel=null,tab='info',newMode=false,listOpen=!window.matchMedia('(max-width: 1000px)').matches;
@@ -225,7 +225,7 @@ $('bDemo').onclick=()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x
   [['b',ago,0],['m3',ago-90,1],['m6',ago-180,2]].forEach(([k,n,j])=>{if(n<0)return;const v=p.v[k];Object.assign(v,{date:d(n),wt:70+i-j,hr:84-j*5,sbp:108+j*4,dbp:68+j*2,nyha:['III','II','II'][j],msts:9+i%4+j*4+i%3,done:true,g:{}});
    if(k!=='m3'){v.lvef=28+i%5+j*3;v.echoDate=d(n+2)}const na=Math.min(4,2+j+i%2);PL.forEach(([q],x)=>{v.g[q]=x<na?{drug:'demo',dose:'demo dose',start:d(n),status:'Active'}:{status:'Not started'}});if(na<4)v.rs={phys:true};v.ev={}});DB.pts.push(p);p.sync='Synced'});persist();sel=DB.pts[0].id;tab='sum';pane();dash()};
 
-$('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.href='STAND-HF Login.html'};
+$('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.href='../login/'};
 
 /* Searchable comboboxes (investigator, site) */
 const INVESTIGATORS=['Emily Carter','John Miller','Michael Johnson','Sarah Thompson','David Lee','Jessica Brown','Robert Wilson'];   // add known investigator names here
