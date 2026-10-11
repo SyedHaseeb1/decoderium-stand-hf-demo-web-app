@@ -64,13 +64,13 @@
   setInterval(function(){probeNet().then(applyNet)},20000);
   probeNet().then(function(on){applyNet(on,true)});
   /* Notifications: the dummy list for this user, limited to the sites they may see */
-  var ICON={due:'event',overdue:'warning',missing:'event_busy',admin:'person_add',info:'description'};
-  var TAG={due:['info','Due'],overdue:['bad','Overdue'],missing:['np-warn','Missing'],admin:['info','Admin'],info:['good','Info']};
+  var ICON={deleted:'delete',due:'event',overdue:'warning',missing:'event_busy',admin:'person_add',info:'description'};
+  var TAG={deleted:['bad','Deleted'],due:['info','Due'],overdue:['bad','Overdue'],missing:['np-warn','Missing'],admin:['info','Admin'],info:['good','Info']};
   var readKey='standhf_notes_read_'+(sess.username||'guest');
   var readSet=function(){try{return JSON.parse(localStorage.getItem(readKey)||'[]')}catch(e){return[]}};
   var writeRead=function(a){try{localStorage.setItem(readKey,JSON.stringify(a))}catch(e){}};
   var notesFor=function(){
-    var all=(window.NOTIFICATIONS_DUMMY||{})[sess.username]||[];
+    var all=((window.NOTIFICATIONS_DUMMY||{})[sess.username]||[]).concat(window.liveNotesFor?window.liveNotesFor(sess.username):[]);
     var allSites=(typeof can==='function')&&can('view_all_sites');
     var mine=(typeof mySites==='function')?mySites():[];
     return all.filter(function(n){return allSites||mine.indexOf(n.site)>=0})};

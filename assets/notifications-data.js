@@ -16,3 +16,17 @@ window.NOTIFICATIONS_DUMMY={
     {id:'r2',site:'ISB',type:'info',title:'Prescription uploaded',text:'ISB-002 has a new prescription file.',time:'Yesterday, 10:02',link:{page:'records',patient:'ISB-002',tab:'b'}}
   ]
 };
+
+/* Live notices created by actions (for example a deleted record). Stored per recipient in this browser. */
+window.LIVE_NOTES_KEY='standhf_notes_live';
+window.pushNotice=function(usernames,note){
+  try{
+    var all=JSON.parse(localStorage.getItem(window.LIVE_NOTES_KEY)||'[]');
+    var t=new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    usernames.forEach(function(u){all.push(Object.assign({id:'L'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),to:u,time:t},note))});
+    localStorage.setItem(window.LIVE_NOTES_KEY,JSON.stringify(all));
+  }catch(e){}};
+window.liveNotesFor=function(u){
+  try{return JSON.parse(localStorage.getItem(window.LIVE_NOTES_KEY)||'[]').filter(function(n){return n.to===u}).map(function(n){
+    return {id:n.id,site:n.site,type:n.type,title:n.title,text:n.text,time:n.time,link:n.link||{page:'records'}}})}
+  catch(e){return[]}};

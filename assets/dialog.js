@@ -1,5 +1,5 @@
 /* Shared dialog for confirmations and alerts.
-   appDialog.confirm({ title, message, icon, tone, confirmText, cancelText }) -> Promise<boolean>
+   appDialog.confirm({ title, message, items, icon, tone, confirmText, cancelText }) -> Promise<boolean>   (items: optional bullet list)
    appDialog.alert({ title, message, icon, tone, confirmText })              -> Promise<true>
    tone: "neutral" | "info" | "warning" | "danger"  (danger colours the confirm button red) */
 (function(){
@@ -19,7 +19,8 @@
         '<div class="ad-body">'+
           '<span class="ad-icon ad-'+tone+'"><i class="ms">'+esc(o.icon||(tone==='danger'?'warning':'info'))+'</i></span>'+
           '<div class="ad-text"><b class="ad-title" id="'+labelled+'">'+esc(o.title||'')+'</b>'+
-            (o.message?'<p class="ad-msg">'+esc(o.message)+'</p>':'')+'</div>'+
+            (o.message?'<p class="ad-msg">'+esc(o.message)+'</p>':'')+
+            (o.items&&o.items.length?'<ul class="ad-list">'+o.items.map(function(i){return '<li>'+esc(i)+'</li>'}).join('')+'</ul>':'')+'</div>'+
         '</div>'+
         '<div class="ad-actions">'+
           (kind==='confirm'?'<button type="button" class="ad-cancel" data-r="0">'+esc(o.cancelText||'Cancel')+'</button>':'')+

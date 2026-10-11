@@ -282,25 +282,93 @@ function overdueTable(pts){
     </table></div>${rows.length>10?`<p class="muted" style="margin:10px 0 0">Showing 10 of ${rows.length}</p>`:''}`;
 }
 
+/* Super Admin: one investigator's profile dashboard. Opened from the team table. */
+let profileOf=null;
+/* Super Admin only: CSV downloads. Shared helper writes the file. */
+function csvDownload(rows,name,msg){
+  const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  const a=document.createElement('a');a.href=url;a.download=`${name}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast(msg);
+}
+function exportTeam(){
+  if(session().role!==SUPER){toast('Only Super Admin can export data');return}
+  const pts=patients();
+  const rows=[['Investigator','Username','Sites','Access','Patients','Baseline complete','3 months complete','6 months complete','On-time %','Overdue','1MSTS change','Pending sync']];
+  accessStore().users.filter(u=>u.role==='investigator').forEach(u=>{
+    const st=stats(pts.filter(p=>p.inv===u.name));
+    rows.push([u.name,u.username,u.sites.join(', '),u.active?'Active':'Inactive',st.n,st.b,st.m3,st.m6,st.ontime==null?'':st.ontime,st.overdue,st.msts==null?'':st.msts.toFixed(1),st.pending]);
+  });
+  csvDownload(rows,'stand-hf-investigators','Investigator data exported');
+}
+/* One investigator: one row per patient-visit */
+function exportUser(username){
+  if(session().role!==SUPER){toast('Only Super Admin can export data');return}
+  const u=accessStore().users.find(x=>x.username===username);if(!u)return;
+  const label={b:'Baseline',m3:'3 months',m6:'6 months'};
+  const rows=[['Study ID','Site','Investigator','Visit','Visit status','Visit date','Weight (kg)','Heart rate','Systolic BP','Diastolic BP','NYHA class','1MSTS repetitions','LVEF (%)','Active GDMT pillars']];
+  patients().filter(p=>p.inv===u.name).forEach(p=>['b','m3','m6'].forEach(k=>{
+    const v=p.v[k];
+    rows.push([p.id,p.site,p.inv,label[k],vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act(v)]);
+  }));
+  csvDownload(rows,'stand-hf-'+u.username,`${u.name} data exported`);
+}
+
+function profileView(u,kpi){
+  const mine=patients().filter(p=>p.inv===u.name),st=stats(mine);
+  const cls={'In Progress':'In','Not Started':'Not'};
+  const rows=mine.map(p=>`<tr><td><b>${esc(p.id)}</b></td><td>${esc(p.site)}</td>${['b','m3','m6'].map(k=>{const v=vstat(p,k);return `<td><span class="chip ${cls[v]||v}">${v}</span></td>`}).join('')}<td class="num">${(p.audit||[]).length}</td></tr>`).join('');
+  const activity=mine.flatMap(p=>(p.audit||[]).map(a=>({...a,pid:p.id}))).slice(-10).reverse();
+  return `<div style="margin-bottom:12px"><button type="button" class="btn" data-profile-back><i class="ms">arrow_back</i>All investigators</button></div>
+    <section class="card">
+      <div class="card-head"><h2>${esc(u.name)}</h2><div style="display:flex;gap:12px;align-items:center"><small>${esc(u.username)} · ${u.sites.map(esc).join(', ')||'No sites'} · ${u.active?'Active':'Inactive'}</small>${session().role===SUPER?`<button type="button" class="btn" data-export="user" data-user="${esc(u.username)}"><i class="ms">download</i>Export CSV</button>`:''}</div></div>
+      <div class="kpis auto">
+        ${kpi('group','Patients',st.n,'Entered by this investigator')}
+        ${kpi('biotech','Baseline complete',fmtPct(pctOf(st.b,st.n)),st.b+' of '+st.n)}
+        ${kpi('event_upcoming','Follow-ups overdue',st.overdue,'3 and 6 month visits')}
+        ${kpi('schedule','On-time visits',fmtPct(st.ontime),'Within visit window')}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Patients</h2><small>Visit status by patient</small></div>
+      <div class="table-wrap"><table><tr><th>Patient</th><th>Site</th><th>Baseline</th><th>3 months</th><th>6 months</th><th class="num">Changes</th></tr>${rows||'<tr><td colspan="6" class="muted">No patients entered yet.</td></tr>'}</table></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Overdue follow-ups</h2><small>3 and 6 month visits past their window</small></div>
+      ${overdueTable(mine)}
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Recent activity</h2><small>Last 10 changes</small></div>
+      ${activity.length?`<div class="table-wrap"><table><tr><th>When</th><th>Patient</th><th>Field</th><th>Change</th></tr>${activity.map(a=>`<tr><td>${esc(a.t)}</td><td>${esc(a.pid)}</td><td>${esc(a.f)}</td><td>${esc(a.n)}</td></tr>`).join('')}</table></div>`:'<div class="empty"><i class="ms">history</i>No activity yet.</div>'}
+    </section>`;
+}
+
 function dashView(){
   const s=accessStore(),pts=patients(),all=stats(pts);
   const kpi=(ico,l,v,sub)=>`<div class="kpi"><div class="top"><span class="ico"><i class="ms">${ico}</i></span></div><b>${v}</b><span>${l}</span><small>${sub||''}</small></div>`;
-  const rowFor=(label,st)=>`<tr><td>${label}</td><td class="num">${st.n}</td>
+  if(profileOf){const pu=s.users.find(x=>x.username===profileOf);if(pu)return profileView(pu,kpi);profileOf=null}
+  /* extra: an optional last cell, only for the investigator table */
+  const rowFor=(label,st,extra)=>`<tr><td>${label}</td><td class="num">${st.n}</td>
     <td>${bar(pctOf(st.b,st.n))}</td><td>${bar(pctOf(st.m3,st.n))}</td><td>${bar(pctOf(st.m6,st.n))}</td>
-    <td class="num">${fmtPct(st.ontime)}</td><td class="num">${st.overdue}</td><td class="num">${fmtDelta(st.msts)}</td><td class="num">${st.pending}</td></tr>`;
-  const head=label=>`<tr><th>${label}</th><th class="num">Patients</th><th>Baseline</th><th>3 months</th><th>6 months</th><th class="num">On time</th><th class="num">Overdue</th><th class="num">1MSTS change</th><th class="num">Pending</th></tr>`;
+    <td class="num">${fmtPct(st.ontime)}</td><td class="num">${st.overdue}</td><td class="num">${fmtDelta(st.msts)}</td><td class="num">${st.pending}</td>${extra===undefined?'':`<td>${extra}</td>`}</tr>`;
+  const head=(label,extra='')=>`<tr><th>${label}</th><th class="num">Patients</th><th>Baseline</th><th>3 months</th><th>6 months</th><th class="num">On time</th><th class="num">Overdue</th><th class="num">1MSTS change</th><th class="num">Pending</th>${extra}</tr>`;
 
   /* Sites */
   const siteStats=s.sites.map(x=>({code:x.code,name:x.name,st:stats(pts.filter(p=>p.site===x.code))}));
   const siteRows=siteStats.map(x=>rowFor(`<b>${esc(x.code)}</b><div class="muted">${esc(x.name)}</div>`,x.st)).join('');
   const bars=siteStats.map(x=>({label:x.code,values:[pctOf(x.st.b,x.st.n),pctOf(x.st.m3,x.st.n),pctOf(x.st.m6,x.st.n)]}));
 
+  /* Site investigator counts and rows */
+  const invAll=s.users.filter(u=>u.role==='investigator');
+  const invActive=invAll.filter(u=>u.active).length;
+
   /* Team */
   const team=s.users.filter(u=>u.role==='investigator');
-  const teamRows=team.map(u=>rowFor(`<b>${esc(u.name)}</b><div class="muted">${u.sites.map(esc).join(', ')||'No sites'}${u.active?'':' · inactive'}</div>`,stats(pts.filter(p=>p.inv===u.name)))).join('');
+  const teamRows=team.map(u=>rowFor(`<button type="button" class="name-link" data-profile="${esc(u.username)}"><b>${esc(u.name)}</b><i class="ms">chevron_right</i></button><div class="muted">${u.sites.map(esc).join(', ')||'No sites'}</div>`,stats(pts.filter(p=>p.inv===u.name)),`<span class="chip ${u.active?'In':'Not'}">${u.active?'Active':'Inactive'}</span>`).replace('<tr>',`<tr class="row-link" data-profile="${esc(u.username)}" title="Open ${esc(u.name)}'s dashboard">`)).join('');
   const names=new Set(team.map(u=>u.name));
   const other=pts.filter(p=>!names.has(p.inv));
-  const otherRow=other.length?rowFor('<b>Not on team list</b><div class="muted">Investigator name not in Users</div>',stats(other)):'';
+  const otherRow=other.length?rowFor('<b>Not on team list</b><div class="muted">Investigator name not in Users</div>',stats(other),''):'';
   const teamBars=team.map((u,i)=>{const n=pts.filter(p=>p.inv===u.name).length;const st=stats(pts.filter(p=>p.inv===u.name));
     return {label:u.name,sub:`${u.sites.join(', ')||'No sites'} · on time ${fmtPct(st.ontime)}`,value:n,color:colourOf(i)}});
   if(other.length)teamBars.push({label:'Not on team list',sub:'Investigator not in Users',value:other.length,color:'var(--ink-3)'});
@@ -316,14 +384,19 @@ function dashView(){
     {label:'Not started',value:counts['Not started'],color:'var(--ink-3)'}
   ];
 
-  return `<div class="kpis">
+  return `<div class="kpis auto">
       ${kpi('group','Patients',all.n,'All sites')}
-      ${kpi('location_on','Active sites',s.sites.length)}
       ${kpi('biotech','Baseline complete',fmtPct(pctOf(all.b,all.n)),all.b+' of '+all.n)}
       ${kpi('event_upcoming','Follow-ups overdue',all.overdue,'3 and 6 month visits')}
       ${kpi('schedule','On-time visits',fmtPct(all.ontime),'Within visit window')}
-      ${kpi('cloud_sync','Pending sync',all.pending,all.pending?'Saved on this device':'All synced')}
     </div>
+    <section class="card">
+      <div class="card-head"><h2>Performance by team</h2><div style="display:flex;gap:12px;align-items:center"><small>Patients entered by each investigator</small>${session().role===SUPER?'<button type="button" class="btn" data-export="team"><i class="ms">download</i>Export CSV</button>':''}</div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        ${[['Total',invAll.length],['Active',invActive],['Inactive',invAll.length-invActive]].map(([l,n])=>`<div><b style="display:block;font-size:22px;font-weight:600;line-height:1.1">${n}</b><span class="muted" style="font-size:13px">${l}</span></div>`).join('')}
+      </div>
+      <div class="table-wrap"><table class="rows-rounded">${head('Investigator','<th>Access</th>')}${teamRows||'<tr><td colspan="10" class="muted">No investigators yet.</td></tr>'}${otherRow}</table></div>
+    </section>
     <div class="dash-grid">
       <section class="card"><div class="card-head"><h2>Completion by site</h2><small>Share of patients with each visit complete</small></div>${groupedBars(bars)}</section>
       <section class="card"><div class="card-head"><h2>Visit status</h2><small>Baseline, 3 and 6 month visits</small></div>${donut(statusParts)}</section>
@@ -337,10 +410,6 @@ function dashView(){
     <section class="card">
       <div class="card-head"><h2>Performance by site</h2><small>Completion, timing and follow-up status</small></div>
       <div class="table-wrap"><table>${head('Site')}${siteRows||'<tr><td colspan="9" class="muted">No sites yet.</td></tr>'}</table></div>
-    </section>
-    <section class="card">
-      <div class="card-head"><h2>Performance by team</h2><small>Patients entered by each investigator</small></div>
-      <div class="table-wrap"><table>${head('Investigator')}${teamRows||'<tr><td colspan="9" class="muted">No investigators yet.</td></tr>'}${otherRow}</table></div>
     </section>`;
 }
 
@@ -437,6 +506,9 @@ $('view').addEventListener('input',e=>{
 
 /* Select all / clear all sites in the new-user form */
 $('view').addEventListener('click',e=>{
+  if(e.target.closest('[data-export="team"]')){exportTeam();return}
+  const ex=e.target.closest('[data-export="user"]');if(ex){exportUser(ex.dataset.user);return}
+  const pr=e.target.closest('[data-profile],[data-profile-back]');if(pr){profileOf=pr.dataset.profile||null;render();window.scrollTo(0,0);return}
   const btn=e.target.closest('#allSites');if(!btn)return;
   const boxes=[...document.querySelectorAll('#fUser input[name="site"]')];
   const all=boxes.some(x=>!x.checked);

@@ -13,13 +13,20 @@
   <link rel="stylesheet" href="../assets/base.css">
   <style>
     .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
-    .filelist .file-row{display:flex;align-items:center;gap:8px;padding:6px 0;flex-wrap:wrap}
     .tint{background:var(--soft);border-radius:14px;padding:16px}
     .tint .pillar{background:var(--card)}
     .rx-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
     .rx-wrap{container-type:inline-size}
     .rx-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
     .rx-up,.rx-files{min-width:0}
+    /* Upload section: vertical and compact */
+    .rx-grid{grid-template-columns:minmax(0,1fr)}
+    /* Upload section: smaller file cards (same style as the summary) */
+    /* File cards: one polished style for the summary and the upload section */
+    .rx-files .rx-list{display:flex;flex-wrap:wrap;gap:8px}
+    .rx-up .rx-drop{flex:none;min-height:0;padding:10px 14px}
+    .rx-up .rx-drop .ms{font-size:24px}
+
     .rx-up{display:flex;flex-direction:column}
     .rx-drop{display:flex;align-items:center;gap:12px;width:100%;flex:1;min-height:160px;padding:14px 16px;border:1.5px dashed #747a86;border-radius:14px;background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .2s}
     .rx-drop:hover{border-color:var(--primary)}
@@ -27,15 +34,7 @@
     .rx-drop b{display:block;font-size:14px;font-weight:600}
     .rx-drop small{display:block;font-size:12px;color:var(--ink-2);margin-top:2px}
     .rx-list{display:grid;gap:8px;margin-top:12px}
-    .rx-list .file-row{display:flex;flex-wrap:nowrap;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:10px 12px;min-width:0}
-    .rx-ico{flex:none;width:36px;height:36px;border-radius:10px;background:var(--soft);display:grid;place-items:center;color:var(--ink-2);overflow:hidden}
-    .rx-ico img{width:100%;height:100%;object-fit:cover;display:block}
-    .rx-ico[data-a]{cursor:zoom-in}
-    .rx-txt{display:grid;flex:1 1 0;min-width:0;gap:2px}
-    .rx-del{flex:none;margin-left:auto;width:32px;height:32px}
-    .rx-ico[data-a]{cursor:zoom-in}
-    .rx-txt button.link{overflow-wrap:anywhere;text-align:left;line-height:20px;font-weight:500}
-    .rx-txt .mut{font-size:12px}
+    .rx-row{display:flex;flex-wrap:wrap;gap:8px}
     .rx-list{min-width:0}
     dialog.viewer{border:0;border-radius:18px;padding:16px;width:min(960px,94vw);height:min(88vh,900px);background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
     dialog.viewer::backdrop{background:rgba(27,29,34,.35)}
@@ -62,6 +61,30 @@
     .fmsg.tag{display:inline-block;margin-top:6px;padding:3px 10px}
     button.link{background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer;padding:0;font:inherit;text-align:left}
     .fld-flash{box-shadow:0 0 0 4px var(--error-soft)}
+    /* File cards: the photo fills the card; the name sits on a dark strip at the bottom */
+    /* File cards: rounded photo on top, name at the bottom, delete at the top-right corner */
+    /* File lists: one row that scrolls sideways when there are many files */
+    .rx-row,.rx-files .rx-list{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+    .pl .pt>span.pt-updated{display:inline-block;font-size:11px;color:var(--ink-3);margin-top:2px}
+    .pl{position:relative}
+    .list-sort{position:absolute;top:12px;right:52px;z-index:3;width:34px;height:34px}
+    .sort-menu{position:absolute;top:52px;right:12px;z-index:5;display:grid;gap:2px;min-width:180px;padding:6px;background:var(--card);border-radius:14px;box-shadow:var(--shadow)}
+    .sort-menu[hidden]{display:none}
+    .sort-opt{text-align:left;padding:8px 10px;border:0;border-radius:10px;background:none;font:inherit;font-size:14px;color:var(--ink);cursor:pointer}
+    .sort-opt:hover{background:var(--soft)}
+    .sort-opt.on{font-weight:600;color:var(--primary)}
+    /* GDMT pillars stay in one row, sharing the width; no scroll */
+    .pillars{display:flex;flex-wrap:nowrap;overflow:visible;gap:10px}
+    .pillars .pillar{flex:1 1 0;min-width:0}
+    .pillar-head{display:flex;align-items:center;gap:8px;min-width:0}
+    .pillar-head b{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pillar-head .chip{flex:none}
+    /* Check rows inside the form grids: compact, so they sit level with the fields */
+    .g label.check-row{min-height:42px;box-sizing:border-box;padding:0 12px;align-self:end;margin-bottom:6px;border-color:var(--line);background:var(--card)}
+    .g label.check-row:has(input:checked){background:color-mix(in srgb,var(--primary-soft) 55%,var(--card));border-color:color-mix(in srgb,var(--primary) 45%,var(--line))}
+    .g label.check-row input{width:16px;height:16px}
+    /* Adding or removing a banner above the view must not shift the page: the saved scroll position is kept instead */
+    html{overflow-anchor:none}
   </style>
 </head>
 <body data-page="records">
@@ -94,6 +117,8 @@
 </div>
 <script src="../assets/access.js"></script>
 <script src="../assets/notifications-data.js"></script>
+<script src="../assets/lookups.js"></script>
+<script src="../assets/file-card.js"></script>
 <script src="../assets/dialog.js"></script>
 <script src="../assets/header.js" data-root="../"></script>
 <script src="../assets/nav.js"></script>
@@ -104,12 +129,12 @@ try{const s=localStorage.getItem(KEY);if(s)DB=JSON.parse(s)}catch(e){}
 
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const G=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o),S=(o,p,v)=>{const k=p.split('.');let a=o;k.slice(0,-1).forEach(x=>a=a[x]=a[x]||{});a[k.pop()]=v};
-const VK=[['b','Baseline'],['m3','3 Months'],['m6','6 Months']],PL=[['arni','ARNI (sacubitril/valsartan)'],['bb','Evidence-based beta-blocker'],['mra','MRA'],['sg','SGLT2 inhibitor']];
+const VK=[['b','Baseline'],['m3','3 Months'],['m6','6 Months']],PL=[['arni','ARNI'],['bb','Evidence-based beta-blocker'],['mra','MRA'],['sg','SGLT2 inhibitor']];
 const RS=[['hypo','Hypotension'],['brady','Bradycardia'],['renal','Renal dysfunction'],['k','Hyperkalemia'],['intol','Intolerance'],['cost','Cost / access'],['pref','Patient preference'],['phys','Physician decision']];
 const STOP=['','Chest pain','Presyncope / syncope','Intolerable dyspnea','Severe dizziness','Loss of balance','Marked pallor / diaphoresis','Participant request','Investigator safety concern'];
 
 const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}};
-const cur=()=>DB.pts.find(p=>p.id===sel);
+const cur=()=>DB.pts.find(p=>p.id===sel&&inScope(p));
 const contactOk=s=>/^\+?\d{7,15}$/.test(String(s||'').replace(/[\s-]/g,''));
 /* Contact number: digits, spaces, hyphens and a leading + only. Letters are dropped as they are typed */
 const contactClean=s=>String(s||'').replace(/[^0-9+\s-]/g,'');
@@ -128,7 +153,7 @@ if(!el.matches||!el.matches('input'))return;const key=filterKey(el);if(!key)retu
   const [re,fn]=FILTER[key],c=fn(el.value.replace(re,''));if(c!==el.value)el.value=c});
 const num=x=>x===''||x==null?NaN:+x,day=s=>s?new Date(s+'T00:00:00'):null,addD=(s,n)=>{const d=day(s);d.setDate(d.getDate()+n);return d},fmt=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 
-function mk(site,inv,consent,age,sex,etio){const n=DB.pts.filter(p=>p.site===site).length+1;return{created:Date.now(),id:site+'-'+String(n).padStart(3,'0'),site,inv,consent,age,sex,etio,etioO:'',uid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:'',contact:'',sync:'Pending',audit:[],files:{b:[],m3:[],m6:[]},v:{b:{},m3:{},m6:{}}}}
+function mk(site,inv,consent,age,sex,etio){const n=DB.pts.filter(p=>p.site===site).length+1;return{created:Date.now(),updated:Date.now(),owner:session().username,id:site+'-'+String(n).padStart(3,'0'),site,inv,consent,age,sex,etio,etioO:'',uid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:'',contact:'',sync:'Pending',audit:[],files:{b:[],m3:[],m6:[]},v:{b:{},m3:{},m6:{}}}}
 function has(v){return Object.keys(v).some(k=>k!=='done'&&v[k]!==''&&v[k]!=null&&typeof v[k]!=='object')||(v.g&&Object.values(v.g).some(x=>x.status))}
 function vstat(p,k){const v=p.v[k];if(v.done)return'Completed';const b=p.v.b.done?p.v.b.date:null;let late=false,due=false,missed=false;
  if(k!=='b'&&b){const t=k==='m3'?90:180,w=k==='m3'?14:21,T=new Date(),tg=addD(b,t);late=T>addD(b,t+w);due=T>=addD(b,t-w);missed=T>addD(b,t+w+30)&&!has(v)}
@@ -150,21 +175,33 @@ function warns(p,k){const v=p.v[k],b=p.v.b,w=[],x=n=>num(v[n]);
  PL.forEach(([q,n])=>{const g=G(v,'g.'+q)||{};if(g.status==='Active'&&!g.dose)w.push(['w',n+': daily dose missing']);if(g.status==='Active'&&!g.start)w.push(['w',n+': start date missing']);
   if(g.status&&g.status!=='Active'&&!Object.values(v.rs||{}).some(Boolean)&&!v.rsO)w.push(['w',n+' is '+g.status.toLowerCase()+': record a reason below'])});
  return w}
-function missing(p,k){const v=p.v[k],m=[];['date','wt','hr','sbp','dbp','nyha','msts'].forEach(f=>{if(v[f]===''||v[f]==null)m.push(f)});
- if(k!=='m3'&&!v.lvef)m.push('lvef');PL.forEach(([q])=>{if(!G(v,'g.'+q+'.status'))m.push(q+' status')});
+function missing(p,k){const v=p.v[k],m=[];if(!((p.files&&p.files[k])||[]).length)m.push('prescription');['date','wt','hr','sbp','dbp','nyha','msts'].forEach(f=>{if(v[f]===''||v[f]==null)m.push(f)});
+ if(k!=='m3'&&!v.lvef)m.push('lvef');PL.forEach(([q])=>['drug','dose','start','status'].forEach(x=>{const val=G(v,'g.'+q+'.'+x);if(val===undefined||val===null||val==='')m.push(q+' '+x)}));
  if(k==='b'){if(!p.name)m.push('patient name');if(!p.contact)m.push('contact number');if(!p.consent)m.push('consent date');if(!p.age)m.push('age');if(!p.sex)m.push('sex');if(!p.etio)m.push('HF etiology')}return m}
 /* A patient can be removed only while no visit has data: it was created by mistake */
-function canRemovePatient(p){return can('enter_data')&&!VK.some(([k])=>has(p.v[k])||p.v[k].done)}
+/* Demo: any user who can enter data may delete a whole record, visit data included */
+function canRemovePatient(p){return can('enter_data')}
 async function removePatient(){
   const p=cur();if(!p)return;
   if(!canRemovePatient(p)){toast('This patient has visit data. Remove is not allowed.');return}
-  if(!await appDialog.confirm({tone:'danger',icon:'delete',title:'Remove patient '+p.id+'?',message:(p.name||'No name')+'. This cannot be undone.',confirmText:'Remove'}))return;
+  const me=session().username;
+  const owner=p.owner||((accessStore().users.find(u=>u.name===p.inv))||{}).username||'';
+  const supers=accessStore().users.filter(u=>u.active!==false&&u.role==='superadmin'&&u.username!==me).map(u=>u.username);
+  const notify=[...new Set([...(owner&&owner!==me?[owner]:[]),...supers])];
+  const note=notify.length?' Notifies the record owner.':' No one else will be notified.';
+  const ownerName=((accessStore().users.find(u=>u.username===owner))||{}).name||p.inv||owner;
+  const items=['Deletes the patient','Deletes all visit data (Baseline, 3 months, 6 months)','Deletes all prescription files'];
+  if(owner&&owner!==me)items.push('Notifies the record owner ('+ownerName+')');
+  if(supers.length)items.push('Notifies the Super Admin');
+  if(!notify.length)items.push('No one else will be notified');
+  if(!await appDialog.confirm({tone:'danger',icon:'delete',title:'Delete record '+p.id+'?',message:(p.name||'No name')+'. This is a demo and it cannot be undone.',items,confirmText:'Delete record'}))return;
   for(const [k] of VK){for(const f of ((p.files&&p.files[k])||[])){try{await delFile(f.id)}catch(e){}}}
+  if(notify.length)pushNotice(notify,{type:'deleted',site:p.site,title:'Record deleted',text:p.id+(p.name?' ('+p.name+')':'')+' was deleted by '+signedIn()+'.',link:{page:'records'}});
   DB.pts=DB.pts.filter(x=>x!==p);
   DB.removed=(DB.removed||[]).concat([{id:p.id,name:p.name||'',site:p.site,by:signedIn(),at:new Date().toLocaleString('en-GB')}]);
   sel=DB.pts.length?DB.pts[0].id:null;tab='info';
   persist();pane();dash();toast('Patient '+p.id+' removed')}
-function save(p){p.sync='Pending';persist();if(!DB.off)setTimeout(()=>{DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash()},700)}
+function save(p){p.updated=Date.now();p.sync='Pending';persist();if(!DB.off)setTimeout(()=>{DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash()},700)}
 
 /* Validation rules: fieldState gives the level ('e' error, 'w' warning or '') and message for one field */
 const VREQ=['date','wt','hr','sbp','dbp','nyha','msts','lvef'], IREQ={name:1,contact:1,consent:1,age:1,sex:1,etio:1};
@@ -179,7 +216,7 @@ const isDateField=f=>/^(date|echoDate)$/.test(f)||/\.start$/.test(f);
 function fieldState(p,path){
   const isV=path.startsWith('v.'),k=isV?path.split('.')[1]:'b',f=isV?path.split('.').slice(2).join('.'):path;
   const v=isV?(G(p,'v.'+k)||{}):p,b=p.v.b,val=G(p,path),empty=val===''||val==null;
-  const req=isV?(VREQ.includes(f)&&!(f==='lvef'&&k==='m3')):(f==='etioO'?p.etio==='Other':!!IREQ[f]);
+  const req=isV?((VREQ.includes(f)&&!(f==='lvef'&&k==='m3'))||/^g\.\w+\.(drug|dose|start|status)$/.test(f)):(f==='etioO'?p.etio==='Other':!!IREQ[f]);
   const tried=TRIED.has((p.uid||p.id)+'|'+k),st={req,filled:!empty,lvl:'',msg:''};
   const set=(l,m)=>{if(!st.lvl||(l==='e'&&st.lvl==='w')){st.lvl=l;st.msg=m}};
   if(empty){if(req&&tried)set('e','Required');return st}
@@ -225,7 +262,7 @@ const freq=st=>st.req?'<span class="req" aria-hidden="true">*</span>':'';
 const fmsgCls=lvl=>`fmsg ${lvl}`+(lvl?` tag ${lvl==='e'?'bad':'warn'}`:'');
 const fmsg=st=>`<span class="${fmsgCls(st.lvl)}">${esc(st.msg)}</span>`;
 function paintFields(){const p=cur();if(!p)return;
-  document.querySelectorAll('#pane .pillar').forEach(card=>{const sel=card.querySelector('select');if(!sel)return;const s=sel.value;
+  document.querySelectorAll('#pane .pillar').forEach(card=>{const sel=card.querySelector('[data-p$=".status"]');if(!sel)return;const s=sel.value;
     card.classList.toggle('active',s==='Active');card.classList.toggle('stopped',s==='Stopped');
     const chip=card.querySelector('.chip');if(chip){chip.textContent=s||'Not set';chip.className='chip '+(s==='Active'?'Completed':s==='Stopped'?'Overdue':'Not')}});
   document.querySelectorAll('#pane [data-p]').forEach(el=>{const st=fieldState(p,el.dataset.p);
@@ -235,52 +272,93 @@ function paintFields(){const p=cur();if(!p)return;
 const MAXLEN=[[/^name$/,100],[/^contact$/,20],[/^etioO$/,100],[/\.drug$/,80],[/\.dose$/,40],[/\.ev\.int$/,200],[/\.ini$/,5],[/\.rsO$/,100]];
 const maxAttr=path=>{const r=MAXLEN.find(([re])=>re.test(path));return r?`maxlength="${r[1]}"`:''};
 const inp=(p,path,l,t,x='')=>{const st=fieldState(p,path);return `<label>${l}${freq(st)}<input data-p="${path}" type="${t||'text'}" value="${esc(G(p,path))}" ${maxAttr(path)} ${x} class="${fcls(st)}" ${st.lvl==='e'?'aria-invalid="true"':''}>${fmsg(st)}</label>`};
-const sel_=(p,path,l,o)=>{const st=fieldState(p,path);return `<label>${l}${freq(st)}<select data-p="${path}" class="${fcls(st)}" ${st.lvl==='e'?'aria-invalid="true"':''}>${o.map(a=>`<option ${G(p,path)===a?'selected':''}>${esc(a)}</option>`).join('')}</select>${fmsg(st)}</label>`};
-const ck=(p,path,l)=>`<label class="ck"><input type="checkbox" data-p="${path}" ${G(p,path)?'checked':''}> ${l}</label>`;
+/* Drugs offered under each GDMT pillar. Placeholder list, marked TBC until the client confirms it (Q-16) */
+const DRUGS={arni:lookup('gdmt.arni'),bb:lookup('gdmt.bb'),mra:lookup('gdmt.mra'),sg:lookup('gdmt.sg')};
+const sel_=(p,path,l,o)=>{const st=fieldState(p,path);return ddHtml(`data-p="${path}"`,'dd:'+path,l,o.filter(x=>x!==''),G(p,path),fcls(st),st.lvl==='e'?'aria-invalid="true"':'',{req:freq(st),msg:fmsg(st)})};
+/* One checkbox design everywhere: the card-style check row */
+const ck=(p,path,l)=>opt(p,path,l);
 const opt=(p,path,l)=>`<label class="check-row"><input type="checkbox" data-p="${path}" ${G(p,path)?'checked':''}><span>${l}</span></label>`;
 const pillar=(p,k,q,n)=>{const s=G(p,`v.${k}.g.${q}.status`)||'';
   return `<div class="pillar ${s==='Active'?'active':s==='Stopped'?'stopped':''}">
-    <div class="pillar-head"><b>${n}</b><span class="chip ${s==='Active'?'Completed':s==='Stopped'?'Overdue':'Not'}">${esc(s||'Not set')}</span></div>
-    ${inp(p,`v.${k}.g.${q}.drug`,'Generic drug','text')}
+    <div class="pillar-head"><b>${n}</b></div>
+    ${sel_(p,`v.${k}.g.${q}.drug`,'Generic drug',DRUGS[q])}
     <div class="g2">${inp(p,`v.${k}.g.${q}.dose`,'Daily dose','text')}${inp(p,`v.${k}.g.${q}.start`,'Start date','date')}</div>
-    ${sel_(p,`v.${k}.g.${q}.status`,'Status',['','Active','Not started','Stopped'])}
+    ${sel_(p,`v.${k}.g.${q}.status`,'Status',lookup('gdmt.status'))}
   </div>`};
 
+/* Keep the selected patient visible by scrolling the list only (never the whole page) */
+function keepSelectedVisible(){
+  const box=document.querySelector('#list .pl-scroll'),el=box&&box.querySelector('.pt.on');
+  if(!box||!el)return;
+  if(el.offsetTop<box.scrollTop)box.scrollTop=el.offsetTop;
+  else if(el.offsetTop+el.offsetHeight>box.scrollTop+box.clientHeight)box.scrollTop=el.offsetTop+el.offsetHeight-box.clientHeight}
+/* Patient list sort: one dropdown above the list */
+const SORT_LABELS=['Newest first','Last updated','Name (A–Z)','Study ID'];
+let listSort='Newest first';
+function sortPts(arr){
+  const a=arr.slice();
+  if(listSort==='Last updated')return a.sort((x,y)=>(y.updated||y.created||0)-(x.updated||x.created||0));
+  if(listSort==='Name (A–Z)')return a.sort((x,y)=>(x.name||'').localeCompare(y.name||''));
+  if(listSort==='Study ID')return a.sort((x,y)=>x.id.localeCompare(y.id));
+  return a.sort((x,y)=>(y.created||0)-(x.created||0))}
 function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).length,od=k=>P.filter(p=>vstat(p,k)==='Overdue'||vstat(p,k)==='Missed').length;
  const mean=k=>{const a=P.filter(p=>p.v[k].msts!==''&&p.v[k].msts!=null).map(p=>+p.v[k].msts);return a.length?(a.reduce((x,y)=>x+y)/a.length).toFixed(1):'–'};
  const full=P.filter(p=>{const d=VK.filter(([k])=>p.v[k].done).pop();return d&&act(p.v[d[0]])===4}).length;
  const pend=P.filter(p=>p.sync==='Pending').length;
  $('tiles').innerHTML=[['Participants',P.length],['Baseline completed',c('b')],['3M done / overdue',c('m3')+' / '+od('m3')],['6M done / overdue',c('m6')+' / '+od('m6')],['4/4 pillars (latest visit)',full],['Mean 1MSTS',mean('b')+' → '+mean('m3')+' → '+mean('m6')],['Records pending sync',pend]].map(t=>`<div class="kpi"><b>${t[1]}</b><span>${t[0]}</span></div>`).join('');
-   $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Participants</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?'':'<p class="mut">No participants yet. Add one or load demo data.</p>')+'<div class="pl-scroll">'+P.slice().sort((a,b)=>(b.created||0)-(a.created||0)).map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.name||'Name missing')}</span><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('')+'</div>';
- $('list').classList.toggle('collapsed',!listOpen);const p=cur();if(p){const w=$('warn');if(w&&tab!=='info'&&tab!=='sum')w.innerHTML=wHtml(p,tab);const pc=$('pc');if(pc&&tab in p.v)pc.textContent=act(p.v[tab])+' / 4';const st=$('vs');if(st&&tab in p.v)st.textContent=vstat(p,tab)}}
+   const keepScroll=(document.querySelector('#list .pl-scroll')||{scrollTop:0}).scrollTop;
+  $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patients</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?`<button type="button" class="icon-btn list-sort" data-a="sortMenu" aria-label="Sort patients" title="Sort: ${esc(listSort)}"><i class="ms">sort</i></button><div class="sort-menu" hidden>${SORT_LABELS.map(l=>`<button type="button" class="sort-opt${l===listSort?' on':''}" data-sortopt="${esc(l)}">${esc(l)}</button>`).join('')}</div>`:'')+(P.length?'':'<div class="empty"><i class="ms">groups</i>No patients yet. Create one or load the demo data.</div>')+'<div class="pl-scroll">'+sortPts(P).map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.name||'Name missing')}</span><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><span class="pt-updated">Updated ${updatedTxt(p)}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('')+'</div>';
+ const scrollBox=document.querySelector('#list .pl-scroll');if(scrollBox)scrollBox.scrollTop=keepScroll;keepSelectedVisible();
+  $('list').classList.toggle('collapsed',!listOpen);const p=cur();if(p){const pc=$('pc');if(pc&&tab in p.v)pc.textContent=act(p.v[tab])+' / 4';const st=$('vs');if(st&&tab in p.v)st.textContent=vstat(p,tab)}}
 
-function wHtml(p,k){const w=warns(p,k);
- if(!has(p.v[k]))return '<div class="mut">No data entered yet. Checks run as you fill in the visit.</div>';
- const m=missing(p,k);
- const head=m.length?'<div class="warn"><i class="ms">rule</i><span>Missing required: '+esc(m.join(', '))+'</span></div>':'';
- const rows=w.map(x=>`<div class="${x[0]==='e'?'err':'warn'}">${x[0]==='e'?'✖ Error':'⚠ Warning'}: ${x[1]}</div>`).join('');
- if(!m.length&&!w.length)return '<div class="ok">✔ All checks passed</div>';
- return head+(rows?'<div style="margin-top:8px">'+rows+'</div>':'')}
+/* Human labels for the names used in "missing" lists */
+function fieldLabel(x){
+  const M={prescription:'Prescription file',date:'Visit date',wt:'Weight',hr:'Heart rate',sbp:'Systolic BP',dbp:'Diastolic BP',nyha:'NYHA class',msts:'1MSTS repetitions',lvef:'LVEF',
+    'consent date':'Consent date',age:'Age',sex:'Sex','HF etiology':'HF etiology','etiology (other)':'Other etiology','patient name':'Patient name','contact number':'Contact number'};
+  const st=x.match(/^(\w+) (status|drug|dose|start)$/);
+  if(st){const n={arni:'ARNI',bb:'Beta-blocker',mra:'MRA',sg:'SGLT2 inhibitor'}[st[1]]||st[1];const w={status:'status',drug:'drug',dose:'daily dose',start:'start date'}[st[2]];return n+' '+w}
+  return M[x]||x}
+/* Last updated date and time for the patient list */
+function updatedTxt(p){const t=p.updated||p.created;if(!t)return '–';return new Date(t).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+/* Visit name for messages */
+const VN_NAME=k=>(VK.find(([x])=>x===k)||[k,k])[1];
+/* Human labels for audit trail entries (the stored field path) */
+function auditLabel(f){
+  const VN={b:'Baseline',m3:'3 months',m6:'6 months'}, PN={arni:'ARNI',bb:'Beta-blocker',mra:'MRA',sg:'SGLT2 inhibitor'};
+  const VF={date:'Visit date',wt:'Weight',hr:'Heart rate',sbp:'Systolic BP',dbp:'Diastolic BP',nyha:'NYHA class',msts:'1MSTS repetitions',lvef:'LVEF',
+    echoDate:'Echo date',rep:'1MSTS repeated',stop:'1MSTS stop reason',ini:'Investigator initials',rsO:'Other reason',
+    'ev.hf':'HF hospitalization','ev.all':'Other hospitalization','ev.death':'Death','ev.int':'Major intervention'};
+  const PF={drug:'drug',dose:'daily dose',start:'start date',status:'status'};
+  const PT={name:'Patient name',contact:'Contact number',consent:'Consent date',age:'Age',sex:'Sex',etio:'HF etiology',etioO:'Other etiology',inv:'Investigator',site:'Site code'};
+  let m;
+  if((m=f.match(/^(b|m3|m6)\.(visit|file)$/)))return VN[m[1]]+(m[2]==='visit'?' visit status':' prescription file');
+  if((m=f.match(/^v\.(b|m3|m6)\.g\.(\w+)\.(drug|dose|start|status)$/)))return VN[m[1]]+' · '+(PN[m[2]]||m[2])+' '+PF[m[3]];
+  if((m=f.match(/^v\.(b|m3|m6)\.rs\.(\w+)$/)))return VN[m[1]]+' · Reason: '+m[2];
+  if((m=f.match(/^v\.(b|m3|m6)\.(.+)$/)))return VN[m[1]]+' · '+(VF[m[2]]||m[2]);
+  return PT[f]||f}
 
 const ORDER=['info','b','m3','m6','sum'],ORDER_LABEL={info:'Participant info',b:'Baseline',m3:'3 Months',m6:'6 Months',sum:'Summary & audit'};
 function navBar(k,acts=''){const i=ORDER.indexOf(k);if(i<0||i>=ORDER.length-1)return'';
  const nx=ORDER[i+1],lk=tabLocked(cur(),nx);
- return `<div class="step-nav">${acts}${lk?`<span class="lock-hint"><i class="ms">lock</i>${ORDER_LABEL[nx]} unlocks when ${ORDER_LABEL[LOCK_ORDER[nx]]} is complete</span>`:''}<button type="button" class="pri" data-a="next" data-k="${k}">Save draft & next: ${ORDER_LABEL[nx]}<span class="ms">arrow_forward</span></button></div>`}
+ return `<div class="step-nav">${lk?`<span class="lock-hint"><i class="ms">lock</i>${ORDER_LABEL[nx]} unlocks when ${ORDER_LABEL[LOCK_ORDER[nx]]} is complete</span>`:''}${acts}<button type="button" class="pri" data-a="next" data-k="${k}">Save draft & next: ${ORDER_LABEL[nx]}<span class="ms">arrow_forward</span></button></div>`}
 function toast(msg){const el=$('snack');el.textContent=msg;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2600)}
 
-function pane(){if(newMode){paneNew();return}const p=cur(),el=$('pane');if(p&&!p.inv&&signedIn()){p.inv=signedIn();p.audit.push({t:new Date().toLocaleString('en-GB'),f:'inv',o:'',n:p.inv});persist()}
+/* The open patient, tab and form are kept for this browser tab, so a refresh returns to the same place */
+function saveView(){try{sessionStorage.setItem('standhf_view',JSON.stringify({sel,tab,newMode,listSort}))}catch(e){}}
+function loadView(){try{const v=JSON.parse(sessionStorage.getItem('standhf_view')||'null');return v&&['info','b','m3','m6','sum'].includes(v.tab)?v:null}catch(e){return null}}
+function pane(){saveView();if(newMode){paneNew();return}const p=cur(),el=$('pane');if(p&&!p.inv&&signedIn()){p.inv=signedIn();p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:'inv',o:'',n:p.inv});persist()}
  if(!p){el.innerHTML='<p class="mut">Select a participant or create a new one to get started.</p>';return}
  if(tabLocked(p,tab))tab='b';
  const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info">Participant info</button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':''}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}${n}</button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum">Summary & audit</button></div>`;
  let h=`<div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs;
- if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${!p.name||!p.contact?banner('Patient name and contact number are required. Add them below.'):''}<div class="sec">Participant</div><div class="g tint"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Remove patient</button><span class="mut">Only for a patient created by mistake. No visit data entered.</span></div>`:''}${navBar('info')}`;
+ if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${!p.name||!p.contact?banner('Patient name and contact number are required. Add them below.'):''}<div class="sec">Participant</div><div class="g tint"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
  else if(tab==='sum')h+=summary(p);
  else{const k=tab,v=p.v[k],name=VK.find(a=>a[0]===k)[1],b=p.v.b.date;
   let win='';if(k!=='b'){const t=k==='m3'?90:180,w=k==='m3'?14:21;win=b?`Target day ${t} ±${w}: ${fmt(addD(b,t-w))} to ${fmt(addD(b,t+w))}`:'Enter baseline date first'}
   h+=`${v.done?okBanner(name+' is complete and locked. Reopen the visit to make changes.'):''}<div class="visit-info">
     <strong>${name} visit</strong> — Status: <strong>${vstat(p,k)}</strong>${win?'<br>'+win:''}
   </div>
-  <div class="sec">A. Prescription</div><div class="tint rx-wrap"><div class="rx-grid"><div class="rx-up">${v.done?banner('Visit is locked. Reopen the visit to add files.'):`<button type="button" class="rx-drop" data-a="upload"><i class="ms">upload_file</i><span><b>Upload prescription</b><small>Drag and drop, or browse. PDF, JPG or PNG, up to 10 MB</small></span></button>`}</div><div class="rx-files"><div class="filelist rx-list">${filesHtml(p,k)}</div></div></div></div>
+  <div class="sec"><span>A. Prescription<span class="req" aria-hidden="true">*</span></span></div><div class="tint rx-wrap"><div class="rx-grid"><div class="rx-up">${v.done?banner('Visit is locked. Reopen the visit to add files.'):`<button type="button" class="rx-drop" data-a="upload"><i class="ms">upload_file</i><span><b>Upload prescription</b><small>Drag and drop, or browse. PDF, JPG or PNG, up to 10 MB each, 5 files max</small></span></button>`}</div><div class="rx-files"><div class="filelist rx-list rx-row">${filesHtml(p,k)}</div></div></div></div>
     <div class="sec">B. Clinical & Functional Assessment</div>
   <div class="g tint">${inp(p,'v.'+k+'.date','Visit date','date')}${inp(p,'v.'+k+'.wt','Weight (kg)','number','step=0.1')}${inp(p,'v.'+k+'.hr','Heart rate (bpm)','number')}${inp(p,'v.'+k+'.sbp','Systolic BP (mmHg)','number')}${inp(p,'v.'+k+'.dbp','Diastolic BP (mmHg)','number')}${sel_(p,'v.'+k+'.nyha','NYHA class',['','I','II','III','IV'])}${inp(p,'v.'+k+'.msts','1MSTS: repetitions in 60 sec','number','min=0')}${sel_(p,'v.'+k+'.stop','1MSTS stopped early? reason',STOP)}</div>
   <div class="g tint" style="margin-bottom:12px">${ck(p,'v.'+k+'.rep','1MSTS repeated (non-clinical reason)')}${k==='m3'?'<label>LVEF (%)<input value="N/A at 3 months" disabled></label>':inp(p,'v.'+k+'.lvef','LVEF (%)','number','min=5 max=80')}${k==='m3'?'':inp(p,'v.'+k+'.echoDate','Echo date','date')}</div>
@@ -290,7 +368,6 @@ function pane(){if(newMode){paneNew();return}const p=cur(),el=$('pane');if(p&&!p
   <div class="sec">D. Clinical Events ${k==='b'?'(prior history)':'(since previous visit)'}</div>
   <div class="g tint">${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div>
   <div class="g tint" style="margin-top:12px">${inp(p,`v.${k}.ev.int`,'Major intervention / event')}${inp(p,`v.${k}.ini`,'Investigator initials')}</div>
-  <div class="sec">Data Checks</div><div id="warn">${wHtml(p,k)}</div>
   ${navBar(k,!can('mark_complete')?'':v.done?`<span class="lock-hint"><i class="ms">lock</i>Visit locked as complete</span><button data-a="reopen"><i class="ms">undo</i>Reopen visit</button>`:`<button data-a="done"><i class="ms">task_alt</i>Mark complete</button><span id="miss" class="e"></span>`)}`}
  el.innerHTML=h;if(tab!=='info'&&tab!=='sum'&&p.v[tab].done)el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true);
  if(tab==='info'&&p.v.b.done)el.querySelectorAll('[data-p="consent"],[data-p="age"],[data-p="sex"],[data-p="etio"],[data-p="etioO"]').forEach(i=>i.disabled=true);
@@ -304,34 +381,37 @@ function summary(p){const r=(f)=>VK.map(([k])=>`<td>${f(p.v[k],k)||'–'}</td>`)
  let sp='Need baseline date and 4 start dates';if(b&&st.every(Boolean)){const m=Math.max(...st.map(x=>(day(x)-day(b))/864e5));sp=m<=0?'Same-day (all four on or before baseline)':m<=7?'Rapid (within 7 days)':m<=30?'Early (within 30 days)':'Later than 30 days'}
  const row=(l,x)=>`<tr><th>${l}</th><td>${esc(x||'–')}</td></tr>`;
  return`<div class="sec">Patient record</div><div class="wrap"><table>${row('Study ID',p.id)}${row('Patient name',p.name)}${row('Contact number',p.contact)}${row('Site',p.site)}${row('Investigator',p.inv)}${row('Consent date',p.consent)}${row('Age',p.age)}${row('Sex',p.sex)}${row('HF etiology',p.etio)}${row('Etiology (other)',p.etioO)}</table></div>
- <div class="sec">Prescriptions and attached files</div><div class="wrap"><table><tr><th>Visit</th><th>Files</th></tr>${VK.map(([k,n])=>`<tr><th>${n}</th><td>${filesHtml(p,k)}</td></tr>`).join('')}</table></div>
+ <div class="sec">Prescriptions and attached files</div>${VK.map(([k,n])=>`<div class="tint" style="margin-bottom:12px"><b style="display:block;margin-bottom:8px">${n}</b><div class="rx-row">${filesHtml(p,k,true)}</div></div>`).join('')}
  <div class="sec" style="margin-top:20px">Summary (auto-calculated; entered values are never changed)</div><div class="wrap"><table><tr><th></th><th>Baseline</th><th>3 Months</th><th>6 Months</th></tr>
  <tr><th>Visit date</th>${r(v=>v.date)}</tr><tr><th>1MSTS reps</th>${r(v=>v.msts)}</tr><tr><th>NYHA</th>${r(v=>v.nyha)}</tr><tr><th>LVEF (%)</th>${r(v=>v.lvef)}</tr><tr><th>Active pillars</th>${r((v)=>has(v)?act(v)+' / 4':'')}</tr><tr><th>Status</th>${VK.map(([k])=>`<td>${vstat(p,k)}</td>`).join('')}</tr></table></div>
  <p style="margin-top:16px"><b>Primary outcomes:</b></p>
  <p>Δ 1MSTS baseline → 6M: <b>${d(p.v.b.msts,p.v.m6.msts)} reps</b><br>
  Δ LVEF baseline → 6M: <b>${d(p.v.b.lvef,p.v.m6.lvef)} points</b></p>
  <p><b>Onboarding speed:</b> ${sp}</p>
- <div class="sec" style="margin-top:20px">Audit Trail (last 10 changes)</div><div class="wrap"><table><tr><th>Time</th><th>Field</th><th>Old value</th><th>New value</th></tr>${p.audit.slice(-10).reverse().map(a=>`<tr><td style="font-size:12px">${a.t}</td><td style="font-size:12px">${esc(a.f)}</td><td style="font-size:12px">${esc(a.o)}</td><td style="font-size:12px">${esc(a.n)}</td></tr>`).join('')||'<tr><td colspan=4 class="mut">No changes yet</td></tr>'}</table></div>`}
+ <div class="sec" style="margin-top:20px">Audit trail <span class="mut" style="font-weight:400">(latest ${Math.min(p.audit.length,20)} of ${p.audit.length})</span></div><div class="wrap"><table><tr><th>When</th><th>Editor</th><th>Field</th><th>Before</th><th>After</th></tr>${p.audit.slice(-20).reverse().map(a=>`<tr><td style="font-size:12px;white-space:nowrap">${esc(a.t)}</td><td style="font-size:12px">${esc(a.by||'—')}</td><td style="font-size:12px">${esc(auditLabel(a.f))}</td><td style="font-size:12px;color:var(--ink-3)">${esc(a.o)||'—'}</td><td style="font-size:12px;font-weight:600">${esc(a.n)||'—'}</td></tr>`).join('')||'<tr><td colspan=5 class="mut">No changes yet</td></tr>'}</table></div>`}
 
 document.addEventListener('change',e=>{const el=e.target;if(el.id==='off'){DB.off=el.checked;persist();if(!DB.off)DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash();return}
  if(el.id==='fu'){handleUpload(el);return}
  if(!el.dataset.p)return;const p=cur();if(!p)return;const old=G(p,el.dataset.p),nv=el.type==='checkbox'?el.checked:el.value;if(old===nv)return;
- S(p,el.dataset.p,nv);p.audit.push({t:new Date().toLocaleString('en-GB'),f:el.dataset.p,o:old??'',n:nv});save(p);paintFields();dash()});
+ S(p,el.dataset.p,nv);p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:el.dataset.p,o:old??'',n:nv});save(p);paintFields();dash()});
 
 document.addEventListener('dragover',e=>{if(e.target.closest&&e.target.closest('.rx-drop'))e.preventDefault()});
 document.addEventListener('drop',e=>{if(e.target.closest&&e.target.closest('.rx-drop')){e.preventDefault();handleUpload({files:e.dataTransfer.files,value:''})}});
+document.addEventListener('click',e=>{const o=e.target.closest&&e.target.closest('[data-sortopt]');if(o){listSort=o.dataset.sortopt;saveView();dash();return}
+ if(!(e.target.closest&&e.target.closest('.list-sort,.sort-menu')))document.querySelectorAll('#list .sort-menu').forEach(m=>m.hidden=true)});
 document.addEventListener('click',e=>{const t=e.target.closest('[data-id],[data-t],[data-a],[data-jump]');if(!t)return;
  if(t.dataset.jump){jumpTo(t.dataset.jump);return}
- if(t.dataset.id){sel=t.dataset.id;newMode=false;if(window.matchMedia('(max-width: 1000px)').matches)listOpen=false;pane();dash()}
+ if(t.dataset.id){sel=t.dataset.id;newMode=false;if(window.matchMedia('(max-width: 1000px)').matches)listOpen=false;pane();document.querySelectorAll('#list .pt').forEach(el=>el.classList.toggle('on',el.dataset.id===sel));keepSelectedVisible()}
  else if(t.dataset.t){tab=t.dataset.t;newMode=false;pane();dash()}
  else if(t.dataset.a==='next'){const p=cur(),k=t.dataset.k,i=ORDER.indexOf(k);if(!p)return;const iss=k==='info'?infoIssues(p):visitIssues(p,k);
    if(iss.m.length||iss.er.length){TRIED.add((p.uid||p.id)+'|'+(k==='info'?'b':k));showIssues(p,k,iss.m,iss.er,'Cannot continue');toast('Fix the highlighted fields before continuing');return}
    save(p);if(tabLocked(p,ORDER[i+1])){toast('Draft saved · '+ORDER_LABEL[ORDER[i+1]]+' unlocks when '+ORDER_LABEL[LOCK_ORDER[ORDER[i+1]]]+' is complete');return}tab=ORDER[i+1];pane();dash();$('pane').scrollIntoView({behavior:'smooth',block:'start'});toast('Draft saved · '+ORDER_LABEL[tab]+' is next')}
  else if(t.dataset.a==='upload'){$('fu').click()}
+ else if(t.dataset.a==='sortMenu'){const m=document.querySelector('#list .sort-menu');if(m)m.hidden=!m.hidden}
  else if(t.dataset.a==='remove'){removeFile(t.dataset.fid)}
  else if(t.dataset.a==='removePatient'){removePatient()}
  else if(t.dataset.a==='view'){openFile(t.dataset.fid,t.dataset.ct,t.dataset.name)}
- else{const p=cur(),v=p.v[tab];if(t.dataset.a==='done'){const m=missing(p,tab),er=warns(p,tab).filter(x=>x[0]==='e').map(x=>({msg:x[1]})).concat(fieldErrs(p,tab));TRIED.add((p.uid||p.id)+'|'+tab);if(m.length||er.length){showIssues(p,tab,m,er);return}v.done=true;p.audit.push({t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'open',n:'completed'})}else{const later=VK.slice(VK.findIndex(([x])=>x===tab)+1).find(([x])=>p.v[x].done);if(later){toast('Reopen '+later[1]+' first');return}v.done=false;p.audit.push({t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'completed',n:'reopened'})}save(p);pane();dash()}});
+ else{const p=cur(),v=p.v[tab];if(t.dataset.a==='done'){const m=missing(p,tab),er=warns(p,tab).filter(x=>x[0]==='e').map(x=>({msg:x[1]})).concat(fieldErrs(p,tab));TRIED.add((p.uid||p.id)+'|'+tab);if(m.length||er.length){showIssues(p,tab,m,er);return}v.done=true;p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'open',n:'completed'});toast(VN_NAME(tab)+' marked complete and locked')}else{const later=VK.slice(VK.findIndex(([x])=>x===tab)+1).find(([x])=>p.v[x].done);if(later){toast('Reopen '+later[1]+' first');return}v.done=false;p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'completed',n:'reopened'})}const navOld=document.querySelector('#pane .step-nav'),oldTop=navOld?navOld.getBoundingClientRect().top:null;save(p);pane();dash();const navNew=document.querySelector('#pane .step-nav');if(oldTop!==null&&navNew)window.scrollBy(0,navNew.getBoundingClientRect().top-oldTop)}});
 
 $('bClr').onclick=async()=>{if(await appDialog.confirm({tone:'danger',icon:'delete_sweep',title:'Delete all participants?',message:'Every patient in this browser will be removed.',confirmText:'Delete all'})){DB.pts=[];sel=null;persist();pane();dash()}};
 $('bCsv').onclick=()=>{const H=['study_id','site','investigator','consent','age','sex','etiology'];VK.forEach(([k])=>['status','date','wt','hr','sbp','dbp','nyha','msts','lvef','pillars','hf_hosp','all_hosp','death'].forEach(f=>H.push(k+'_'+f)));
@@ -346,24 +426,25 @@ $('bDemo').onclick=()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x
 $('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.href='#'};
 
 /* Prescription files: bytes live in IndexedDB; the patient record keeps the metadata */
-const FDB='standhf_files_v1',UPLOAD_MAX=10*1024*1024,UPLOAD_TYPES=['application/pdf','image/jpeg','image/png'];
+const FDB='standhf_files_v1',UPLOAD_MAX=10*1024*1024,UPLOAD_MAX_FILES=5,UPLOAD_TYPES=['application/pdf','image/jpeg','image/png'];
 function fileDb(){return new Promise((res,rej)=>{const r=indexedDB.open(FDB,1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function putFile(id,blob){const d=await fileDb();return new Promise((res,rej)=>{const t=d.transaction('files','readwrite');t.objectStore('files').put(blob,id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
 async function getFile(id){const d=await fileDb();return new Promise((res,rej)=>{const q=d.transaction('files').objectStore('files').get(id);q.onsuccess=()=>res(q.result||null);q.onerror=()=>rej(q.error)})}
 async function delFile(id){const d=await fileDb();return new Promise((res,rej)=>{const t=d.transaction('files','readwrite');t.objectStore('files').delete(id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
 const sizeTxt=b=>b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB';
-function filesHtml(p,k){const fs=(p.files&&p.files[k])||[];if(!fs.length)return '<span class="mut">No files attached</span>';
-  const canEdit=can('enter_data')&&!(p.v[k]&&p.v[k].done);
-  return fs.map(f=>`<div class="file-row"><span class="rx-ico" data-thumb="${esc(f.id)}" data-ct="${esc(f.type)}" data-a="view" data-fid="${esc(f.id)}" data-name="${esc(f.name)}"><i class="ms">${f.type==='application/pdf'?'picture_as_pdf':'image'}</i></span><span class="rx-txt"><button type="button" class="link" data-a="view" data-fid="${esc(f.id)}" data-ct="${esc(f.type)}" data-name="${esc(f.name)}">${esc(f.name)}</button><span class="mut">${sizeTxt(f.size)} · ${esc(f.at)}</span></span>${canEdit?`<button type="button" class="icon-btn rx-del" data-a="remove" data-fid="${esc(f.id)}" aria-label="Remove ${esc(f.name)}" title="Remove file"><i class="ms">close</i></button>`:''}</div>`).join('')}
+function filesHtml(p,k,readOnly){const fs=(p.files&&p.files[k])||[];if(!fs.length)return '<span class="mut">No files attached</span>';
+  const canEdit=!readOnly&&can('enter_data')&&!(p.v[k]&&p.v[k].done);
+  return FileCard.list(fs,{size:'sm',onRemove:canEdit})}
 async function handleUpload(el){const f=el.files&&el.files[0];el.value='';if(!f)return;const p=cur();if(!p)return;
   if(!UPLOAD_TYPES.includes(f.type)){toast('Only PDF, JPG or PNG files can be uploaded');return}
   if(f.size>UPLOAD_MAX){toast('File is over 10 MB. Choose a smaller file.');return}
   if(p.v[tab].done){toast('Visit is locked. Reopen it to add files.');return}
+  if(((p.files&&p.files[tab])||[]).length>=UPLOAD_MAX_FILES){toast(`A visit can have up to ${UPLOAD_MAX_FILES} prescription files. Remove one to add another.`);return}
   const id='f'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),at=new Date().toLocaleString('en-GB');
   try{await putFile(id,f)}catch(e){toast('Could not save the file in this browser');return}
   p.files=p.files||{b:[],m3:[],m6:[]};p.files[tab]=p.files[tab]||[];
   p.files[tab].push({id,name:f.name,type:f.type,size:f.size,at});
-  p.audit.push({t:at,f:tab+'.file',o:'',n:f.name});save(p);pane();dash();toast('Prescription uploaded: '+f.name)}
+  p.audit.push({by:signedIn(),t:at,f:tab+'.file',o:'',n:f.name});save(p);pane();dash();toast('Prescription uploaded: '+f.name)}
 /* Small thumbnails for image files; PDFs keep their icon */
 async function fillThumbs(){
   document.querySelectorAll('[data-thumb]').forEach(async el=>{
@@ -378,7 +459,7 @@ async function removeFile(fid){const p=cur();if(!p)return;let k=null,f=null;
   if(!await appDialog.confirm({tone:'danger',icon:'delete',title:'Remove file?',message:f.name,confirmText:'Remove'}))return;
   p.files[k]=p.files[k].filter(y=>y.id!==fid);
   try{await delFile(fid)}catch(e){}
-  p.audit.push({t:new Date().toLocaleString('en-GB'),f:k+'.file',o:f.name,n:'removed'});save(p);pane();dash();toast('File removed: '+f.name)}
+  p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:k+'.file',o:f.name,n:'removed'});save(p);pane();dash();toast('File removed: '+f.name)}
 /* Open a stored file large in the viewer dialog */
 async function openFile(fid,type,name){
   try{const b=await getFile(fid);if(!b){toast('File not found in this browser');return}
@@ -401,6 +482,10 @@ function names(){return [...new Set([...INVESTIGATORS,signedIn(),...DB.pts.map(p
 /* Site choices come from the site list, limited to the sites this user is assigned to */
 function sites(){return [...new Set(mySites())].sort()}
 const OPTS={inv:names,site:sites};
+/* Central dropdown: the same component as Investigator and Site code. Read-only, with a "Select" hint as placeholder, never a blank list item */
+function ddHtml(attrs,key,label,opts,value,stateClass,ariaInvalid,fm){
+  OPTS[key]=()=>opts;
+  return `<label>${label}${fm.req}<div class="cb" data-cb="${esc(key)}"><input ${attrs} value="${esc(value||'')}" placeholder="Select" readonly data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" class="${stateClass}" ${ariaInvalid}><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div>${fm.msg}</label>`}
 
 function combo(path,key,label,value,ph){
   return `<label>${label}<div class="cb" data-cb="${key}"><input ${path?`data-p="${path}"`:''} ${key==='site'?'maxlength="5" readonly':key==='inv'?'maxlength="100"':''} data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" value="${esc(value)}" placeholder="${ph||'Search or type a name'}"><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div></label>`;
@@ -415,7 +500,7 @@ function cbOpen(wrap,q){const ul=wrap.querySelector('.cb-list'),inp=wrap.querySe
 function cbClose(wrap){const ul=wrap.querySelector('.cb-list'),inp=wrap.querySelector('[data-cb-input]');ul.hidden=true;wrap._act=-1;inp.setAttribute('aria-expanded','false')}
 function cbOpenNow(wrap){return !wrap.querySelector('.cb-list').hidden}
 function cbChoose(wrap,i){const it=wrap._items&&wrap._items[i];if(!it)return;const inp=wrap.querySelector('[data-cb-input]');
-  inp.value=it.v;cbClose(wrap);if(inp.dataset.p)inp.dispatchEvent(new Event('change',{bubbles:true}))}
+  inp.value=it.v;cbClose(wrap);if(inp.dataset.p||inp.dataset.sort)inp.dispatchEvent(new Event('change',{bubbles:true}))}
 function cbMove(wrap,d){const lis=[...wrap.querySelectorAll('.cb-list li[data-i]')];if(!lis.length)return;
   wrap._act=(((wrap._act??-1)+d)+lis.length)%lis.length;lis.forEach((li,i)=>li.classList.toggle('act',i===wrap._act));lis[wrap._act].scrollIntoView({block:'nearest'})}
 
@@ -441,16 +526,20 @@ function visitIssues(p,k){
 /* Issue summary: one box listing what blocks the action; each line jumps to its field */
 const errorBox=(title,items)=>`<b>${esc(title)}</b>${items.map(i=>`<div style="margin-top:6px">✖ Error: ${i.sel?`<button type="button" class="link" data-jump="${esc(i.sel)}">${esc(i.msg)}</button>`:esc(i.msg)}</div>`).join('')}`;
 const MISS_INFO={'consent date':'consent','age':'age','sex':'sex','HF etiology':'etio','etiology (other)':'etioO','patient name':'name','contact number':'contact'};
-function missingSel(name,k){if(MISS_INFO[name])return `[data-p="${MISS_INFO[name]}"]`;const q=name.match(/^(\w+) status$/);if(q)return `[data-p="v.${k}.g.${q[1]}.status"]`;return `[data-p="v.${k}.${name}"]`}
+function missingSel(name,k){if(name==='prescription')return '[data-a="upload"]';if(MISS_INFO[name])return `[data-p="${MISS_INFO[name]}"]`;const q=name.match(/^(\w+) (status|drug|dose|start)$/);if(q)return `[data-p="v.${k}.g.${q[1]}.${q[2]}"]`;return `[data-p="v.${k}.${name}"]`}
+/* The summary lists at most five issues; the rest are counted */
+function shownIssues(items){const shown=items.slice(0,5);if(items.length>5)shown.push({msg:'…and '+(items.length-5)+' more. Fill in the highlighted fields.'});return shown}
 function showIssues(p,k,m,er,verb='Cannot mark complete'){
   pane();
   const seen=new Set(),items=[];
   const add=(msg,sel)=>{if(!seen.has(msg)){seen.add(msg);items.push({msg,sel})}};
-  m.forEach(x=>add('Required: '+x,missingSel(x,k)));
+  m.forEach(x=>add('Required: '+fieldLabel(x),missingSel(x,k)));
   er.forEach(x=>add(x.msg,x.sel));
-  const mi=$('miss');if(mi)mi.textContent=`${verb}: ${items.length} to fix`;
   const pt=document.querySelector('#pane .pane-title');
-  if(pt)pt.insertAdjacentHTML('afterend',`<div class="dlg-err" role="alert">${errorBox(`${verb}: ${items.length} issue${items.length>1?'s':''}`,items)}</div>`);
+  if(pt)pt.insertAdjacentHTML('afterend',`<div class="dlg-err" role="alert">${errorBox(`${verb}: ${items.length} issue${items.length>1?'s':''}`,shownIssues(items))}</div>`);
+  /* Go straight to the first field that can be fixed on this screen */
+  const first=items.find(i=>{const el=i.sel&&document.querySelector(i.sel);return el&&!el.disabled});
+  if(first)jumpTo(first.sel);
 }
 function jumpTo(sel){const el=document.querySelector(sel);
   if(!el||el.disabled){toast('Open the related section first: this field is not on this screen');return}
@@ -498,7 +587,7 @@ function showNewErrors(errs){
   if(errs[0])document.querySelector(NEW_FIELD[errs[0].f])?.focus();
 }
 /* New participant: opens inline in the main pane */
-function paneNew(){
+function paneNew(){saveView();
   $('pane').innerHTML=`<form id="fNew" class="np" novalidate>
     <div class="pane-title"><span>New participant</span></div>
     <p class="np-lead">The Study ID is generated from the site code. Patient name and contact number are required.</p>
@@ -512,8 +601,8 @@ function paneNew(){
       <label>Contact number<span class="req" aria-hidden="true">*</span><input id="nContact" type="tel" maxlength="20" autocomplete="off" placeholder="e.g. 0300 5550100" required></label>
       <label>Consent date<span class="req" aria-hidden="true">*</span><input id="nConsent" type="date" value="${new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}"></label>
       <label>Age (years)<span class="req" aria-hidden="true">*</span><input id="nAge" type="number" min="18" max="150"></label>
-      <label>Sex<span class="req" aria-hidden="true">*</span><select id="nSex"><option value="">Select</option><option>Male</option><option>Female</option></select></label>
-      <label>HF etiology<span class="req" aria-hidden="true">*</span><select id="nEtio"><option value="">Select</option><option>Ischemic</option><option>Non-ischemic</option><option>Other</option></select></label>
+      ${ddHtml('id="nSex"','dd:nSex','Sex<span class="req" aria-hidden="true">*</span>',lookup('patient.sex'),'','','',{req:'',msg:''})}
+      ${ddHtml('id="nEtio"','dd:nEtio','HF etiology<span class="req" aria-hidden="true">*</span>',lookup('patient.etiology'),'','','',{req:'',msg:''})}
       <label>If other, specify<input id="nEtioO" maxlength="100" autocomplete="off"></label>
     </div>
     <div class="dlg-actions"><button type="button" id="cNew">Cancel</button><button type="submit" class="pri">Create patient</button></div>
@@ -532,7 +621,7 @@ document.addEventListener('submit',e=>{if(e.target.id!=='fNew')return;e.preventD
   const p=mk(site,inv,v.consent,v.age,v.sex,v.etio);p.name=nm;p.contact=ct;p.etioO=v.etio==='Other'?v.etioO:'';
   DB.pts.push(p);sel=p.id;tab='b';newMode=false;save(p);pane();dash()});
 
-applyPerms();if(DB.pts.length)sel=DB.pts[0].id;
+applyPerms();{const mine=DB.pts.filter(inScope);const v=loadView();if(v&&v.listSort)listSort=v.listSort;if(v&&!v.newMode&&mine.some(x=>x.id===v.sel)){sel=v.sel;tab=v.tab}else if(v&&v.newMode){newMode=true}else if(mine.length)sel=mine[0].id;}
 /* Connection comes from the shared header: it announces each change; saves stay Pending while offline */
 function setConnection(on,quiet){
   if(!quiet&&(!DB.off)===on)return;
@@ -545,8 +634,8 @@ window.addEventListener('standhf:connection',e=>setConnection(e.detail.online,e.
 /* Deep links from the investigator dashboard: ?new=1 or ?patient=ID&tab=b|m3|m6 */
 {const qp=new URLSearchParams(location.search);const pid=qp.get('patient');
  if(signedRole()==='investigator'&&signedIn()&&DB.pts.some(x=>x.inv==='Demo investigator')){DB.pts.forEach(x=>{if(x.inv==='Demo investigator')x.inv=signedIn()});persist()}
- if(pid&&DB.pts.some(x=>x.id===pid))sel=pid;
- else if(pid)setTimeout(()=>toast('Patient '+pid+' is not in this browser. Use Load demo to add the sample patients.'),400);
+ if(pid&&DB.pts.some(x=>x.id===pid&&inScope(x)))sel=pid;
+ else if(pid)setTimeout(()=>toast('Patient '+pid+' is not in your records.'),400);
  if(['info','b','m3','m6','sum'].includes(qp.get('tab')))tab=qp.get('tab');
  if(qp.get('new')==='1')newMode=true}
 pane();dash();

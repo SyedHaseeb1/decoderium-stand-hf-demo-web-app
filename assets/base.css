@@ -546,7 +546,7 @@ label .cb input { padding-right: 40px; }
 .brand-center .logo .ms { font-size: 30px; }
 .logo.logo-img { width: auto; height: auto; border-radius: 0; background: none; }
 .logo.logo-img img { display: block; height: 44px; width: auto; }
-dialog.app-dialog { border: 0; border-radius: 18px; padding: 20px; width: min(420px, 92vw); background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+dialog.app-dialog { border: 0; border-radius: 18px; padding: 20px; width: min(480px, 92vw); background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
 dialog.app-dialog::backdrop { background: rgba(27, 29, 34, 0.35); }
 .ad-body { display: flex; gap: 14px; align-items: flex-start; }
 .ad-icon { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--soft); color: var(--ink-2); }
@@ -555,6 +555,8 @@ dialog.app-dialog::backdrop { background: rgba(27, 29, 34, 0.35); }
 .ad-icon.ad-info { background: var(--primary-soft); color: var(--primary); }
 .ad-title { display: block; font-size: 16px; font-weight: 600; margin-top: 2px; }
 .ad-msg { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+.ad-list { margin: 8px 0 0; padding-left: 18px; font-size: 14px; color: var(--ink-2); line-height: 1.6; }
+.ad-list { margin: 8px 0 0; padding-left: 18px; font-size: 14px; color: var(--ink-2); line-height: 1.6; }
 .ad-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .ad-ok.danger { background: var(--error); color: #fff; border-color: var(--error); }
 .brand-logo { display: block; width: min(300px, 80%); height: auto; margin: 0 auto 12px; }
@@ -757,6 +759,18 @@ label.role-card:has(input:focus-visible) { outline: 2px solid var(--primary); ou
 .site-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .link-btn { border: 0; background: transparent; color: var(--primary); font-weight: 600; padding: 4px 8px; }
 .link-btn:hover { background: var(--primary-soft); }
+/* Clickable rows and names: the whole row opens the record */
+tr.row-link { cursor: pointer; }
+tr.row-link td { transition: background 0.15s; }
+tr.row-link:hover td { background: var(--primary-soft); }
+table.rows-rounded { border-collapse: separate; border-spacing: 0; }
+tr.row-link:hover td:first-child { border-radius: 12px 0 0 12px; }
+tr.row-link:hover td:last-child { border-radius: 0 12px 12px 0; }
+tr.row-link:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.name-link { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 0; color: var(--primary); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+.name-link b { font-weight: 600; }
+.name-link .ms { font-size: 18px; }
+.name-link:hover { background: transparent; }
 .addform-foot {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
   padding-top: 14px; border-top: 1px solid var(--line);
@@ -780,3 +794,17 @@ td label.check-row input { width: 16px; height: 16px; }
 .compact .addform-foot { padding-top: 12px; }
 .compact th, .compact td { padding: 8px; }
 
+
+/* ---------- File cards: uploaded files (one component everywhere) ---------- */
+.file-card { position: relative; flex: 0 0 240px; display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); transition: box-shadow 0.2s ease; min-width: 0; }
+.file-card:hover { box-shadow: 0 6px 18px rgba(60, 64, 67, 0.18); }
+.file-card.sm { flex-basis: 170px; }
+.file-card-media { width: 100%; height: 150px; border-radius: 14px; overflow: hidden; background: var(--soft); display: grid; place-items: center; color: var(--ink-2); cursor: zoom-in; }
+.file-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.file-card.sm .file-card-media { height: 110px; }
+.file-card-body { display: grid; gap: 2px; padding: 0 4px 4px; min-width: 0; }
+.file-card-name { display: block; max-width: 100%; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.file-card-meta { font-size: 12px; color: var(--ink-2); }
+.file-card-del { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--card); box-shadow: var(--shadow); display: grid; place-items: center; cursor: pointer; color: var(--ink); }
+.file-card-del:hover { color: var(--error); }
+.file-card-list { display: flex; flex-wrap: wrap; gap: 12px; }
