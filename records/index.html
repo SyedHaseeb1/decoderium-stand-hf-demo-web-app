@@ -11,6 +11,42 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
   <link rel="stylesheet" href="../assets/base.css">
+  <style>
+    .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
+    .filelist .file-row{display:flex;align-items:center;gap:8px;padding:6px 0;flex-wrap:wrap}
+    .tint{background:var(--soft);border-radius:14px;padding:16px}
+    .tint .pillar{background:var(--card)}
+    .rx-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .rx-wrap{container-type:inline-size}
+    .rx-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
+    .rx-up,.rx-files{min-width:0}
+    .rx-up{display:flex;flex-direction:column}
+    .rx-drop{display:flex;align-items:center;gap:12px;width:100%;flex:1;min-height:160px;padding:14px 16px;border:1.5px dashed #747a86;border-radius:14px;background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .2s}
+    .rx-drop:hover{border-color:var(--primary)}
+    .rx-drop .ms{font-size:28px;color:var(--primary)}
+    .rx-drop b{display:block;font-size:14px;font-weight:600}
+    .rx-drop small{display:block;font-size:12px;color:var(--ink-2);margin-top:2px}
+    .rx-list{display:grid;gap:8px;margin-top:12px}
+    .rx-list .file-row{display:flex;flex-wrap:nowrap;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:10px 12px;min-width:0}
+    .rx-ico{flex:none;width:36px;height:36px;border-radius:10px;background:var(--soft);display:grid;place-items:center;color:var(--ink-2);overflow:hidden}
+    .rx-ico img{width:100%;height:100%;object-fit:cover;display:block}
+    .rx-ico[data-a]{cursor:zoom-in}
+    .rx-txt{display:grid;flex:1 1 0;min-width:0;gap:2px}
+    .rx-del{flex:none;margin-left:auto;width:32px;height:32px}
+    .rx-txt button.link{overflow-wrap:anywhere;text-align:left;line-height:20px;font-weight:500}
+    .rx-txt .mut{font-size:12px}
+    .rx-list{min-width:0}
+    dialog.viewer{border:0;border-radius:18px;padding:16px;width:min(960px,94vw);height:min(88vh,900px);background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+    dialog.viewer::backdrop{background:rgba(27,29,34,.35)}
+    .viewer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .viewer-head b{font-size:16px}
+    .viewer-body{height:calc(100% - 52px)}
+    .viewer-body iframe,.viewer-body img{width:100%;height:100%;border:0;object-fit:contain;border-radius:10px}
+    @container (max-width:400px){.rx-grid{grid-template-columns:1fr}}
+    .fmsg.tag{display:inline-block;margin-top:6px;padding:3px 10px}
+    button.link{background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer;padding:0;font:inherit;text-align:left}
+    .fld-flash{box-shadow:0 0 0 4px var(--error-soft)}
+  </style>
 </head>
 <body data-page="records">
 <div class="app" id="app">
@@ -45,6 +81,8 @@
       <section class="card" id="pane"></section>
     </div>
     <div class="snack" id="snack" role="status" aria-live="polite"></div>
+    <input type="file" id="fu" accept="application/pdf,image/jpeg,image/png" hidden>
+    <dialog class="viewer" id="viewer" aria-labelledby="vTitle"><div class="viewer-head"><b id="vTitle"></b><button type="button" class="icon-btn" id="vClose" aria-label="Close"><i class="ms">close</i></button></div><div class="viewer-body" id="vBody"></div></dialog>
   </div>
 </div>
 <script src="../assets/access.js"></script>
@@ -62,9 +100,25 @@ const STOP=['','Chest pain','Presyncope / syncope','Intolerable dyspnea','Severe
 
 const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}};
 const cur=()=>DB.pts.find(p=>p.id===sel);
+const contactOk=s=>/^\+?\d{7,15}$/.test(String(s||'').replace(/[\s-]/g,''));
+/* Contact number: digits, spaces, hyphens and a leading + only. Letters are dropped as they are typed */
+const contactClean=s=>String(s||'').replace(/[^0-9+\s-]/g,'');
+/* Typing filters: characters that are never valid for a field are dropped as they are typed */
+const FILTER={contact:[/[^0-9+\s-]/g,v=>v],person:[/[^\p{L}\s.'-]/gu,v=>v],ini:[/[^A-Za-z]/g,v=>v.toUpperCase()],drug:[/[^\p{L}\d\s()\/.,+-]/gu,v=>v],site:[/[^A-Za-z]/g,v=>v.toUpperCase()]};
+function filterKey(el){const d=el.dataset.p||'';
+  if(el.id==='nContact'||d==='contact')return'contact';
+  if(el.id==='nName'||d==='name'||d==='etioO')return'person';
+  if(el.closest&&el.closest('[data-cb="inv"]'))return'person';
+  if(el.closest&&el.closest('[data-cb="site"]'))return'site';
+  if(/\.ini$/.test(d))return'ini';
+  if(/\.drug$/.test(d))return'drug';
+  return null}
+document.addEventListener('input',e=>{const el=e.target;if(el.closest&&el.closest('#fNew')){const lb=el.closest('label');if(lb){lb.querySelectorAll('.np-msg').forEach(x=>x.remove());lb.querySelectorAll('.fld-e').forEach(x=>{x.classList.remove('fld-e');x.removeAttribute('aria-invalid')})}}
+if(!el.matches||!el.matches('input'))return;const key=filterKey(el);if(!key)return;
+  const [re,fn]=FILTER[key],c=fn(el.value.replace(re,''));if(c!==el.value)el.value=c});
 const num=x=>x===''||x==null?NaN:+x,day=s=>s?new Date(s+'T00:00:00'):null,addD=(s,n)=>{const d=day(s);d.setDate(d.getDate()+n);return d},fmt=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 
-function mk(site,inv,consent,age,sex,etio){const n=DB.pts.filter(p=>p.site===site).length+1;return{id:site+'-'+String(n).padStart(3,'0'),site,inv,consent,age,sex,etio,etioO:'',sync:'Pending',audit:[],v:{b:{},m3:{},m6:{}}}}
+function mk(site,inv,consent,age,sex,etio){const n=DB.pts.filter(p=>p.site===site).length+1;return{id:site+'-'+String(n).padStart(3,'0'),site,inv,consent,age,sex,etio,etioO:'',uid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:'',contact:'',sync:'Pending',audit:[],files:{b:[],m3:[],m6:[]},v:{b:{},m3:{},m6:{}}}}
 function has(v){return Object.keys(v).some(k=>k!=='done'&&v[k]!==''&&v[k]!=null&&typeof v[k]!=='object')||(v.g&&Object.values(v.g).some(x=>x.status))}
 function vstat(p,k){const v=p.v[k];if(v.done)return'Completed';const b=p.v.b.done?p.v.b.date:null;let late=false,due=false,missed=false;
  if(k!=='b'&&b){const t=k==='m3'?90:180,w=k==='m3'?14:21,T=new Date(),tg=addD(b,t);late=T>addD(b,t+w);due=T>=addD(b,t-w);missed=T>addD(b,t+w+30)&&!has(v)}
@@ -88,28 +142,41 @@ function warns(p,k){const v=p.v[k],b=p.v.b,w=[],x=n=>num(v[n]);
  return w}
 function missing(p,k){const v=p.v[k],m=[];['date','wt','hr','sbp','dbp','nyha','msts'].forEach(f=>{if(v[f]===''||v[f]==null)m.push(f)});
  if(k!=='m3'&&!v.lvef)m.push('lvef');PL.forEach(([q])=>{if(!G(v,'g.'+q+'.status'))m.push(q+' status')});
- if(k==='b'){if(!p.consent)m.push('consent date');if(!p.age)m.push('age');if(!p.sex)m.push('sex');if(!p.etio)m.push('HF etiology')}return m}
+ if(k==='b'){if(!p.name)m.push('patient name');if(!p.contact)m.push('contact number');if(!p.consent)m.push('consent date');if(!p.age)m.push('age');if(!p.sex)m.push('sex');if(!p.etio)m.push('HF etiology')}return m}
 function save(p){p.sync='Pending';persist();if(!DB.off)setTimeout(()=>{DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash()},700)}
 
 /* Validation rules: fieldState gives the level ('e' error, 'w' warning or '') and message for one field */
-const VREQ=['date','wt','hr','sbp','dbp','nyha','msts','lvef'], IREQ={consent:1,age:1,sex:1,etio:1};
+const VREQ=['date','wt','hr','sbp','dbp','nyha','msts','lvef'], IREQ={name:1,contact:1,consent:1,age:1,sex:1,etio:1};
 const LOCK_ORDER={m3:'b',m6:'m3'}, TRIED=new Set();
 const tabLocked=(p,k)=>!!(p&&LOCK_ORDER[k]&&!p.v[LOCK_ORDER[k]].done);
 const banner=m=>`<div class="lock-banner"><i class="ms">lock</i><span>${m}</span></div>`;
 const okBanner=m=>`<div class="ok-banner"><i class="ms">check_circle</i><span>${m}</span></div>`;
+/* Field rules. Every field is checked here, for both the visit tabs and the participant info */
+const NAME_RE=/^\p{L}[\p{L}\s.'-]*$/u, DRUG_RE=/^[\p{L}\d][\p{L}\d\s()\/.,+-]*$/u, SITE_RE=/^[A-Z]{2,5}$/;
+const todayStart=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const isDateField=f=>/^(date|echoDate)$/.test(f)||/\.start$/.test(f);
 function fieldState(p,path){
   const isV=path.startsWith('v.'),k=isV?path.split('.')[1]:'b',f=isV?path.split('.').slice(2).join('.'):path;
   const v=isV?(G(p,'v.'+k)||{}):p,b=p.v.b,val=G(p,path),empty=val===''||val==null;
-  const req=isV?(VREQ.includes(f)&&!(f==='lvef'&&k==='m3')):!!IREQ[f];
-  const tried=TRIED.has(p.id+'|'+k),st={req,filled:!empty,lvl:'',msg:''};
-  const set=(l,m)=>{st.lvl=l;st.msg=m};
+  const req=isV?(VREQ.includes(f)&&!(f==='lvef'&&k==='m3')):(f==='etioO'?p.etio==='Other':!!IREQ[f]);
+  const tried=TRIED.has((p.uid||p.id)+'|'+k),st={req,filled:!empty,lvl:'',msg:''};
+  const set=(l,m)=>{if(!st.lvl||(l==='e'&&st.lvl==='w')){st.lvl=l;st.msg=m}};
   if(empty){if(req&&tried)set('e','Required');return st}
-  const n=num(val),bd=b.date?day(b.date):null;
+  const txt=String(val),n=num(val),bd=b.date?day(b.date):null,t0=todayStart();
   if(!isV){
-    if(f==='consent'&&bd&&day(val)>bd)set('e','After the baseline visit date');
-    if(f==='age'){if(n<18)set('e','Must be 18 or older');else if(n>110)set('w','Please check the age')}
+    if(f==='name'||f==='inv'){if(txt.trim().length<2)set('e','Enter at least 2 characters');else if(!NAME_RE.test(txt.trim()))set('e',"Letters, spaces, . ' - only")}
+    if(f==='etioO'&&txt.trim().length<2)set('e','Enter at least 2 characters');
+    if(f==='contact'&&!contactOk(val))set('e','Enter a valid phone number (7 to 15 digits)');
+    if(f==='consent'){if(day(val)>t0)set('e','Consent date cannot be in the future');else if(day(val).getFullYear()<1990)set('e','Check the year');else if(bd&&day(val)>bd)set('e','After the baseline visit date')}
+    if(f==='age'){if(!Number.isInteger(n))set('e','Whole years only');else if(n<18)set('e','Must be 18 or older');else if(n>150)set('e','Please check age');else if(n>110)set('w','Please check the age')}
     return st;
   }
+  if(isDateField(f)&&day(val)>t0)set('e','Date cannot be in the future');
+  if(/\.drug$/.test(f)){if(txt.trim().length<2)set('e','Enter at least 2 characters');else if(!DRUG_RE.test(txt.trim()))set('e','Letters, numbers and ( ) / - only')}
+  if(/\.dose$/.test(f)&&!/\d/.test(txt))set('e','Include the number, e.g. 50 mg');
+  if(['hr','sbp','dbp','msts','lvef'].includes(f)&&!Number.isInteger(n))set('e','Whole numbers only');
+  if(f==='wt'&&!/^\d{1,3}(\.\d)?$/.test(txt))set('e','Up to 3 digits and 1 decimal');
+  if(/\.ini$/.test(f)&&!/^[A-Z]{1,5}$/.test(txt))set('e','Capital letters only, up to 5');
   switch(f){
     case 'date': if(k!=='b'&&bd){const t=k==='m3'?90:180,w=k==='m3'?14:21,d=Math.round((day(val)-bd)/864e5);
       if(day(val)<=bd)set('e','Must be after the baseline date');else if(Math.abs(d-t)>w)set('w','Outside day '+t+' ±'+w+' window (day '+d+')')}break;
@@ -124,9 +191,18 @@ function fieldState(p,path){
   }
   return st;
 }
+/* Field-level errors for one visit, used by Mark complete */
+function fieldErrs(p,k){
+  const paths=['date','wt','hr','sbp','dbp','nyha','msts','lvef','echoDate'].map(f=>'v.'+k+'.'+f)
+    .concat(PL.flatMap(([q])=>['drug','dose','start'].map(x=>`v.${k}.g.${q}.${x}`)))
+    .concat([`v.${k}.rsO`,`v.${k}.ev.int`,`v.${k}.ini`]);
+  if(k==='b')paths.push('name','contact','consent','age','etioO');
+  return paths.map(x=>({x,st:fieldState(p,x)})).filter(o=>o.st.lvl==='e').map(o=>({msg:o.st.msg,sel:`[data-p="${o.x}"]`}));
+}
 const fcls=st=>st.lvl?'fld-'+st.lvl:(st.req&&st.filled?'fld-ok':'');
 const freq=st=>st.req?'<span class="req" aria-hidden="true">*</span>':'';
-const fmsg=st=>`<span class="fmsg ${st.lvl}">${esc(st.msg)}</span>`;
+const fmsgCls=lvl=>`fmsg ${lvl}`+(lvl?` tag ${lvl==='e'?'bad':'warn'}`:'');
+const fmsg=st=>`<span class="${fmsgCls(st.lvl)}">${esc(st.msg)}</span>`;
 function paintFields(){const p=cur();if(!p)return;
   document.querySelectorAll('#pane .pillar').forEach(card=>{const sel=card.querySelector('select');if(!sel)return;const s=sel.value;
     card.classList.toggle('active',s==='Active');card.classList.toggle('stopped',s==='Stopped');
@@ -134,8 +210,10 @@ function paintFields(){const p=cur();if(!p)return;
   document.querySelectorAll('#pane [data-p]').forEach(el=>{const st=fieldState(p,el.dataset.p);
     el.classList.remove('fld-e','fld-w','fld-ok');const c=fcls(st);if(c)el.classList.add(c);
     if(el.type!=='checkbox')el.setAttribute('aria-invalid',String(st.lvl==='e'));
-    const m=el.closest('label')&&el.closest('label').querySelector('.fmsg');if(m){m.textContent=st.msg;m.className='fmsg '+st.lvl}})}
-const inp=(p,path,l,t,x='')=>{const st=fieldState(p,path);return `<label>${l}${freq(st)}<input data-p="${path}" type="${t||'text'}" value="${esc(G(p,path))}" ${x} class="${fcls(st)}" ${st.lvl==='e'?'aria-invalid="true"':''}>${fmsg(st)}</label>`};
+    const m=el.closest('label')&&el.closest('label').querySelector('.fmsg');if(m){m.textContent=st.msg;m.className=fmsgCls(st.msg?st.lvl:'')}})}
+const MAXLEN=[[/^name$/,100],[/^contact$/,20],[/^etioO$/,100],[/\.drug$/,80],[/\.dose$/,40],[/\.ev\.int$/,200],[/\.ini$/,5],[/\.rsO$/,100]];
+const maxAttr=path=>{const r=MAXLEN.find(([re])=>re.test(path));return r?`maxlength="${r[1]}"`:''};
+const inp=(p,path,l,t,x='')=>{const st=fieldState(p,path);return `<label>${l}${freq(st)}<input data-p="${path}" type="${t||'text'}" value="${esc(G(p,path))}" ${maxAttr(path)} ${x} class="${fcls(st)}" ${st.lvl==='e'?'aria-invalid="true"':''}>${fmsg(st)}</label>`};
 const sel_=(p,path,l,o)=>{const st=fieldState(p,path);return `<label>${l}${freq(st)}<select data-p="${path}" class="${fcls(st)}" ${st.lvl==='e'?'aria-invalid="true"':''}>${o.map(a=>`<option ${G(p,path)===a?'selected':''}>${esc(a)}</option>`).join('')}</select>${fmsg(st)}</label>`};
 const ck=(p,path,l)=>`<label class="ck"><input type="checkbox" data-p="${path}" ${G(p,path)?'checked':''}> ${l}</label>`;
 const opt=(p,path,l)=>`<label class="check-row"><input type="checkbox" data-p="${path}" ${G(p,path)?'checked':''}><span>${l}</span></label>`;
@@ -154,7 +232,7 @@ function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).len
  $('tiles').innerHTML=[['Participants',P.length],['Baseline completed',c('b')],['3M done / overdue',c('m3')+' / '+od('m3')],['6M done / overdue',c('m6')+' / '+od('m6')],['4/4 pillars (latest visit)',full],['Mean 1MSTS',mean('b')+' → '+mean('m3')+' → '+mean('m6')],['Records pending sync',pend]].map(t=>`<div class="kpi"><b>${t[1]}</b><span>${t[0]}</span></div>`).join('');
  $('sync').textContent=(DB.off?'● Offline':'● Online')+' · '+(pend?pend+' pending':'all synced');
  $('sync').className='pill '+((DB.off||pend)?'pending':'synced');
- $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patient list</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?'':'<p class="mut">No participants yet. Add one or load demo data.</p>')+P.map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('');
+ $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patient list</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?'':'<p class="mut">No participants yet. Add one or load demo data.</p>')+P.map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.name||'Name missing')}</span><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('');
  $('list').classList.toggle('collapsed',!listOpen);const p=cur();if(p){const w=$('warn');if(w&&tab!=='info'&&tab!=='sum')w.innerHTML=wHtml(p,tab);const pc=$('pc');if(pc&&tab in p.v)pc.textContent=act(p.v[tab])+' / 4';const st=$('vs');if(st&&tab in p.v)st.textContent=vstat(p,tab)}}
 
 function wHtml(p,k){const w=warns(p,k);return w.length?'<div style="margin-bottom:16px">'+w.map(x=>`<div class="${x[0]==='e'?'err':'warn'}">${x[0]==='e'?'✖ Error':'⚠ Warning'}: ${x[1]}</div>`).join('')+'</div>':'<div class="ok">✔ All checks passed</div>'}
@@ -170,34 +248,39 @@ function pane(){if(newMode){paneNew();return}const p=cur(),el=$('pane');if(p&&!p
  if(tabLocked(p,tab))tab='b';
  const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info">Participant info</button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':''}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}${n}</button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum">Summary & audit</button></div>`;
  let h=`<div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs;
- if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}<div class="sec">A. Patient & Site Identification</div><div class="g"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=110')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${navBar('info')}`;
+ if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${!p.name||!p.contact?banner('Patient name and contact number are required. Add them below.'):''}<div class="sec">Participant</div><div class="g tint"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${navBar('info')}`;
  else if(tab==='sum')h+=summary(p);
  else{const k=tab,v=p.v[k],name=VK.find(a=>a[0]===k)[1],b=p.v.b.date;
   let win='';if(k!=='b'){const t=k==='m3'?90:180,w=k==='m3'?14:21;win=b?`Target day ${t} ±${w}: ${fmt(addD(b,t-w))} to ${fmt(addD(b,t+w))}`:'Enter baseline date first'}
   h+=`${v.done?okBanner(name+' is complete and locked. Reopen the visit to make changes.'):''}<div class="visit-info">
     <strong>${name} visit</strong> — Status: <strong>${vstat(p,k)}</strong>${win?'<br>'+win:''}
   </div>
-  <div class="sec">B. Clinical & Functional Assessment</div>
-  <div class="g">${inp(p,'v.'+k+'.date','Visit date','date')}${inp(p,'v.'+k+'.wt','Weight (kg)','number','step=0.1')}${inp(p,'v.'+k+'.hr','Heart rate (bpm)','number')}${inp(p,'v.'+k+'.sbp','Systolic BP (mmHg)','number')}${inp(p,'v.'+k+'.dbp','Diastolic BP (mmHg)','number')}${sel_(p,'v.'+k+'.nyha','NYHA class',['','I','II','III','IV'])}${inp(p,'v.'+k+'.msts','1MSTS: repetitions in 60 sec','number','min=0')}${sel_(p,'v.'+k+'.stop','1MSTS stopped early? reason',STOP)}</div>
-  <div class="g" style="margin-bottom:12px">${ck(p,'v.'+k+'.rep','1MSTS repeated (non-clinical reason)')}${k==='m3'?'<label>LVEF (%)<input value="N/A at 3 months" disabled></label>':inp(p,'v.'+k+'.lvef','LVEF (%)','number','min=5 max=80')}${k==='m3'?'':inp(p,'v.'+k+'.echoDate','Echo date','date')}</div>
+  <div class="sec">A. Prescription</div><div class="tint rx-wrap"><div class="rx-grid"><div class="rx-up">${v.done?banner('Visit is locked. Reopen the visit to add files.'):`<button type="button" class="rx-drop" data-a="upload"><i class="ms">upload_file</i><span><b>Upload prescription</b><small>Drag and drop, or browse. PDF, JPG or PNG, up to 10 MB</small></span></button>`}</div><div class="rx-files"><div class="filelist rx-list">${filesHtml(p,k)}</div></div></div></div>
+    <div class="sec">B. Clinical & Functional Assessment</div>
+  <div class="g tint">${inp(p,'v.'+k+'.date','Visit date','date')}${inp(p,'v.'+k+'.wt','Weight (kg)','number','step=0.1')}${inp(p,'v.'+k+'.hr','Heart rate (bpm)','number')}${inp(p,'v.'+k+'.sbp','Systolic BP (mmHg)','number')}${inp(p,'v.'+k+'.dbp','Diastolic BP (mmHg)','number')}${sel_(p,'v.'+k+'.nyha','NYHA class',['','I','II','III','IV'])}${inp(p,'v.'+k+'.msts','1MSTS: repetitions in 60 sec','number','min=0')}${sel_(p,'v.'+k+'.stop','1MSTS stopped early? reason',STOP)}</div>
+  <div class="g tint" style="margin-bottom:12px">${ck(p,'v.'+k+'.rep','1MSTS repeated (non-clinical reason)')}${k==='m3'?'<label>LVEF (%)<input value="N/A at 3 months" disabled></label>':inp(p,'v.'+k+'.lvef','LVEF (%)','number','min=5 max=80')}${k==='m3'?'':inp(p,'v.'+k+'.echoDate','Echo date','date')}</div>
   <div class="sec">C. Foundational GDMT <span style="float:right">Active: <b id="pc">${act(v)} / 4</b></span></div>
-  <div class="pillars">${PL.map(([q,n])=>pillar(p,k,q,n)).join('')}</div>
-  <div class="reasons"><div class="pillar-head"><b>Reason(s) GDMT not initiated or stopped</b></div><div class="checks">${RS.map(([r,l])=>opt(p,`v.${k}.rs.${r}`,l)).join('')}</div><div class="g2 reasons-other">${inp(p,'v.'+k+'.rsO','Other reason')}</div></div>
+  <div class="pillars tint">${PL.map(([q,n])=>pillar(p,k,q,n)).join('')}</div>
+  <div class="reasons tint"><div class="pillar-head"><b>Reason(s) GDMT not initiated or stopped</b></div><div class="checks">${RS.map(([r,l])=>opt(p,`v.${k}.rs.${r}`,l)).join('')}</div><div class="g2 reasons-other">${inp(p,'v.'+k+'.rsO','Other reason')}</div></div>
   <div class="sec">D. Clinical Events ${k==='b'?'(prior history)':'(since previous visit)'}</div>
-  <div class="g">${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div>
-  <div class="g" style="margin-top:12px">${inp(p,`v.${k}.ev.int`,'Major intervention / event')}${inp(p,`v.${k}.ini`,'Investigator initials')}</div>
+  <div class="g tint">${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div>
+  <div class="g tint" style="margin-top:12px">${inp(p,`v.${k}.ev.int`,'Major intervention / event')}${inp(p,`v.${k}.ini`,'Investigator initials')}</div>
   <div class="sec">Data Checks</div><div id="warn">${wHtml(p,k)}</div>
   ${navBar(k,!can('mark_complete')?'':v.done?`<span class="lock-hint"><i class="ms">lock</i>Visit locked as complete</span><button data-a="reopen"><i class="ms">undo</i>Reopen visit</button>`:`<button data-a="done"><i class="ms">task_alt</i>Mark complete</button><span id="miss" class="e"></span>`)}`}
  el.innerHTML=h;if(tab!=='info'&&tab!=='sum'&&p.v[tab].done)el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true);
  if(tab==='info'&&p.v.b.done)el.querySelectorAll('[data-p="consent"],[data-p="age"],[data-p="sex"],[data-p="etio"],[data-p="etioO"]').forEach(i=>i.disabled=true);
  if(!can('enter_data'))el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true);
- paintFields()}
+ paintFields();
+ fillThumbs()}
 
 function summary(p){const r=(f)=>VK.map(([k])=>`<td>${f(p.v[k],k)||'–'}</td>`).join('');
  const d=(a,b)=>a!==''&&a!=null&&b!==''&&b!=null?((+b-+a>0?'+':'')+(+b-+a)):'–';
  const st=PL.map(([q])=>{let s=null;VK.forEach(([k])=>{const x=G(p.v[k],'g.'+q+'.start');if(x&&x>(s||''))s=x});return s}),b=p.v.b.date;
  let sp='Need baseline date and 4 start dates';if(b&&st.every(Boolean)){const m=Math.max(...st.map(x=>(day(x)-day(b))/864e5));sp=m<=0?'Same-day (all four on or before baseline)':m<=7?'Rapid (within 7 days)':m<=30?'Early (within 30 days)':'Later than 30 days'}
- return`<div class="sec">Summary (auto-calculated; entered values are never changed)</div><div class="wrap"><table><tr><th></th><th>Baseline</th><th>3 Months</th><th>6 Months</th></tr>
+ const row=(l,x)=>`<tr><th>${l}</th><td>${esc(x||'–')}</td></tr>`;
+ return`<div class="sec">Patient record</div><div class="wrap"><table>${row('Study ID',p.id)}${row('Patient name',p.name)}${row('Contact number',p.contact)}${row('Site',p.site)}${row('Investigator',p.inv)}${row('Consent date',p.consent)}${row('Age',p.age)}${row('Sex',p.sex)}${row('HF etiology',p.etio)}${row('Etiology (other)',p.etioO)}</table></div>
+ <div class="sec">Prescriptions and attached files</div><div class="wrap"><table><tr><th>Visit</th><th>Files</th></tr>${VK.map(([k,n])=>`<tr><th>${n}</th><td>${filesHtml(p,k)}</td></tr>`).join('')}</table></div>
+ <div class="sec" style="margin-top:20px">Summary (auto-calculated; entered values are never changed)</div><div class="wrap"><table><tr><th></th><th>Baseline</th><th>3 Months</th><th>6 Months</th></tr>
  <tr><th>Visit date</th>${r(v=>v.date)}</tr><tr><th>1MSTS reps</th>${r(v=>v.msts)}</tr><tr><th>NYHA</th>${r(v=>v.nyha)}</tr><tr><th>LVEF (%)</th>${r(v=>v.lvef)}</tr><tr><th>Active pillars</th>${r((v)=>has(v)?act(v)+' / 4':'')}</tr><tr><th>Status</th>${VK.map(([k])=>`<td>${vstat(p,k)}</td>`).join('')}</tr></table></div>
  <p style="margin-top:16px"><b>Primary outcomes:</b></p>
  <p>Δ 1MSTS baseline → 6M: <b>${d(p.v.b.msts,p.v.m6.msts)} reps</b><br>
@@ -206,14 +289,23 @@ function summary(p){const r=(f)=>VK.map(([k])=>`<td>${f(p.v[k],k)||'–'}</td>`)
  <div class="sec" style="margin-top:20px">Audit Trail (last 10 changes)</div><div class="wrap"><table><tr><th>Time</th><th>Field</th><th>Old value</th><th>New value</th></tr>${p.audit.slice(-10).reverse().map(a=>`<tr><td style="font-size:12px">${a.t}</td><td style="font-size:12px">${esc(a.f)}</td><td style="font-size:12px">${esc(a.o)}</td><td style="font-size:12px">${esc(a.n)}</td></tr>`).join('')||'<tr><td colspan=4 class="mut">No changes yet</td></tr>'}</table></div>`}
 
 document.addEventListener('change',e=>{const el=e.target;if(el.id==='off'){DB.off=el.checked;persist();if(!DB.off)DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash();return}
+ if(el.id==='fu'){handleUpload(el);return}
  if(!el.dataset.p)return;const p=cur();if(!p)return;const old=G(p,el.dataset.p),nv=el.type==='checkbox'?el.checked:el.value;if(old===nv)return;
  S(p,el.dataset.p,nv);p.audit.push({t:new Date().toLocaleString('en-GB'),f:el.dataset.p,o:old??'',n:nv});save(p);paintFields();dash()});
 
-document.addEventListener('click',e=>{const t=e.target.closest('[data-id],[data-t],[data-a]');if(!t)return;
+document.addEventListener('dragover',e=>{if(e.target.closest&&e.target.closest('.rx-drop'))e.preventDefault()});
+document.addEventListener('drop',e=>{if(e.target.closest&&e.target.closest('.rx-drop')){e.preventDefault();handleUpload({files:e.dataTransfer.files,value:''})}});
+document.addEventListener('click',e=>{const t=e.target.closest('[data-id],[data-t],[data-a],[data-jump]');if(!t)return;
+ if(t.dataset.jump){jumpTo(t.dataset.jump);return}
  if(t.dataset.id){sel=t.dataset.id;newMode=false;if(window.matchMedia('(max-width: 1000px)').matches)listOpen=false;pane();dash()}
  else if(t.dataset.t){tab=t.dataset.t;newMode=false;pane();dash()}
- else if(t.dataset.a==='next'){const p=cur(),k=t.dataset.k,i=ORDER.indexOf(k);if(!p)return;save(p);if(tabLocked(p,ORDER[i+1])){toast('Draft saved · '+ORDER_LABEL[ORDER[i+1]]+' unlocks when '+ORDER_LABEL[LOCK_ORDER[ORDER[i+1]]]+' is complete');return}tab=ORDER[i+1];pane();dash();$('pane').scrollIntoView({behavior:'smooth',block:'start'});toast('Draft saved · '+ORDER_LABEL[tab]+' is next')}
- else{const p=cur(),v=p.v[tab];if(t.dataset.a==='done'){const m=missing(p,tab),er=warns(p,tab).filter(x=>x[0]==='e');TRIED.add(p.id+'|'+tab);if(m.length||er.length){pane();$('miss').textContent=(m.length?'Missing: '+m.join(', '):'')+(er.length?(m.length?' | ':'')+'Fix the errors highlighted above':'');return}v.done=true;p.audit.push({t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'open',n:'completed'})}else{const later=VK.slice(VK.findIndex(([x])=>x===tab)+1).find(([x])=>p.v[x].done);if(later){toast('Reopen '+later[1]+' first');return}v.done=false;p.audit.push({t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'completed',n:'reopened'})}save(p);pane();dash()}});
+ else if(t.dataset.a==='next'){const p=cur(),k=t.dataset.k,i=ORDER.indexOf(k);if(!p)return;const iss=k==='info'?infoIssues(p):visitIssues(p,k);
+   if(iss.m.length||iss.er.length){TRIED.add((p.uid||p.id)+'|'+(k==='info'?'b':k));showIssues(p,k,iss.m,iss.er,'Cannot continue');toast('Fix the highlighted fields before continuing');return}
+   save(p);if(tabLocked(p,ORDER[i+1])){toast('Draft saved · '+ORDER_LABEL[ORDER[i+1]]+' unlocks when '+ORDER_LABEL[LOCK_ORDER[ORDER[i+1]]]+' is complete');return}tab=ORDER[i+1];pane();dash();$('pane').scrollIntoView({behavior:'smooth',block:'start'});toast('Draft saved · '+ORDER_LABEL[tab]+' is next')}
+ else if(t.dataset.a==='upload'){$('fu').click()}
+ else if(t.dataset.a==='remove'){removeFile(t.dataset.fid)}
+ else if(t.dataset.a==='view'){openFile(t.dataset.fid,t.dataset.ct,t.dataset.name)}
+ else{const p=cur(),v=p.v[tab];if(t.dataset.a==='done'){const m=missing(p,tab),er=warns(p,tab).filter(x=>x[0]==='e').map(x=>({msg:x[1]})).concat(fieldErrs(p,tab));TRIED.add((p.uid||p.id)+'|'+tab);if(m.length||er.length){showIssues(p,tab,m,er);return}v.done=true;p.audit.push({t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'open',n:'completed'})}else{const later=VK.slice(VK.findIndex(([x])=>x===tab)+1).find(([x])=>p.v[x].done);if(later){toast('Reopen '+later[1]+' first');return}v.done=false;p.audit.push({t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'completed',n:'reopened'})}save(p);pane();dash()}});
 
 $('bClr').onclick=()=>{if(confirm('Delete all participants?')){DB.pts=[];sel=null;persist();pane();dash()}};
 $('bCsv').onclick=()=>{const H=['study_id','site','investigator','consent','age','sex','etiology'];VK.forEach(([k])=>['status','date','wt','hr','sbp','dbp','nyha','msts','lvef','pillars','hf_hosp','all_hosp','death'].forEach(f=>H.push(k+'_'+f)));
@@ -223,9 +315,56 @@ $('bCsv').onclick=()=>{const H=['study_id','site','investigator','consent','age'
 $('bDemo').onclick=()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
  [[200,'RIC'],[185,'LHR'],[150,'KHI'],[120,'ISB'],[100,'RIC'],[60,'LHR'],[20,'KHI'],[6,'ISB']].forEach(([ago,site],i)=>{const p=mk(site,signedIn()||'Demo investigator',d(ago+3),45+i*3,i%3?'Male':'Female',i%2?'Ischemic':'Non-ischemic');
   [['b',ago,0],['m3',ago-90,1],['m6',ago-180,2]].forEach(([k,n,j])=>{if(n<0)return;const v=p.v[k];Object.assign(v,{date:d(n),wt:70+i-j,hr:84-j*5,sbp:108+j*4,dbp:68+j*2,nyha:['III','II','II'][j],msts:9+i%4+j*4+i%3,done:true,g:{}});
-   if(k!=='m3'){v.lvef=28+i%5+j*3;v.echoDate=d(n+2)}const na=Math.min(4,2+j+i%2);PL.forEach(([q],x)=>{v.g[q]=x<na?{drug:'demo',dose:'demo dose',start:d(n),status:'Active'}:{status:'Not started'}});if(na<4)v.rs={phys:true};v.ev={}});DB.pts.push(p);p.sync='Synced'});persist();sel=DB.pts[0].id;tab='sum';pane();dash()};
+   if(k!=='m3'){v.lvef=28+i%5+j*3;v.echoDate=d(n+2)}const na=Math.min(4,2+j+i%2);PL.forEach(([q],x)=>{v.g[q]=x<na?{drug:'demo',dose:'demo dose',start:d(n),status:'Active'}:{status:'Not started'}});if(na<4)v.rs={phys:true};v.ev={}});p.name='Demo patient '+(i+1);p.contact='0300555'+String(100+i).padStart(4,'0');DB.pts.push(p);p.sync='Synced'});persist();sel=DB.pts[0].id;tab='sum';pane();dash()};
 
 $('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.href='../login/'};
+
+/* Prescription files: bytes live in IndexedDB; the patient record keeps the metadata */
+const FDB='standhf_files_v1',UPLOAD_MAX=10*1024*1024,UPLOAD_TYPES=['application/pdf','image/jpeg','image/png'];
+function fileDb(){return new Promise((res,rej)=>{const r=indexedDB.open(FDB,1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function putFile(id,blob){const d=await fileDb();return new Promise((res,rej)=>{const t=d.transaction('files','readwrite');t.objectStore('files').put(blob,id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+async function getFile(id){const d=await fileDb();return new Promise((res,rej)=>{const q=d.transaction('files').objectStore('files').get(id);q.onsuccess=()=>res(q.result||null);q.onerror=()=>rej(q.error)})}
+async function delFile(id){const d=await fileDb();return new Promise((res,rej)=>{const t=d.transaction('files','readwrite');t.objectStore('files').delete(id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+const sizeTxt=b=>b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB';
+function filesHtml(p,k){const fs=(p.files&&p.files[k])||[];if(!fs.length)return '<span class="mut">No files attached</span>';
+  const canEdit=can('enter_data')&&!(p.v[k]&&p.v[k].done);
+  return fs.map(f=>`<div class="file-row"><span class="rx-ico" data-thumb="${esc(f.id)}" data-ct="${esc(f.type)}" data-a="view" data-fid="${esc(f.id)}" data-name="${esc(f.name)}"><i class="ms">${f.type==='application/pdf'?'picture_as_pdf':'image'}</i></span><span class="rx-txt"><button type="button" class="link" data-a="view" data-fid="${esc(f.id)}" data-ct="${esc(f.type)}" data-name="${esc(f.name)}">${esc(f.name)}</button><span class="mut">${sizeTxt(f.size)} · ${esc(f.at)}</span></span>${canEdit?`<button type="button" class="icon-btn rx-del" data-a="remove" data-fid="${esc(f.id)}" aria-label="Remove ${esc(f.name)}" title="Remove file"><i class="ms">close</i></button>`:''}</div>`).join('')}
+async function handleUpload(el){const f=el.files&&el.files[0];el.value='';if(!f)return;const p=cur();if(!p)return;
+  if(!UPLOAD_TYPES.includes(f.type)){toast('Only PDF, JPG or PNG files can be uploaded');return}
+  if(f.size>UPLOAD_MAX){toast('File is over 10 MB. Choose a smaller file.');return}
+  if(p.v[tab].done){toast('Visit is locked. Reopen it to add files.');return}
+  const id='f'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),at=new Date().toLocaleString('en-GB');
+  try{await putFile(id,f)}catch(e){toast('Could not save the file in this browser');return}
+  p.files=p.files||{b:[],m3:[],m6:[]};p.files[tab]=p.files[tab]||[];
+  p.files[tab].push({id,name:f.name,type:f.type,size:f.size,at});
+  p.audit.push({t:at,f:tab+'.file',o:'',n:f.name});save(p);pane();dash();toast('Prescription uploaded: '+f.name)}
+/* Small thumbnails for image files; PDFs keep their icon */
+async function fillThumbs(){
+  document.querySelectorAll('[data-thumb]').forEach(async el=>{
+    if(el.dataset.ct==='application/pdf'||el.querySelector('img'))return;
+    try{const b=await getFile(el.dataset.thumb);if(!b)return;el.innerHTML=`<img alt="" src="${URL.createObjectURL(b)}">`}catch(e){}
+  })}
+/* Remove a file from a visit that is not locked */
+async function removeFile(fid){const p=cur();if(!p)return;let k=null,f=null;
+  VK.forEach(([x])=>{const hit=((p.files&&p.files[x])||[]).find(y=>y.id===fid);if(hit){k=x;f=hit}});
+  if(!f)return;
+  if(p.v[k].done){toast('Visit is locked. Reopen it to remove files.');return}
+  if(!confirm('Remove '+f.name+'?'))return;
+  p.files[k]=p.files[k].filter(y=>y.id!==fid);
+  try{await delFile(fid)}catch(e){}
+  p.audit.push({t:new Date().toLocaleString('en-GB'),f:k+'.file',o:f.name,n:'removed'});save(p);pane();dash();toast('File removed: '+f.name)}
+/* Open a stored file large in the viewer dialog */
+async function openFile(fid,type,name){
+  try{const b=await getFile(fid);if(!b){toast('File not found in this browser');return}
+    const u=URL.createObjectURL(b);
+    $('vTitle').textContent=name||'Prescription';
+    $('vBody').innerHTML=type==='application/pdf'?`<iframe title="${esc(name)}" src="${u}"></iframe>`:`<img alt="${esc(name)}" src="${u}">`;
+    $('viewer').showModal();
+    setTimeout(()=>URL.revokeObjectURL(u),600000)}
+  catch(e){toast('Could not open the file')}}
+$('vClose').onclick=()=>$('viewer').close();
+$('viewer').addEventListener('click',e=>{if(e.target===$('viewer'))$('viewer').close()});
+$('viewer').addEventListener('close',()=>{$('vBody').innerHTML=''});
 
 /* Searchable comboboxes (investigator, site) */
 const INVESTIGATORS=['Emily Carter','John Miller','Michael Johnson','Sarah Thompson','David Lee','Jessica Brown','Robert Wilson'];   // add known investigator names here
@@ -238,7 +377,7 @@ function sites(){return [...new Set(mySites())].sort()}
 const OPTS={inv:names,site:sites};
 
 function combo(path,key,label,value,ph){
-  return `<label>${label}<div class="cb" data-cb="${key}"><input ${path?`data-p="${path}"`:''} data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" value="${esc(value)}" placeholder="${ph||'Search or type a name'}"><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div></label>`;
+  return `<label>${label}<div class="cb" data-cb="${key}"><input ${path?`data-p="${path}"`:''} ${key==='site'?'maxlength="5"':key==='inv'?'maxlength="100"':''} data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" value="${esc(value)}" placeholder="${ph||'Search or type a name'}"><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div></label>`;
 }
 function cbItems(key,q){const all=OPTS[key](),t=q.trim(),lo=t.toLowerCase();
   const L=all.filter(o=>!lo||o.toLowerCase().includes(lo)).map(o=>({v:o}));
@@ -265,13 +404,69 @@ document.addEventListener('keydown',e=>{const i=e.target.closest&&e.target.close
   else if(e.key==='Escape'&&cbOpenNow(w)){e.preventDefault();e.stopPropagation();cbClose(w)}
   else if(e.key==='Tab')cbClose(w)});
 
+/* What blocks moving on from a step: empty required fields and field errors */
+function infoIssues(p){
+  const m=[];if(!p.name)m.push('patient name');if(!p.contact)m.push('contact number');if(!p.consent)m.push('consent date');
+  if(!p.age)m.push('age');if(!p.sex)m.push('sex');if(!p.etio)m.push('HF etiology');if(p.etio==='Other'&&!p.etioO)m.push('etiology (other)');
+  const er=['name','contact','consent','age','etioO','inv'].map(x=>({x,st:fieldState(p,x)})).filter(o=>o.st.lvl==='e').map(o=>({msg:o.st.msg,sel:`[data-p="${o.x}"]`}));
+  return {m,er}}
+function visitIssues(p,k){
+  return {m:missing(p,k),er:warns(p,k).filter(x=>x[0]==='e').map(x=>({msg:x[1]})).concat(fieldErrs(p,k))}}
+/* Issue summary: one box listing what blocks the action; each line jumps to its field */
+const errorBox=(title,items)=>`<b>${esc(title)}</b>${items.map(i=>`<div style="margin-top:6px">✖ Error: ${i.sel?`<button type="button" class="link" data-jump="${esc(i.sel)}">${esc(i.msg)}</button>`:esc(i.msg)}</div>`).join('')}`;
+const MISS_INFO={'consent date':'consent','age':'age','sex':'sex','HF etiology':'etio','etiology (other)':'etioO','patient name':'name','contact number':'contact'};
+function missingSel(name,k){if(MISS_INFO[name])return `[data-p="${MISS_INFO[name]}"]`;const q=name.match(/^(\w+) status$/);if(q)return `[data-p="v.${k}.g.${q[1]}.status"]`;return `[data-p="v.${k}.${name}"]`}
+function showIssues(p,k,m,er,verb='Cannot mark complete'){
+  pane();
+  const seen=new Set(),items=[];
+  const add=(msg,sel)=>{if(!seen.has(msg)){seen.add(msg);items.push({msg,sel})}};
+  m.forEach(x=>add('Required: '+x,missingSel(x,k)));
+  er.forEach(x=>add(x.msg,x.sel));
+  const mi=$('miss');if(mi)mi.textContent=`${verb}: ${items.length} to fix`;
+  const pt=document.querySelector('#pane .pane-title');
+  if(pt)pt.insertAdjacentHTML('afterend',`<div class="dlg-err" role="alert">${errorBox(`${verb}: ${items.length} issue${items.length>1?'s':''}`,items)}</div>`);
+}
+function jumpTo(sel){const el=document.querySelector(sel);
+  if(!el||el.disabled){toast('Open the related section first: this field is not on this screen');return}
+  el.scrollIntoView({behavior:'smooth',block:'center'});el.focus({preventScroll:true});
+  el.classList.add('fld-flash');setTimeout(()=>el.classList.remove('fld-flash'),1400)}
+
+/* New participant: every field checked before the record is created */
+function newErrors(site,nm,ct,inv){
+  const out=[];
+  if(!site)out.push({f:'site',msg:'Enter a site code.'});
+  else if(!SITE_RE.test(site))out.push({f:'site',msg:'Site code: 2 to 5 capital letters, for example RIC.'});
+  else if(!mySites().includes(site))out.push({f:'site',msg:'You are not assigned to site '+site+'.'});
+  if(!nm)out.push({f:'name',msg:'Enter the patient name.'});
+  else if(nm.length<2)out.push({f:'name',msg:'Patient name: at least 2 characters.'});
+  else if(!NAME_RE.test(nm))out.push({f:'name',msg:"Patient name: letters, spaces, . ' - only."});
+  if(!ct)out.push({f:'contact',msg:'Enter the contact number.'});
+  else if(!contactOk(ct))out.push({f:'contact',msg:'Enter a valid phone number (7 to 15 digits).'});
+  if(!inv)out.push({f:'inv',msg:'Enter the investigator name.'});
+  else if(inv.length<2)out.push({f:'inv',msg:'Investigator name: at least 2 characters.'});
+  else if(!NAME_RE.test(inv))out.push({f:'inv',msg:"Investigator name: letters, spaces, . ' - only."});
+  return out}
+const NEW_FIELD={site:'[data-cb="site"] input',name:'#nName',contact:'#nContact',inv:'[data-cb="inv"] input'};
+function clearNewErrors(){
+  document.querySelectorAll('#fNew .fld-e').forEach(x=>{x.classList.remove('fld-e');x.removeAttribute('aria-invalid')});
+  document.querySelectorAll('#fNew .np-msg').forEach(x=>x.remove());
+}
+function showNewErrors(errs){
+  clearNewErrors();
+  errs.forEach(e=>{const el=document.querySelector(NEW_FIELD[e.f]);if(!el)return;
+    el.classList.add('fld-e');el.setAttribute('aria-invalid','true');
+    el.closest('label').insertAdjacentHTML('beforeend',`<span class="${fmsgCls('e')} np-msg">${esc(e.msg)}</span>`)});
+  const box=$('newErr');box.className='dlg-err';box.hidden=false;
+  box.innerHTML=errorBox(`Fix ${errs.length} issue${errs.length>1?'s':''} before creating the participant`,errs.map(e=>({msg:e.msg,sel:NEW_FIELD[e.f]})));
+  if(errs[0])document.querySelector(NEW_FIELD[errs[0].f])?.focus();
+}
 /* New participant: opens inline in the main pane */
 function paneNew(){
   $('pane').innerHTML=`<form id="fNew" class="np" novalidate>
     <div class="pane-title"><span>New participant</span></div>
-    <p class="np-lead">The Study ID is generated from the site code. Pick a site and investigator, or type a new name.</p>
+    <p class="np-lead">The Study ID is generated from the site code. Patient name and contact number are required.</p>
     <div class="dlg-err" id="newErr" hidden></div>
-    <div class="g">${combo(null,'site','Site code','','e.g. RIC')}${combo(null,'inv','Investigator name',signedIn())}</div>
+    <div class="g"><label>Patient name<span class="req" aria-hidden="true">*</span><input id="nName" autocomplete="off" maxlength="100" required></label><label>Contact number<span class="req" aria-hidden="true">*</span><input id="nContact" type="tel" maxlength="20" placeholder="e.g. 0300 5550100" required></label>${combo(null,'site','Site code','','e.g. RIC')}${combo(null,'inv','Investigator name',signedIn())}</div>
     <div class="dlg-actions"><button type="button" id="cNew">Cancel</button><button type="submit" class="pri">Create participant</button></div>
   </form>`;
   $('fNew').querySelector('[data-cb="site"] input').focus();
@@ -280,9 +475,9 @@ $('bNew').onclick=()=>{newMode=true;paneNew()};
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#cNew')){newMode=false;pane();dash()}});
 document.addEventListener('submit',e=>{if(e.target.id!=='fNew')return;e.preventDefault();const f=e.target;
   const site=f.querySelector('[data-cb="site"] input').value.toUpperCase().trim(),inv=f.querySelector('[data-cb="inv"] input').value.trim();
-  if(!site){$('newErr').textContent='Enter a site code to create a participant.';$('newErr').hidden=false;f.querySelector('[data-cb="site"] input').focus();return}
-  if(!mySites().includes(site)){$('newErr').textContent='You are not assigned to site '+site+'. Ask an administrator.';$('newErr').hidden=false;return}
-  const p=mk(site,inv,'','','','');DB.pts.push(p);sel=p.id;tab='info';newMode=false;save(p);pane();dash()});
+  const nm=f.querySelector('#nName').value.trim(),ct=f.querySelector('#nContact').value.trim();
+  const errs=newErrors(site,nm,ct,inv);if(errs.length){showNewErrors(errs);return}
+  const p=mk(site,inv,'','','','');p.name=nm;p.contact=ct;DB.pts.push(p);sel=p.id;tab='info';newMode=false;save(p);pane();dash()});
 
 $('off').checked=!!DB.off;applyPerms();if(DB.pts.length)sel=DB.pts[0].id;
 /* Deep links from the investigator dashboard: ?new=1 or ?patient=ID&tab=b|m3|m6 */
