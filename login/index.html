@@ -10,59 +10,75 @@
 </head>
 <body class="auth-page">
 <main class="auth-wrap">
-  <div class="brand-center">
-    <img class="brand-logo" src="../assets/STAND-HF-logo.svg" alt="STAND-HF">
-    <h1>STAND-HF Registry</h1>
-    <p>E-CRF Prototype</p>
+  <div class="auth-card">
+    <section class="auth-brand" aria-label="STAND-HF">
+      <div class="auth-hero">
+        <div class="auth-logo"><img src="../assets/STAND-HF-logo.svg" alt="STAND-HF"></div>
+      </div>
+      <div class="auth-copy">
+        <h2>E-CRF Registry</h2>
+        <p>Information about the STAND-HF Registry, a heart failure study across cardiology sites. Study staff sign in on the right.</p>
+        <p class="auth-sponsor">Sponsor: <a href="https://www.highnoon-labs.com" target="_blank" rel="noopener">Highnoon Laboratories Limited</a> · Built by <a href="https://decoderium.com" target="_blank" rel="noopener">Decoderium Technologies</a></p>
+      </div>
+    </section>
+
+    <form class="auth-panel" id="form" novalidate>
+      <div class="card auth-form-card">
+      <h2>Welcome!</h2>
+
+      <div class="segment seg-anim auth-tabs" role="tablist" aria-label="Sign in as">
+        <span class="seg-thumb" aria-hidden="true"></span>
+        <button type="button" role="tab" data-tab="investigator" aria-selected="true" class="on">Site investigator</button>
+        <button type="button" role="tab" data-tab="admin" aria-selected="false">Admin</button>
+      </div>
+
+      <div class="error" id="err" role="alert">
+        <span class="ms">error</span>
+        <span id="errMsg"></span>
+      </div>
+
+      <label class="field">
+        <span>Username</span>
+        <input id="user" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">
+      </label>
+
+      <label class="field">
+        <span>Password</span>
+        <div class="input-wrap">
+          <input id="pass" name="password" type="password" autocomplete="current-password" class="has-toggle">
+          <button type="button" class="toggle-pw" id="togglePw" aria-label="Show password" title="Show password">
+            <span class="ms">visibility</span>
+          </button>
+        </div>
+      </label>
+
+      <div class="auth-row">
+        <label class="check-row"><input type="checkbox" id="remember"><span>Remember my username</span></label>
+        <button type="button" class="link-btn" id="forgot">Forgot your password?</button>
+      </div>
+
+      <button class="btn primary" id="signin" type="submit">
+        <span class="ms">login</span>
+        <span>Login</span>
+      </button>
+
+      <p class="auth-note" id="note" role="status"></p>
+      </div>
+    </form>
   </div>
 
-  <form class="auth" id="form" novalidate>
-    <h2>Sign in</h2>
-    <p>Select your role, then enter your username and password.</p>
-
-    <div class="error" id="err" role="alert">
-      <span class="ms">error</span>
-      <span id="errMsg"></span>
-    </div>
-
-    <label class="field">
-      <span>Role</span>
-      <select id="role" name="role">
-        <option value="superadmin">Super Admin</option>
-        <option value="investigator" selected>Site Investigator</option>
-        <option value="central">Central</option>
-      </select>
-    </label>
-
-    <label class="field">
-      <span>Username</span>
-      <input id="user" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">
-    </label>
-
-    <label class="field">
-      <span>Password</span>
-      <div class="input-wrap">
-        <input id="pass" name="password" type="password" autocomplete="current-password" class="has-toggle">
-        <button type="button" class="toggle-pw" id="togglePw" aria-label="Show password" title="Show password">
-          <span class="ms">visibility</span>
-        </button>
-      </div>
-      <small class="hint">Prototype: any non-empty password is accepted.</small>
-    </label>
-
-    <button class="btn primary" id="signin" type="submit">
-      <span class="ms">login</span>
-      <span id="btnText">Sign in</span>
-    </button>
-  </form>
-
-  <p class="footer">Authorised study staff only. Activity is recorded in the audit trail.</p>
+  <p class="footer">Activity on this portal is recorded in the audit trail.</p>
 </main>
 
 <script src="../assets/access.js"></script>
 <script>
 const APP='../records/', DASH='../dashboard/', ADMIN='../admin/', AUTH_KEY='standhf_auth', USER_KEY='standhf_user', ROLE_KEY='standhf_role';
+const REMEMBER_KEY='standhf_remember_user';
 const ACCOUNTS=accessStore().users.filter(u=>u.active).map(u=>({user:u.username,name:u.name,role:u.role}));
+/* Each tab accepts its own roles: Admin covers Super Admin and Central team */
+const TAB_ROLES={investigator:['investigator'],admin:['superadmin','central']};
+const TAB_LABEL={investigator:'Site investigator',admin:'Admin'};
+let tab='investigator';
 
 const $=id=>document.getElementById(id);
 
@@ -72,15 +88,30 @@ function fail(msg,focusId){
   $(focusId).focus();
 }
 
-function accountFor(role){return ACCOUNTS.find(a=>a.role===role)}
+/* Slide the indicator under the active tab */
+function moveThumb(){
+  const b=document.querySelector('[data-tab].on'),t=document.querySelector('.seg-thumb');
+  if(!b||!t)return;
+  t.style.left=b.offsetLeft+'px';t.style.width=b.offsetWidth+'px';
+}
+window.addEventListener('resize',moveThumb);
 
-$('role').onchange=()=>{
-  $('user').value=accountFor($('role').value).user;
+function setTab(next,animate=true){
+  tab=next;
+  document.querySelectorAll('[data-tab]').forEach(b=>{
+    const on=b.dataset.tab===next;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-selected',String(on));
+  });
+  const first=ACCOUNTS.find(a=>TAB_ROLES[next].includes(a.role));
+  $('user').value=first?first.user:'';
   $('pass').value='';
   $('err').classList.remove('show');
-  $('pass').focus();
-};
-$('user').value=accountFor($('role').value).user;
+  $('note').textContent='';
+  moveThumb();
+}
+
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
 
 $('togglePw').onclick=()=>{
   const show=$('pass').type==='password';
@@ -90,14 +121,27 @@ $('togglePw').onclick=()=>{
   $('togglePw').firstElementChild.textContent=show?'visibility_off':'visibility';
 };
 
+$('forgot').onclick=()=>{$('note').textContent='Password reset is not available here. Contact the study administrator.'};
+
+/* Only the username is remembered, never the password */
+let remembered='';
+try{remembered=localStorage.getItem(REMEMBER_KEY)||''}catch(e){}
+setTab('investigator',false);
+if(remembered){
+  const acc=ACCOUNTS.find(a=>a.user===remembered);
+  if(acc){setTab(acc.role==='investigator'?'investigator':'admin',false);$('user').value=acc.user;$('remember').checked=true}
+}
+
 $('form').addEventListener('submit',e=>{
   e.preventDefault();
-  const u=$('user').value.trim().toLowerCase(),p=$('pass').value,role=$('role').value;
+  const u=$('user').value.trim().toLowerCase(),p=$('pass').value;
   if(!u)return fail('Enter your username.','user');
   if(!p)return fail('Enter your password.','pass');
   const acc=ACCOUNTS.find(a=>a.user===u);
-  if(!acc)return fail('Unknown username.','user');
-  if(acc.role!==role)return fail('This username does not belong to the selected role.','role');
+  if(!acc||!TAB_ROLES[tab].includes(acc.role))return fail('Username or password is incorrect.','user');
+  try{
+    if($('remember').checked)localStorage.setItem(REMEMBER_KEY,acc.user);else localStorage.removeItem(REMEMBER_KEY);
+  }catch(err){}
   try{sessionStorage.setItem(AUTH_KEY,'1');sessionStorage.setItem(USER_KEY,acc.name);sessionStorage.setItem(ROLE_KEY,acc.role);sessionStorage.setItem('standhf_username',acc.user)}
   catch(err){return fail('Browser storage is blocked, so sign-in cannot be kept. Allow site data and try again.','signin')}
   location.replace(acc.role==='investigator'?DASH:acc.role==='superadmin'?ADMIN:APP);
