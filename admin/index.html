@@ -13,17 +13,7 @@
   <aside class="side" id="side" aria-label="Main navigation"></aside>
 
   <div class="main">
-    <header class="topbar">
-      <label class="search"><i class="ms">search</i><input id="search" type="search" placeholder="Search sites, users or patients" autocomplete="off"></label>
-      <div class="profile">
-        <span class="avatar" id="avatar" aria-hidden="true">?</span>
-        <span class="profile-meta"><b id="userName">Signed in</b><span id="userRole">Super Admin</span></span>
-        <button type="button" class="icon-btn" id="bOut" title="Sign out" aria-label="Sign out"><i class="ms">logout</i></button>
-      </div>
-      <button type="button" class="bell" id="bell" aria-label="Overdue follow-ups" title="Overdue follow-ups">
-        <i class="ms">notifications</i><span class="badge" id="bellCount" hidden>0</span>
-      </button>
-    </header>
+    <div id="app-header" data-page="admin" data-search="Search patients, sites or users"></div>
 
     <div class="hello">
       <div>
@@ -41,6 +31,9 @@
 </div>
 
 <script src="../assets/access.js"></script>
+<script src="../assets/notifications-data.js"></script>
+<script src="../assets/dialog.js"></script>
+<script src="../assets/header.js" data-root="../"></script>
 <script src="../assets/nav.js"></script>
 <script>
 const LOGIN='../login/', ECRF='../records/', SUPER='superadmin';
@@ -364,10 +357,9 @@ function render(){
   applySearch();
   userPreview();sitePreview();
   const od=stats(patients()).overdue;
-  $('bellCount').textContent=od;$('bellCount').hidden=!od;
+  
 }
 $('search').addEventListener('input',()=>{query=$('search').value;applySearch()});
-$('bell').onclick=()=>{const n=$('bellCount').textContent;toast(n==='0'?'No overdue follow-ups':n+' overdue follow-ups. See the Dashboard tab.')};
 
 /* Sections follow the URL hash, set from the side nav */
 window.addEventListener('hashchange',()=>{tab=tabFromHash();render()});
