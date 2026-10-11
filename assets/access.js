@@ -28,7 +28,8 @@ const DEFAULT_ACCESS={
   users:[
     {username:'michael.johnson',name:'Michael Johnson',role:'superadmin',sites:[],active:true},
     {username:'emily.carter',name:'Emily Carter',role:'investigator',sites:['RIC','LHR'],active:true},
-    {username:'robert.wilson',name:'Robert Wilson',role:'central',sites:[],active:true}
+    {username:'robert.wilson',name:'Robert Wilson',role:'central',sites:[],active:true},
+    {username:'adnan.khan',name:'Adnan Khan',role:'investigator',sites:['KHI','ISB'],active:true}
   ],
   perms:{
     superadmin:ALL_PERMS,
@@ -47,6 +48,8 @@ function accessStore(){
         s.perms[r]=s.perms[r]||{};
         Object.entries(defs).forEach(([k,v])=>{if(!(k in s.perms[r]))s.perms[r][k]=v});
       });
+      /* Demo accounts added after a browser saved its list are added here, so they can sign in */
+      DEFAULT_ACCESS.users.forEach(u=>{if(!s.users.some(x=>x.username===u.username))s.users.push(JSON.parse(JSON.stringify(u)))});
       return s;
     }
   }catch(e){}
@@ -62,7 +65,7 @@ function currentUser(){const u=session().username;return accessStore().users.fin
 function can(perm){
   const r=session().role;
   if(!r)return false;
-  if(r==='superadmin')return !SUPER_NO.includes(perm);
+  if(r==='superadmin')return true;
   const perms=accessStore().perms[r]||{};
   return !!perms[perm];
 }
@@ -73,4 +76,10 @@ function mySites(){
   const u=currentUser();
   return u?u.sites.slice():[];
 }
-const inScope=p=>mySites().includes(p.site);
+/* Which records a user may see: Super Admin all; a Site Investigator only the records they created; others their sites */
+function recordVisible(p){
+  const r=session().role;
+  if(r==='superadmin')return true;
+  if(r==='investigator')return p.owner?p.owner===session().username:p.inv===session().name;
+  return mySites().includes(p.site)}
+const inScope=p=>recordVisible(p);

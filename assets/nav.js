@@ -37,9 +37,11 @@
     ]}
   ];
   const link=i=>`<a class="nav${i.key===current?' active':''}" data-key="${i.key}" href="${i.href}"${i.key===current?' aria-current="true"':''} title="${i.label}"><i class="ms">${i.icon}</i><span class="side-text">${i.label}</span></a>`;
+  const navScript=document.querySelector('script[src$="nav.js"]');
+  const logoSrc=(navScript?navScript.getAttribute('src'):'../assets/nav.js').replace(/nav\.js.*$/,'STAND-HF-logo.svg');
   root.innerHTML=`
     <div class="side-top">
-      <span class="logo" aria-hidden="true"><i class="ms">monitor_heart</i></span>
+      <span class="logo logo-img"><img src="${logoSrc}" alt="STAND-HF"></span>
       <button type="button" class="side-toggle" id="sideToggle" aria-expanded="true" title="Collapse navigation" aria-label="Collapse navigation"><i class="ms">menu_open</i></button>
     </div>
     ${groups.map(g=>{const shown=g.items.filter(i=>i.show);return shown.length?`<div class="side-label">${g.label}</div>${shown.map(link).join('')}`:''}).join('')}
