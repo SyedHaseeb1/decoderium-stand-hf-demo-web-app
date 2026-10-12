@@ -8,8 +8,16 @@
     try{if(sessionStorage.getItem('standhf_auth')!=='1')location.replace('../login/')}catch(e){location.replace('../login/')}
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a5fb4">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
+  <link rel="icon" type="image/png" sizes="512x512" href="../assets/icon-512.png">
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+  <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="../assets/base.css">
   <style>
     .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
@@ -86,6 +94,10 @@
     /* Adding or removing a banner above the view must not shift the page: the saved scroll position is kept instead */
     html{overflow-anchor:none}
   </style>
+<script>
+  /* Register the service worker so the browser can install the app (full-screen from the home screen) */
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+</script>
 </head>
 <body data-page="records">
 <div class="app" id="app">
@@ -95,7 +107,7 @@
     <div id="app-header" data-page="records" data-search="Search patients, sites or users"></div>
 
     <div class="hello">
-      <div><h1>Patient records</h1><p>Enter visit data, check it, and mark each visit complete.</p></div>
+      <div><h1>Patient records <span id="syncChip" class="sync-chip" hidden></span></h1><p>Enter visit data, check it, and mark each visit complete.</p></div>
       <div class="actions">
         <button type="button" class="pri" id="bNew"><i class="ms">person_add</i>New participant</button>
         <button type="button" id="bCsv"><i class="ms">download</i>Export CSV</button>
@@ -301,11 +313,17 @@ function sortPts(arr){
   if(listSort==='Name (A–Z)')return a.sort((x,y)=>(x.name||'').localeCompare(y.name||''));
   if(listSort==='Study ID')return a.sort((x,y)=>x.id.localeCompare(y.id));
   return a.sort((x,y)=>(y.created||0)-(x.created||0))}
+let lastPend=0;
 function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).length,od=k=>P.filter(p=>vstat(p,k)==='Overdue'||vstat(p,k)==='Missed').length;
  const mean=k=>{const a=P.filter(p=>p.v[k].msts!==''&&p.v[k].msts!=null).map(p=>+p.v[k].msts);return a.length?(a.reduce((x,y)=>x+y)/a.length).toFixed(1):'–'};
  const full=P.filter(p=>{const d=VK.filter(([k])=>p.v[k].done).pop();return d&&act(p.v[d[0]])===4}).length;
  const pend=P.filter(p=>p.sync==='Pending').length;
- $('tiles').innerHTML=[['Participants',P.length],['Baseline completed',c('b')],['3M done / overdue',c('m3')+' / '+od('m3')],['6M done / overdue',c('m6')+' / '+od('m6')],['4/4 pillars (latest visit)',full],['Mean 1MSTS',mean('b')+' → '+mean('m3')+' → '+mean('m6')],['Records pending sync',pend]].map(t=>`<div class="kpi"><b>${t[1]}</b><span>${t[0]}</span></div>`).join('');
+ /* Sync capsule: yellow while records wait to sync; when the last one syncs, a toast confirms and the capsule goes */
+ const chip=$('syncChip');
+ if(pend){chip.hidden=false;chip.textContent=pend+' to sync'}
+ else{chip.hidden=true;if(lastPend)toast('All records synced')}
+ lastPend=pend;
+ $('tiles').innerHTML=[['Participants',P.length],['Baseline completed',c('b')],['3M done / overdue',c('m3')+' / '+od('m3')],['6M done / overdue',c('m6')+' / '+od('m6')],['4/4 pillars (latest visit)',full],['Mean 1MSTS',mean('b')+' → '+mean('m3')+' → '+mean('m6')]].map(t=>`<div class="kpi"><b>${t[1]}</b><span>${t[0]}</span></div>`).join('');
    const keepScroll=(document.querySelector('#list .pl-scroll')||{scrollTop:0}).scrollTop;
   $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patients</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?`<button type="button" class="icon-btn list-sort" data-a="sortMenu" aria-label="Sort patients" title="Sort: ${esc(listSort)}"><i class="ms">sort</i></button><div class="sort-menu" hidden>${SORT_LABELS.map(l=>`<button type="button" class="sort-opt${l===listSort?' on':''}" data-sortopt="${esc(l)}">${esc(l)}</button>`).join('')}</div>`:'')+(P.length?'':'<div class="empty"><i class="ms">groups</i>No patients yet. Create one or load the demo data.</div>')+'<div class="pl-scroll">'+sortPts(P).map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.name||'Name missing')}</span><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><span class="pt-updated">Updated ${updatedTxt(p)}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('')+'</div>';
  const scrollBox=document.querySelector('#list .pl-scroll');if(scrollBox)scrollBox.scrollTop=keepScroll;keepSelectedVisible();
@@ -660,13 +678,19 @@ document.addEventListener('submit',e=>{if(e.target.id!=='fNew')return;e.preventD
 applyPerms();{const mine=DB.pts.filter(inScope);const v=loadView();if(v&&v.listSort)listSort=v.listSort;if(v&&!v.newMode&&mine.some(x=>x.id===v.sel)){sel=v.sel;tab=v.tab}else if(v&&v.newMode){newMode=true}else if(mine.length)sel=mine[0].id;}
 /* Connection comes from the shared header: it announces each change; saves stay Pending while offline */
 function setConnection(on,quiet){
-  if(!quiet&&(!DB.off)===on)return;
+  const wasOff=!!DB.off;
   DB.off=!on;
-  if(on){let n=0;DB.pts.forEach(q=>{if(q.sync==='Pending'){q.sync='Synced';n++}});persist();
-    if(!quiet)toast(n?`Back online: ${n} record${n>1?'s':''} synced`:'Back online')}
-  else{persist();if(!quiet)toast('Offline: changes are saved on this device')}
-  dash()}
+  if(on){
+    let n=0;DB.pts.forEach(q=>{if(q.sync==='Pending'){q.sync='Synced';n++}});persist();
+    if(!quiet&&wasOff)toast(n?`Back online: ${n} record${n>1?'s':''} synced`:'Back online');
+  } else {
+    persist();
+    if(!quiet&&!wasOff)toast('Offline: changes are saved on this device');
+  }
+  dash();
+}
 window.addEventListener('standhf:connection',e=>setConnection(e.detail.online,e.detail.quiet));
+if(typeof window.isStandhfOnline==='function') DB.off=!window.isStandhfOnline();
 /* Deep links from the investigator dashboard: ?new=1 or ?patient=ID&tab=b|m3|m6 */
 {const qp=new URLSearchParams(location.search);const pid=qp.get('patient');
  if(signedRole()==='investigator'&&signedIn()&&DB.pts.some(x=>x.inv==='Demo investigator')){DB.pts.forEach(x=>{if(x.inv==='Demo investigator')x.inv=signedIn()});persist()}

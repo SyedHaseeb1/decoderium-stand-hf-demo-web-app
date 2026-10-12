@@ -1,0 +1,24 @@
+{
+  "name": "STAND-HF E-CRF Portal",
+  "short_name": "STAND-HF",
+  "start_url": "/login/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1f3f",
+  "theme_color": "#1a5fb4",
+  "icons": [
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/STAND-HF-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

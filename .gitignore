@@ -1,0 +1,8 @@
+# Local environment documentation symlink (points to ../docs in parent folder)
+/docs
+
+# Local agent & editor overrides
+**/.claude/settings.local.json
+*.local
+.DS_Store
+Thumbs.db
