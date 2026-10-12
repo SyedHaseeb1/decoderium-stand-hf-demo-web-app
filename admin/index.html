@@ -319,7 +319,7 @@ function profileView(u,kpi){
   const mine=patients().filter(p=>p.inv===u.name),st=stats(mine);
   const cls={'In Progress':'In','Not Started':'Not'};
   const rows=mine.map(p=>`<tr><td><b>${esc(p.id)}</b></td><td>${esc(p.site)}</td>${['b','m3','m6'].map(k=>{const v=vstat(p,k);return `<td><span class="chip ${cls[v]||v}">${v}</span></td>`}).join('')}<td class="num">${(p.audit||[]).length}</td></tr>`).join('');
-  const activity=mine.flatMap(p=>(p.audit||[]).map(a=>({...a,pid:p.id}))).slice(-10).reverse();
+  const activity=mine.flatMap(p=>(p.audit||[]).map(a=>({...a,pid:p.id}))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,10);
   return `<div style="margin-bottom:12px"><button type="button" class="btn" data-profile-back><i class="ms">arrow_back</i>All investigators</button></div>
     <section class="card">
       <div class="card-head"><h2>${esc(u.name)}</h2><div style="display:flex;gap:12px;align-items:center"><small>${esc(u.username)} · ${u.sites.map(esc).join(', ')||'No sites'} · ${u.active?'Active':'Inactive'}</small>${session().role===SUPER?`<button type="button" class="btn" data-export="user" data-user="${esc(u.username)}"><i class="ms">download</i>Export CSV</button>`:''}</div></div>
@@ -340,7 +340,7 @@ function profileView(u,kpi){
     </section>
     <section class="card">
       <div class="card-head"><h2>Recent activity</h2><small>Last 10 changes</small></div>
-      ${activity.length?`<div class="table-wrap"><table><tr><th>When</th><th>Patient</th><th>Field</th><th>Change</th></tr>${activity.map(a=>`<tr><td>${esc(a.t)}</td><td>${esc(a.pid)}</td><td>${esc(a.f)}</td><td>${esc(a.n)}</td></tr>`).join('')}</table></div>`:'<div class="empty"><i class="ms">history</i>No activity yet.</div>'}
+      ${activity.length?`<div class="table-wrap"><table><tr><th>When</th><th>Patient</th><th>Field</th><th>Change</th></tr>${activity.map(a=>`<tr><td>${esc(a.t)}</td><td>${esc(a.pid)}</td><td>${esc(a.f)}</td><td>${a.o?esc(a.o)+' → ':''}${esc(a.n)}</td></tr>`).join('')}</table></div>`:'<div class="empty"><i class="ms">history</i>No activity yet.</div>'}
     </section>`;
 }
 
