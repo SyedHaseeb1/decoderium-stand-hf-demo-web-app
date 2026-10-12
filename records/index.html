@@ -96,7 +96,7 @@
   </style>
 <script>
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
 </script>
 </head>
 <body data-page="records">
