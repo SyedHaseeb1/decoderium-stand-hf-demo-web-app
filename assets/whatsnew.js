@@ -2,7 +2,8 @@
    To announce a new change: edit CONTENT and change VERSION.
    The checkbox "Don't show until the next change" hides it until VERSION changes. */
 (function(){
-  var VERSION='2026-10-15';
+  var DATE='2026-10-13';          /* the date these changes were made (shown to the client) */
+  var VERSION='2026-10-13-b';     /* changes whenever the list changes, so the alert returns */
   var KEY='standhf_whatsnew_hidden';
   var CONTENT=[
     {cat:'Sign-in', items:[
@@ -51,7 +52,7 @@
   wrap.setAttribute('aria-labelledby','wnTitle');
   wrap.innerHTML=
     '<div class="wn-card">'+
-      '<div class="wn-head"><h2 id="wnTitle">What\'s new in this demo</h2><small>Version '+esc(VERSION)+'</small></div>'+
+      '<div class="wn-head"><h2 id="wnTitle">What\'s new in this demo</h2><small>Changes as of '+esc(DATE)+'</small></div>'+
       '<div class="wn-body">'+CONTENT.map(function(g){
         return '<section class="wn-group"><h3>'+esc(g.cat)+'</h3><ul>'+g.items.map(function(i){return '<li>'+esc(i)+'</li>'}).join('')+'</ul></section>';
       }).join('')+'</div>'+
