@@ -33,7 +33,7 @@ const DEFAULT_ACCESS={
   ],
   perms:{
     superadmin:ALL_PERMS,
-    investigator:{add_patient:true,enter_data:true,mark_complete:true},
+    investigator:{add_patient:true,enter_data:true,mark_complete:true,load_demo:true,clear_all:true},
     central:{view_all_sites:true,export_data:true,mark_complete:true,assign_investigators:true}
   }
 };

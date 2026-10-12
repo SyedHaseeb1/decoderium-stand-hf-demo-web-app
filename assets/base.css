@@ -350,7 +350,7 @@ tr:last-child td { border-bottom: 0; }
 .metric b.bad { color: var(--error); }
 
 /* ---------- E-CRF: patient list and record ---------- */
-.lay { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.lay { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; align-items: start; }
 .pl { max-height: calc(100vh - 230px); overflow-y: auto; padding: 14px; }
 .list-head {
   position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center;
@@ -626,7 +626,7 @@ dialog.app-dialog::backdrop { background: rgba(27, 29, 34, 0.35); }
 }
 
 @media (max-width: 1100px) {
-  .lay { grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); }
+  .lay { grid-template-columns: 300px minmax(0, 1fr); }
 }
 
 @media (max-width: 1000px) {
@@ -1004,3 +1004,25 @@ td label.check-row input { width: 16px; height: 16px; }
   .kpi .top { display: none; }
   .kpi b { font-size: 18px; }
 }
+
+/* Records list: the column animates when the list collapses or expands */
+.lay { transition: grid-template-columns 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .lay { transition: none; } }
+
+/* Header profile: round icon that opens a panel (same look as the notifications panel) */
+.profile-wrap { position: relative; }
+.avatar-btn { width: 40px; height: 40px; flex-shrink: 0; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--primary-soft); color: var(--on-primary-soft); cursor: pointer; }
+.avatar-btn .ms { font-size: 26px; }
+.avatar-btn:hover { background: var(--primary-soft); filter: brightness(0.97); }
+.profile-panel { position: absolute; right: 0; top: calc(100% + 10px); width: 300px; max-width: 92vw; background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 16px; z-index: 150; }
+.profile-panel[hidden] { display: none; }
+.pp-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.pp-avatar { width: 44px; height: 44px; font-size: 16px; }
+.pp-id { min-width: 0; }
+.pp-id b { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-id small { font-size: 12px; color: var(--ink-3); }
+.pp-list { margin: 0 0 14px; display: grid; gap: 8px; }
+.pp-list > div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.pp-list dt { color: var(--ink-2); flex: none; }
+.pp-list dd { margin: 0; font-weight: 500; text-align: right; min-width: 0; }
+.pp-out { width: 100%; justify-content: center; }

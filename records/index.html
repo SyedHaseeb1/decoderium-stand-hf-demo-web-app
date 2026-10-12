@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css">
+  <link rel="stylesheet" href="../assets/base.css?v=20261013g">
   <style>
     .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
     .tint{background:var(--soft);border-radius:14px;padding:16px}
@@ -387,7 +387,7 @@ function pane(){saveView();if(newMode){paneNew();return}const p=cur(),el=$('pane
   <div class="g tint">${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div>
   <div class="g tint" style="margin-top:12px">${inp(p,`v.${k}.ev.int`,'Major intervention / event')}${inp(p,`v.${k}.ini`,'Investigator initials')}</div>
   ${navBar(k,!can('mark_complete')?'':v.done?`<span class="lock-hint"><i class="ms">lock</i>Visit locked as complete</span><button data-a="reopen"><i class="ms">undo</i>Reopen visit</button>`:`<button data-a="done"><i class="ms">task_alt</i>Mark complete</button><span id="miss" class="e"></span>`)}`}
- el.innerHTML=h;if(tab!=='info'&&tab!=='sum'&&p.v[tab].done)el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true);
+ el.innerHTML=h;el.classList.remove('form-in');void el.offsetWidth;el.classList.add('form-in');if(tab!=='info'&&tab!=='sum'&&p.v[tab].done)el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true);
  if(tab==='info'&&p.v.b.done)el.querySelectorAll('[data-p="consent"],[data-p="age"],[data-p="sex"],[data-p="etio"],[data-p="etioO"]').forEach(i=>i.disabled=true);
  if(!can('enter_data'))el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true);
  paintFields();
@@ -442,7 +442,7 @@ function demoRx(label){const c=document.createElement('canvas');c.width=600;c.he
  x.fillStyle='#fff';x.font='bold 30px sans-serif';x.fillText('Prescription (demo)',24,46);
  x.fillStyle='#222';x.font='26px sans-serif';x.fillText(label,24,120);
  return new Promise(r=>c.toBlob(r,'image/png'))}
-$('bDemo').onclick=async()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
+const loadDemo=async()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
  const team=accessStore().users.filter(u=>u.role==='investigator'&&u.active);
  const DOSE=[['49/51 mg twice daily'],['25 mg twice daily'],['25 mg daily'],['10 mg daily']];
  const DRUG=[lookup('gdmt.arni')[0],lookup('gdmt.bb')[0],lookup('gdmt.mra')[0],lookup('gdmt.sg')[0]];
@@ -476,6 +476,7 @@ $('bDemo').onclick=async()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setD
  }
  persist();if(DB.pts.length){sel=DB.pts[DB.pts.length-1].id}tab='sum';pane();dash();
  toast('Demo data loaded: '+created.length+' visits with prescriptions')};
+$('bDemo').onclick=()=>window.withLoader(1000,loadDemo);
 
 $('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.href='#'};
 
@@ -510,7 +511,7 @@ async function removeFile(fid){const p=cur();if(!p)return;let k=null,f=null;
   VK.forEach(([x])=>{const hit=((p.files&&p.files[x])||[]).find(y=>y.id===fid);if(hit){k=x;f=hit}});
   if(!f)return;
   if(p.v[k].done){toast('Visit is locked. Reopen it to remove files.');return}
-  if(!await appDialog.confirm({tone:'danger',icon:'delete',title:'Remove file?',message:f.name,confirmText:'Remove'}))return;
+  if(!await appDialog.confirm({tone:'danger',icon:'delete',title:'Remove file?',message:f.name||'This prescription file will be removed from the record.',confirmText:'Remove'}))return;
   p.files[k]=p.files[k].filter(y=>y.id!==fid);
   try{await delFile(fid)}catch(e){}
   p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:k+'.file',o:f.name,n:'removed'});save(p);pane();dash();toast('File removed: '+f.name)}
@@ -718,7 +719,7 @@ function listChevron(){
   return phone?(listOpen?'expand_less':'expand_more'):(listOpen?'chevron_left':'chevron_right');
 }
 /* Patient list: show or hide */
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#listToggle')){listOpen=!listOpen;dash()}});
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#listToggle')){listOpen=!listOpen;dash();}});
 
 /* Search filters the patient list */
 $('search').addEventListener('input',()=>{const q=$('search').value.trim().toLowerCase();

@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css">
+  <link rel="stylesheet" href="../assets/base.css?v=20261013g">
 <script>
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
@@ -159,6 +159,22 @@ $('form').addEventListener('submit',e=>{
   try{sessionStorage.setItem(AUTH_KEY,'1');sessionStorage.setItem(USER_KEY,acc.name);sessionStorage.setItem(ROLE_KEY,acc.role);sessionStorage.setItem('standhf_username',acc.user)}
   catch(err){return fail('Browser storage is blocked, so sign-in cannot be kept. Allow site data and try again.','signin')}
   location.replace(acc.role==='investigator'?DASH:acc.role==='superadmin'?ADMIN:APP);
+});
+</script>
+<script>
+/* Size the sign-in screen to the visible height (the keyboard and browser bars change it) */
+function setVH(){document.documentElement.style.setProperty('--vh',(window.visualViewport||window).height+'px')}
+window.addEventListener('resize',setVH);
+if(window.visualViewport)window.visualViewport.addEventListener('resize',setVH);
+setVH();
+/* With the keyboard open, bring the field being typed in into view and keep only the fields and button */
+document.addEventListener('focusin',function(e){
+  if(!e.target.matches('input'))return;
+  document.querySelector('.auth-page').classList.add('kbd');
+  setTimeout(function(){e.target.scrollIntoView({block:'center',behavior:'smooth'})},300);
+});
+document.addEventListener('focusout',function(){
+  setTimeout(function(){if(!document.activeElement||document.activeElement.tagName!=='INPUT'){document.querySelector('.auth-page').classList.remove('kbd');document.querySelector('.auth-page').scrollTop=0}},300);
 });
 </script>
 </body>

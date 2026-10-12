@@ -38,10 +38,16 @@
       segment+
       '<button type="button" class="'+initPillClass+'" id="sync" role="button" aria-live="polite" title="'+initPillTitle+'"'+(ds.own!==undefined?' data-own="1"':'')+'>'+initPillText+'</button>'+
       '<div class="notify"><button type="button" class="bell" id="bell" aria-label="Notifications" title="Notifications"><i class="ms">notifications</i><span class="badge" id="bellCount" hidden>0</span></button><div class="notify-panel" id="notifyPanel" role="dialog" aria-label="Notifications" hidden></div></div>'+
-      '<div class="profile">'+
-        '<span class="avatar" id="avatar" aria-hidden="true">'+esc(initials)+'</span>'+
-        '<span class="profile-meta"><b id="userName">'+esc(name)+'</b><span id="userRole">'+esc(roleLabel+' · '+scope)+'</span></span>'+
-        '<button type="button" class="icon-btn" id="bOut" title="Sign out" aria-label="Sign out"><i class="ms">logout</i></button>'+
+      '<div class="notify profile-wrap">'+
+        '<button type="button" class="avatar-btn" id="profBtn" aria-label="Profile" title="Profile" aria-expanded="false"><i class="ms">account_circle</i></button>'+
+        '<div class="profile-panel" id="profPanel" role="dialog" aria-label="Profile" hidden>'+
+          '<div class="pp-head"><span class="avatar pp-avatar" id="avatar" aria-hidden="true">'+esc(initials)+'</span><div class="pp-id"><b id="userName">'+esc(name)+'</b><small id="userRole">'+esc(roleLabel)+'</small></div></div>'+
+          '<dl class="pp-list">'+
+            '<div><dt>Username</dt><dd>'+esc(sess.username||'')+'</dd></div>'+
+            '<div><dt>Sites</dt><dd>'+esc(scope)+'</dd></div>'+
+          '</dl>'+
+          '<button type="button" class="btn pp-out" id="bOut"><i class="ms">logout</i>Sign out</button>'+
+        '</div>'+
       '</div>'+
     '</header>';
 
@@ -49,6 +55,12 @@
   document.getElementById('bOut').addEventListener('click',function(){
     try{sessionStorage.removeItem('standhf_auth')}catch(e){}
     location.href=root+'login/'});
+
+  /* Profile: round icon opens the profile panel */
+  var pp=document.getElementById('profPanel'), pb=document.getElementById('profBtn');
+  pb.addEventListener('click',function(e){e.stopPropagation();pp.hidden=!pp.hidden;pb.setAttribute('aria-expanded',String(!pp.hidden))});
+  document.addEventListener('click',function(e){if(!e.target.closest('.profile-wrap')){pp.hidden=true;pb.setAttribute('aria-expanded','false')}});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){pp.hidden=true;pb.setAttribute('aria-expanded','false')}});
 
   /* Connection */
   var last=initOn;
@@ -172,4 +184,12 @@
   document.addEventListener('click',function(e){if(!e.target.closest('.notify'))panel.hidden=true});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')panel.hidden=true});
   paintNotes();
+
+  /* Tablet: the search collapses to an icon and expands on tap */
+  var sb=host.querySelector('.topbar .search'), si=document.getElementById('search');
+  if(sb&&si){
+    sb.addEventListener('click',function(){if(!sb.classList.contains('open')){sb.classList.add('open');si.focus()}});
+    si.addEventListener('blur',function(){if(!si.value)sb.classList.remove('open')});
+    si.addEventListener('keydown',function(e){if(e.key==='Escape'){si.value='';si.blur();sb.classList.remove('open')}});
+  }
 })();
