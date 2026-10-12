@@ -24,13 +24,19 @@
   var segment=ds.timeline!==undefined?
     '<div class="segment" role="group" aria-label="Period"><button type="button" data-period="1">Today</button><button type="button" data-period="7" class="on">Week</button><button type="button" data-period="30">Month</button></div>':'';
 
+  var initManual=sessionStorage.getItem('standhf_manual_offline')==='1';
+  var initOn=!initManual&&(typeof navigator!=='undefined'?navigator.onLine!==false:true);
+  var initPillText='● '+(initOn?'Online':(initManual?'Offline (simulated)':'Offline'));
+  var initPillClass='pill '+(initOn?'synced':'pending');
+  var initPillTitle=initOn?'Connected to network · Click to simulate offline mode':'Offline mode active · Click to reconnect';
+
   host.className='app-header';
   host.innerHTML=
-    '<div class="warn offline-bar" id="offBar" role="status" hidden><i class="ms">cloud_off</i><span>You are offline. Changes are saved on this device and will sync when the connection returns.</span></div>'+
+    '<div class="warn offline-bar" id="offBar" role="status" '+(initOn?'hidden':'')+'><i class="ms">cloud_off</i><span>You are offline. Changes are saved on this device and will sync when the connection returns.</span><button type="button" class="off-retry-btn" id="offRetry" title="Check connection">Check connection</button></div>'+
     '<header class="topbar">'+
       '<label class="search"><i class="ms">search</i><input id="search" type="search" placeholder="'+esc(ds.search||'Search')+'" autocomplete="off"></label>'+
       segment+
-      '<span class="pill" id="sync"'+(ds.own!==undefined?' data-own="1"':'')+'></span>'+
+      '<button type="button" class="'+initPillClass+'" id="sync" role="button" aria-live="polite" title="'+initPillTitle+'"'+(ds.own!==undefined?' data-own="1"':'')+'>'+initPillText+'</button>'+
       '<div class="notify"><button type="button" class="bell" id="bell" aria-label="Notifications" title="Notifications"><i class="ms">notifications</i><span class="badge" id="bellCount" hidden>0</span></button><div class="notify-panel" id="notifyPanel" role="dialog" aria-label="Notifications" hidden></div></div>'+
       '<div class="profile">'+
         '<span class="avatar" id="avatar" aria-hidden="true">'+esc(initials)+'</span>'+
@@ -45,23 +51,77 @@
     location.href=root+'login/'});
 
   /* Connection */
-  var last=null;
+  var last=initOn;
+  window.isStandhfOnline=function(){return last!==null?last:initOn};
+  var isLocalHost=function(){
+    try{
+      return /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/.test(location.hostname)||location.protocol==='file:';
+    }catch(e){return true}
+  };
+
   var probeNet=function(){
-    if(!navigator.onLine)return Promise.resolve(false);
-    if(location.protocol==='file:')return Promise.resolve(true);
-    var c=new AbortController(),t=setTimeout(function(){c.abort()},5000);
-    return fetch(new URL('../assets/base.css',location.href),{method:'HEAD',cache:'no-store',signal:c.signal})
-      .then(function(){clearTimeout(t);return true},function(){clearTimeout(t);return false})};
+    if(sessionStorage.getItem('standhf_manual_offline')==='1')return Promise.resolve(false);
+    if(typeof navigator!=='undefined'&&navigator.onLine===false)return Promise.resolve(false);
+    var c=new AbortController(),t=setTimeout(function(){c.abort()},2500);
+    var probeUrl=isLocalHost()?
+      'https://www.google.com/generate_204':
+      new URL(root+'assets/base.css',location.href);
+    var fetchOpts=isLocalHost()?
+      {method:'GET',mode:'no-cors',cache:'no-store',signal:c.signal}:
+      {method:'HEAD',cache:'no-store',signal:c.signal};
+
+    return fetch(probeUrl,fetchOpts)
+      .then(function(){clearTimeout(t);return true})
+      .catch(function(){clearTimeout(t);return false})};
+
   var applyNet=function(on,quiet){
     if(!quiet&&last===on)return;
     last=on;
-    document.getElementById('offBar').hidden=on;
+    var bar=document.getElementById('offBar');
+    if(bar)bar.hidden=on;
     var pill=document.getElementById('sync');
-    if(pill&&!pill.dataset.own){pill.textContent='● '+(on?'Online':'Offline');pill.className='pill '+(on?'synced':'pending')}
+    if(pill&&!pill.dataset.own){
+      var isManual=sessionStorage.getItem('standhf_manual_offline')==='1';
+      pill.textContent='● '+(on?'Online':(isManual?'Offline (simulated)':'Offline'));
+      pill.className='pill '+(on?'synced':'pending');
+      pill.title=on?
+        'Connected to network · Click to simulate offline mode':
+        (isManual?'Offline simulation active · Click to reconnect':'Network offline · Click to retry connection');
+      pill.setAttribute('aria-label',pill.title);
+    }
     window.dispatchEvent(new CustomEvent('standhf:connection',{detail:{online:on,quiet:!!quiet}}))};
-  window.addEventListener('online',function(){probeNet().then(applyNet)});
-  window.addEventListener('offline',function(){applyNet(false)});
-  setInterval(function(){probeNet().then(applyNet)},20000);
+
+  var pillEl=document.getElementById('sync');
+  if(pillEl&&!pillEl.dataset.own){
+    pillEl.addEventListener('click',function(){
+      var isManual=sessionStorage.getItem('standhf_manual_offline')==='1';
+      if(isManual||!last){
+        sessionStorage.removeItem('standhf_manual_offline');
+        probeNet().then(function(on){applyNet(on,false)});
+      }else{
+        sessionStorage.setItem('standhf_manual_offline','1');
+        applyNet(false,false);
+      }
+    });
+  }
+
+  var offRetry=document.getElementById('offRetry');
+  if(offRetry){
+    offRetry.addEventListener('click',function(){
+      sessionStorage.removeItem('standhf_manual_offline');
+      probeNet().then(function(on){applyNet(on,false)});
+    });
+  }
+
+  window.addEventListener('online',function(){
+    if(sessionStorage.getItem('standhf_manual_offline')!=='1'){
+      probeNet().then(function(on){applyNet(on,false)});
+    }
+  });
+  window.addEventListener('offline',function(){applyNet(false,false)});
+  setInterval(function(){
+    probeNet().then(function(on){applyNet(on,false)});
+  },5000);
   probeNet().then(function(on){applyNet(on,true)});
   /* Notifications: the dummy list for this user, limited to the sites they may see */
   var ICON={deleted:'delete',due:'event',overdue:'warning',missing:'event_busy',admin:'person_add',info:'description'};
