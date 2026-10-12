@@ -38,8 +38,8 @@
       segment+
       '<button type="button" class="'+initPillClass+'" id="sync" role="button" aria-live="polite" title="'+initPillTitle+'"'+(ds.own!==undefined?' data-own="1"':'')+'>'+initPillText+'</button>'+
       '<div class="notify"><button type="button" class="bell" id="bell" aria-label="Notifications" title="Notifications"><i class="ms">notifications</i><span class="badge" id="bellCount" hidden>0</span></button><div class="notify-panel" id="notifyPanel" role="dialog" aria-label="Notifications" hidden></div></div>'+
-      '<div class="notify profile-wrap">'+
-        '<button type="button" class="avatar-btn" id="profBtn" aria-label="Profile" title="Profile" aria-expanded="false"><i class="ms">account_circle</i></button>'+
+      '<div class="profile-wrap">'+
+        '<button type="button" class="avatar-btn'+(sess.role==='superadmin'?' role-super':'')+'" id="profBtn" aria-label="Profile" title="Profile" aria-expanded="false"><i class="ms">account_circle</i></button>'+
         '<div class="profile-panel" id="profPanel" role="dialog" aria-label="Profile" hidden>'+
           '<div class="pp-head"><span class="avatar pp-avatar" id="avatar" aria-hidden="true">'+esc(initials)+'</span><div class="pp-id"><b id="userName">'+esc(name)+'</b><small id="userRole">'+esc(roleLabel)+'</small></div></div>'+
           '<dl class="pp-list">'+

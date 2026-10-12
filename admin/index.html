@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261013g">
+  <link rel="stylesheet" href="../assets/base.css?v=20261015b">
 <script>
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
@@ -34,6 +34,7 @@
       </div>
       <div class="actions">
         <a class="btn" href="../records/"><i class="ms">edit_note</i>Patient records</a>
+        <button type="button" class="btn" id="exportAll" data-export="all" hidden><i class="ms">download</i>Export all patients</button>
       </div>
     </div>
 
@@ -42,11 +43,11 @@
   </div>
 </div>
 
-<script src="../assets/access.js"></script>
-<script src="../assets/notifications-data.js"></script>
-<script src="../assets/dialog.js"></script>
-<script src="../assets/header.js" data-root="../"></script>
-<script src="../assets/nav.js"></script>
+<script src="../assets/access.js?v=20261015a"></script>
+<script src="../assets/notifications-data.js?v=20261015a"></script>
+<script src="../assets/dialog.js?v=20261015a"></script>
+<script src="../assets/header.js?v=20261015a" data-root="../"></script>
+<script src="../assets/nav.js?v=20261015a"></script>
 <script>
 const LOGIN='../login/', ECRF='../records/', SUPER='superadmin';
 const $=id=>document.getElementById(id);
@@ -314,6 +315,25 @@ function exportTeam(){
   });
   csvDownload(rows,'stand-hf-investigators','Investigator data exported');
 }
+/* Super Admin only: every patient visit across all sites, one row per visit */
+function exportAll(){
+  if(session().role!==SUPER){toast('Only Super Admin can export data');return}
+  const label={b:'Baseline',m3:'3 months',m6:'6 months'};
+  const rows=[['Study ID','Site','Investigator','Investigator username','Patient name','Contact number','Consent date','Age','Sex','HF etiology','Visit','Visit status','Visit date','Weight (kg)','Heart rate','Systolic BP','Diastolic BP','NYHA class','1MSTS repetitions','LVEF (%)','Active GDMT pillars','ARNI drug','ARNI dose','ARNI status','Beta-blocker drug','Beta-blocker dose','Beta-blocker status','MRA drug','MRA dose','MRA status','SGLT2 drug','SGLT2 dose','SGLT2 status','Prescription files']];
+  const users=accessStore().users;
+  patients().forEach(p=>{
+    const owner=users.find(u=>u.name===p.inv);
+    ['b','m3','m6'].forEach(k=>{
+      const v=p.v[k];
+      const g=q=>(v.g&&v.g[q])||{};
+      const act=PL.filter(q=>g(q).status==='Active').length;
+      rows.push([p.id,p.site,p.inv,owner?owner.username:'',p.name,p.contact,p.consent,p.age,p.sex,p.etio,label[k],vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act,
+        g('arni').drug,g('arni').dose,g('arni').status,g('bb').drug,g('bb').dose,g('bb').status,g('mra').drug,g('mra').dose,g('mra').status,g('sg').drug,g('sg').dose,g('sg').status,
+        ((p.files&&p.files[k])||[]).map(f=>f.name).join('; ')]);
+    });
+  });
+  csvDownload(rows,'stand-hf-all-patients','All patient visits exported');
+}
 /* One investigator: one row per patient-visit */
 function exportUser(username){
   if(session().role!==SUPER){toast('Only Super Admin can export data');return}
@@ -563,6 +583,8 @@ document.addEventListener('submit',e=>{
 const name=session().name;
 $('userName').textContent=name||'Signed in';
 $('userRole').textContent=ROLE_NAMES[session().role]||'';
+if(session().role===SUPER)$('exportAll').hidden=false;
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-export="all"]'))exportAll()});
 $('welcome').textContent=name?'Welcome, '+name.split(/\s+/)[0]:'Super Admin dashboard';
 $('avatar').textContent=initials(name);
 $('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.replace(LOGIN)};

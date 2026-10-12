@@ -5,6 +5,10 @@ window.LOOKUPS={
   'gdmt.bb':['Metoprolol succinate','Carvedilol'],
   'gdmt.mra':['Spironolactone','Eplerenone'],
   'gdmt.sg':['Dapagliflozin','Empagliflozin'],
+  'gdmt.dose.arni':['24/26 mg twice daily','49/51 mg twice daily','97/103 mg twice daily'],
+  'gdmt.dose.bb':['12.5 mg daily','25 mg daily','50 mg daily','100 mg daily'],
+  'gdmt.dose.mra':['12.5 mg daily','25 mg daily','50 mg daily'],
+  'gdmt.dose.sg':['5 mg daily','10 mg daily'],
   'gdmt.status':['Active','Not started','Stopped'],
   'patient.sex':['Male','Female'],
   'patient.etiology':['Ischemic','Non-ischemic','Other']

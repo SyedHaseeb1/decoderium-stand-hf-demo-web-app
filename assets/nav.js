@@ -122,3 +122,22 @@ window.withLoader=function(ms,fn){
     setTimeout(function(){l.remove()},250);
   },ms);
 };
+
+/* Dropdowns: a touch or click outside an open dropdown closes it (so only one stays open) */
+document.addEventListener('pointerdown',function(e){
+  var t=e.target;
+  document.querySelectorAll('.cb-list:not([hidden])').forEach(function(ul){
+    var wrap=ul.closest('.cb');
+    if(wrap&&wrap.contains(t))return;
+    if(typeof cbClose==='function'&&wrap)cbClose(wrap);else ul.hidden=true;
+  });
+  /* Each panel stays open only for taps on its own button or inside it */
+  var keep=[['.sort-menu','.list-sort,.sort-menu'],['.notify-panel','.notify'],['.profile-panel','.profile-wrap']];
+  keep.forEach(function(k){
+    document.querySelectorAll(k[0]+':not([hidden])').forEach(function(el){
+      if(t.closest&&t.closest(k[1]))return;
+      el.hidden=true;
+    });
+  });
+},{capture:true,passive:true});
+

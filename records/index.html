@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261013g">
+  <link rel="stylesheet" href="../assets/base.css?v=20261015b">
   <style>
     .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
     .tint{background:var(--soft);border-radius:14px;padding:16px}
@@ -127,13 +127,13 @@
     <dialog class="viewer" id="viewer" aria-labelledby="vTitle"><div class="viewer-head"><b id="vTitle"></b><button type="button" class="icon-btn" id="vClose" aria-label="Close"><i class="ms">close</i></button></div><div class="viewer-body" id="vBody"></div></dialog>
   </div>
 </div>
-<script src="../assets/access.js"></script>
-<script src="../assets/notifications-data.js"></script>
-<script src="../assets/lookups.js"></script>
-<script src="../assets/file-card.js"></script>
-<script src="../assets/dialog.js"></script>
-<script src="../assets/header.js" data-root="../"></script>
-<script src="../assets/nav.js"></script>
+<script src="../assets/access.js?v=20261015a"></script>
+<script src="../assets/notifications-data.js?v=20261015a"></script>
+<script src="../assets/lookups.js?v=20261015a"></script>
+<script src="../assets/file-card.js?v=20261015a"></script>
+<script src="../assets/dialog.js?v=20261015a"></script>
+<script src="../assets/header.js?v=20261015a" data-root="../"></script>
+<script src="../assets/nav.js?v=20261015a"></script>
 <script>
 const KEY='standhf_ecrf_v1';
 let DB={pts:[],off:false},sel=null,tab='info',newMode=false,listOpen=!window.matchMedia('(max-width: 1000px)').matches;
@@ -286,6 +286,7 @@ const maxAttr=path=>{const r=MAXLEN.find(([re])=>re.test(path));return r?`maxlen
 const inp=(p,path,l,t,x='')=>{const st=fieldState(p,path);return `<label>${l}${freq(st)}<input data-p="${path}" type="${t||'text'}" value="${esc(G(p,path))}" ${maxAttr(path)} ${x} class="${fcls(st)}" ${st.lvl==='e'?'aria-invalid="true"':''}>${fmsg(st)}</label>`};
 /* Drugs offered under each GDMT pillar. Placeholder list, marked TBC until the client confirms it (Q-16) */
 const DRUGS={arni:lookup('gdmt.arni'),bb:lookup('gdmt.bb'),mra:lookup('gdmt.mra'),sg:lookup('gdmt.sg')};
+const DOSES={arni:lookup('gdmt.dose.arni'),bb:lookup('gdmt.dose.bb'),mra:lookup('gdmt.dose.mra'),sg:lookup('gdmt.dose.sg')};
 const sel_=(p,path,l,o)=>{const st=fieldState(p,path);return ddHtml(`data-p="${path}"`,'dd:'+path,l,o.filter(x=>x!==''),G(p,path),fcls(st),st.lvl==='e'?'aria-invalid="true"':'',{req:freq(st),msg:fmsg(st)})};
 /* One checkbox design everywhere: the card-style check row */
 const ck=(p,path,l)=>opt(p,path,l);
@@ -294,7 +295,7 @@ const pillar=(p,k,q,n)=>{const s=G(p,`v.${k}.g.${q}.status`)||'';
   return `<div class="pillar ${s==='Active'?'active':s==='Stopped'?'stopped':''}">
     <div class="pillar-head"><b>${n}</b></div>
     ${sel_(p,`v.${k}.g.${q}.drug`,'Generic drug',DRUGS[q])}
-    <div class="g2">${inp(p,`v.${k}.g.${q}.dose`,'Daily dose','text')}${inp(p,`v.${k}.g.${q}.start`,'Start date','date')}</div>
+    <div class="g2">${sel_(p,`v.${k}.g.${q}.dose`,'Daily dose',DOSES[q])}${inp(p,`v.${k}.g.${q}.start`,'Start date','date')}</div>
     ${sel_(p,`v.${k}.g.${q}.status`,'Status',lookup('gdmt.status'))}
   </div>`};
 
@@ -444,7 +445,7 @@ function demoRx(label){const c=document.createElement('canvas');c.width=600;c.he
  return new Promise(r=>c.toBlob(r,'image/png'))}
 const loadDemo=async()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
  const team=accessStore().users.filter(u=>u.role==='investigator'&&u.active);
- const DOSE=[['49/51 mg twice daily'],['25 mg twice daily'],['25 mg daily'],['10 mg daily']];
+ const DOSE=[['49/51 mg twice daily'],['25 mg daily'],['25 mg daily'],['10 mg daily']];
  const DRUG=[lookup('gdmt.arni')[0],lookup('gdmt.bb')[0],lookup('gdmt.mra')[0],lookup('gdmt.sg')[0]];
  const created=[];
  /* Audit entries use the same shape as a real change: who, when, field, before, after */
