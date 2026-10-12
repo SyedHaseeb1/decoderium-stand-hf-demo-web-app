@@ -238,7 +238,7 @@ function fieldState(p,path){
     if(f==='etioO'&&txt.trim().length<2)set('e','Enter at least 2 characters');
     if(f==='contact'&&!contactOk(val))set('e','Enter a valid phone number (7 to 15 digits)');
     if(f==='consent'){if(day(val)>t0)set('e','Consent date cannot be in the future');else if(day(val).getFullYear()<1990)set('e','Check the year');else if(bd&&day(val)>bd)set('e','After the baseline visit date')}
-    if(f==='age'){if(!Number.isInteger(n))set('e','Whole years only');else if(n<18)set('e','Must be 18 or older');else if(n>150)set('e','Please check age');else if(n>110)set('w','Please check the age')}
+    if(f==='age'){if(!Number.isInteger(n))set('e','Whole years only');else if(n<18)set('e','Must be 18 or older');else if(n>150)set('e','Please check age')}
     return st;
   }
   if(isDateField(f)&&day(val)>t0)set('e','Date cannot be in the future');
@@ -437,12 +437,13 @@ $('bCsv').onclick=()=>{const H=['study_id','site','investigator','consent','age'
  const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"',rows=DB.pts.map(p=>{const a=[p.id,p.site,p.inv,p.consent,p.age,p.sex,p.etio];VK.forEach(([k])=>{const v=p.v[k];a.push(vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act(v),G(v,'ev.hf')?1:0,G(v,'ev.all')?1:0,G(v,'ev.death')?1:0)});return a.map(q).join(',')});
  const b=new Blob([[H.join(','),...rows].join('\n')],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='stand_hf_export.csv';a.click()};
 
-/* Demo data: 8 patients split between the investigators who work at each site, with every required field and one prescription per visit */
+/* Demo data: 44 patients split between the investigators who work at each site, with every required field and one prescription per visit */
 function demoRx(label){const c=document.createElement('canvas');c.width=600;c.height=400;const x=c.getContext('2d');
  x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#1a5fb4';x.fillRect(0,0,c.width,60);
  x.fillStyle='#fff';x.font='bold 30px sans-serif';x.fillText('Prescription (demo)',24,46);
  x.fillStyle='#222';x.font='26px sans-serif';x.fillText(label,24,120);
  return new Promise(r=>c.toBlob(r,'image/png'))}
+const DEMO_NAMES=['Ali Raza','Sana Iqbal','Usman Tariq','Ayesha Noor','Bilal Ahmed','Hina Yousaf','Farhan Akhtar','Zainab Shah','Imran Hussain','Mariam Javed','Omar Farooq','Nadia Qureshi','Asad Mehmood','Sadia Rashid','Hamza Siddiqui','Kiran Abbas','Tariq Nawaz','Rabia Saleem','Waqar Younas','Fatima Zaidi','Danish Malik','Saima Bashir','Adnan Latif','Uzma Rehman','Kashif Iqbal','Maryam Ghani','Shahid Afridi','Noreen Akram','Faisal Mahmood','Lubna Pervaiz','Naveed Anwar','Huma Shafiq','Junaid Sheikh','Amna Hayat','Saad Karim','Rukhsana Bibi','Yasir Ali','Tahira Parveen','Zubair Ahmad','Khadija Nasir','Irfan Ullah','Sobia Riaz','Mudassar Rana','Rizwan Haider'];
 const loadDemo=async()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
  const team=accessStore().users.filter(u=>u.role==='investigator'&&u.active);
  const DOSE=[['49/51 mg twice daily'],['25 mg daily'],['25 mg daily'],['10 mg daily']];
@@ -452,8 +453,8 @@ const loadDemo=async()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(
  const log=(p,by,n,h,f,o,nv)=>{const x=new Date(T);x.setDate(x.getDate()-n);x.setHours(h,0,0,0);p.audit.push({by,at:x.getTime(),t:x.toLocaleString('en-GB'),f,o,n:nv})};
  Array.from({length:44},(_,i)=>({ago:6+((i*37)%220),site:['RIC','LHR','KHI','ISB'][i%4]})).forEach(({ago,site},i)=>{
   const u=team.find(x=>x.sites.includes(site));if(!u)return;
-  const p=mk(site,u.name,d(ago+3),45+i*3,i%3?'Male':'Female',i%2?'Ischemic':'Non-ischemic');
-  p.owner=u.username;log(p,u.name,ago+3,9,'patient','','created');p.name='Demo patient '+(i+1);p.contact='0300555'+String(100+i).padStart(4,'0');p.sync='Synced';
+  const p=mk(site,u.name,d(ago+3),30+(i*3)%100,i%3?'Male':'Female',i%2?'Ischemic':'Non-ischemic');
+  p.owner=u.username;log(p,u.name,ago+3,9,'patient','','created');p.name=DEMO_NAMES[i%DEMO_NAMES.length];p.contact='0300555'+String(100+i).padStart(4,'0');p.sync='Synced';
   [['b',ago,0],['m3',ago-90,1],['m6',ago-180,2]].forEach(([k,n,j])=>{if(n<0)return;const v=p.v[k];
    Object.assign(v,{date:d(n),wt:70+i-j,hr:84-j*5,sbp:108+j*4,dbp:68+j*2,nyha:['III','II','II'][j],msts:9+i%4+j*4+i%3,done:true,g:{}});
    if(k!=='m3'){v.lvef=28+i%5+j*3;v.echoDate=d(n+2)}

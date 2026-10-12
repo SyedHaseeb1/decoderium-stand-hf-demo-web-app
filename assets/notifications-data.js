@@ -3,7 +3,7 @@
    link.patient and link.tab open that record in the records page (use "Load demo" to create the sample patients). */
 window.NOTIFICATIONS_DUMMY={
   'michael.johnson':[
-    {id:'a1',site:'LHR',type:'admin',title:'New site investigator added',text:'Dr. Sarah Thompson was added to Lakeview Heart Clinic.',time:'Today, 09:12',link:{page:'admin'}},
+    {id:'a1',site:'LHR',type:'admin',title:'New site investigator added',text:'Sarah Thompson was added to Lakeview Heart Clinic.',time:'Today, 09:12',link:{page:'admin'}},
     {id:'a2',site:'KHI',type:'info',title:'Export downloaded',text:'CSV export was downloaded by Robert Wilson.',time:'Yesterday, 17:40',link:{page:'records'}}
   ],
   'emily.carter':[
