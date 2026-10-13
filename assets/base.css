@@ -1051,3 +1051,253 @@ td label.check-row input { width: 16px; height: 16px; }
   box-shadow: 0 16px 40px rgba(27, 29, 34, 0.22), 0 4px 12px rgba(27, 29, 34, 0.12);
 }
 
+/* ==========================================================================
+   Role-Based Dashboards & Central Team Styles (Phase 2 & FSD)
+   ========================================================================== */
+
+/* Hierarchy & Filter Toolbar */
+.hierarchy-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--card);
+  padding: 14px 18px;
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+.hierarchy-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.filter-group .ms {
+  font-size: 18px;
+  color: var(--primary);
+}
+.filter-select {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.filter-select:hover {
+  background: var(--soft-2);
+}
+.filter-select:focus {
+  border-color: var(--primary);
+  background: #fff;
+}
+.hierarchy-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--primary-soft);
+  color: var(--on-primary-soft);
+}
+
+/* GDMT Pillar Progress Meters */
+.gdmt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+.gdmt-card {
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gdmt-card.p1 { border-left: 4px solid var(--brand-magenta); }
+.gdmt-card.p2 { border-left: 4px solid var(--primary); }
+.gdmt-card.p3 { border-left: 4px solid var(--warning); }
+.gdmt-card.p4 { border-left: 4px solid var(--success); }
+
+.gdmt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.gdmt-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.gdmt-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.gdmt-bar {
+  height: 8px;
+  width: 100%;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+}
+.gdmt-bar i {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* Reason chips grid */
+.reason-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.reason-tag {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--soft-2);
+  color: var(--ink-2);
+}
+
+/* Trajectories Card */
+.traj-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.traj-row:last-child {
+  border-bottom: 0;
+}
+.traj-stages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.traj-pill {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--soft);
+}
+.traj-arrow {
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+/* Export Dialog */
+dialog.export-dialog {
+  border: 0;
+  border-radius: 20px;
+  padding: 24px;
+  width: min(560px, 94vw);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 24px 60px rgba(27, 29, 34, 0.28);
+}
+dialog.export-dialog::backdrop {
+  background: rgba(27, 29, 34, 0.45);
+  backdrop-filter: blur(2px);
+}
+.ed-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.ed-head h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+.ed-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ed-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.ed-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.ed-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--soft);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+.ed-option:hover {
+  background: var(--soft-2);
+}
+.ed-option input {
+  margin-top: 2px;
+}
+.ed-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* Two Teams Layout for Super Admin */
+.teams-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .teams-grid { grid-template-columns: 1fr; }
+}
+

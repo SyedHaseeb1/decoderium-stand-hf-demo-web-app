@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>STAND-HF Investigator Dashboard</title>
+  <title>STAND-HF Registry Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1a5fb4">
   <meta name="mobile-web-app-capable" content="yes">
@@ -14,11 +14,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261015b">
-<script>
-  /* Register the service worker so the browser can install the app (full-screen from the home screen) */
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
-</script>
+  <link rel="stylesheet" href="../assets/base.css?v=20261015c">
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
+  </script>
 </head>
 <body data-page="dashboard">
 <div class="app">
@@ -28,273 +27,1407 @@
 
   <main class="main">
 
-    <div id="app-header" data-page="dashboard" data-timeline data-search="Search patients, sites or users"></div>
+    <!-- Global App Header -->
+    <div id="app-header" data-page="dashboard" data-timeline data-search="Search patients, sites, zones or investigators"></div>
 
-    <!-- Greeting -->
+    <!-- Role-Aware Dashboard Content Shell -->
+    <div id="dashRoot"></div>
+
+  </main>
+</div>
+
+<!-- Advanced Multi-Mode Export Dialog (for Central Team & Super Admin) -->
+<dialog class="export-dialog" id="exportDlg" aria-labelledby="edTitle" aria-modal="true">
+  <div class="ed-head">
+    <h3 id="edTitle"><i class="ms" style="color:var(--primary)">download</i>Export Registry Data</h3>
+    <button type="button" class="icon-btn" id="edClose" aria-label="Close export dialog"><i class="ms">close</i></button>
+  </div>
+  <form id="edForm" class="ed-form" onsubmit="return false">
+    <div>
+      <div class="ed-section-label">Export Scope</div>
+      <div class="ed-grid">
+        <label class="ed-option">
+          <input type="radio" name="edScope" value="all" checked>
+          <div><b>All Registry Data</b><div class="muted">All ~100 sites, all patient visits</div></div>
+        </label>
+        <label class="ed-option">
+          <input type="radio" name="edScope" value="filtered">
+          <div><b>Current Filter Selection</b><div class="muted" id="edScopeFilterLabel">Active zone/site filter</div></div>
+        </label>
+      </div>
+    </div>
+
+    <div>
+      <div class="ed-section-label">Visit Stages</div>
+      <div class="ed-grid">
+        <label class="ed-option">
+          <input type="checkbox" name="edVisits" value="b" checked>
+          <div><b>Baseline (Day 0)</b><div class="muted">Demographics, vitals, echo</div></div>
+        </label>
+        <label class="ed-option">
+          <input type="checkbox" name="edVisits" value="m3" checked>
+          <div><b>Month 3 (Day 90±14)</b><div class="muted">First follow-up, events</div></div>
+        </label>
+        <label class="ed-option">
+          <input type="checkbox" name="edVisits" value="m6" checked>
+          <div><b>Month 6 (Day 180±21)</b><div class="muted">Final follow-up, LVEF, events</div></div>
+        </label>
+        <label class="ed-option">
+          <input type="checkbox" name="edOnly4Pillars" value="1">
+          <div><b>4/4 GDMT Only</b><div class="muted">Only fully optimized patients</div></div>
+        </label>
+      </div>
+    </div>
+
+    <div>
+      <div class="ed-section-label">File Format</div>
+      <div class="ed-grid">
+        <label class="ed-option">
+          <input type="radio" name="edFormat" value="csv" checked>
+          <div><b>Research-Ready CSV</b><div class="muted">1 row per patient-visit, UTF-8 BOM</div></div>
+        </label>
+        <label class="ed-option">
+          <input type="radio" name="edFormat" value="summary">
+          <div><b>Site League Summary CSV</b><div class="muted">Aggregated performance by site</div></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="ed-foot">
+      <button type="button" class="btn" id="edCancel">Cancel</button>
+      <button type="button" class="btn primary" id="edDownloadBtn"><i class="ms">file_download</i>Generate & Download</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Notification Snack / Toast -->
+<div class="snack" id="snack" role="status" aria-live="polite"></div>
+
+<!-- Required Shared Infrastructure Scripts in Strict Order -->
+<script src="../assets/access.js?v=20261015b"></script>
+<script src="../assets/notifications-data.js?v=20261015b"></script>
+<script src="../assets/lookups.js?v=20261015b"></script>
+<script src="../assets/file-card.js?v=20261015b"></script>
+<script src="../assets/dialog.js?v=20261015b"></script>
+<script src="../assets/header.js?v=20261015b" data-root="../"></script>
+<script src="../assets/nav.js?v=20261015b"></script>
+
+<script>
+(function(){
+'use strict';
+
+/* --- Core Configuration & Access Guard --- */
+const ECRF = '../records/', LOGIN = '../login/', ADMIN = '../admin/';
+const KEY = 'standhf_ecrf_v1';
+const PL = [['arni','ARNI'],['bb','Beta-blocker'],['mra','MRA'],['sg','SGLT2i']];
+const VK = [['b','Baseline'],['m3','3 Months'],['m6','6 Months']];
+const DAY = 864e5;
+
+/* Guard: user must be authenticated */
+const auth = sessionVal('standhf_auth');
+if (auth !== '1') { location.replace(LOGIN); return; }
+
+const sess = session();
+const ROLE = sess.role; // 'investigator' | 'central' | 'superadmin'
+const USER_NAME = sess.name;
+const USER_HANDLE = sess.username;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const G = (o, p) => p.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
+const day = s => new Date(s + 'T00:00:00');
+const addD = (s, n) => { const d = day(s); d.setDate(d.getDate() + n); return d; };
+const fmtD = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+const fmtShortD = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+const initials = s => String(s || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+const pct = (a, b) => (b ? Math.round(100 * a / b) : null);
+const mean = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+const signed = x => (x == null ? '–' : (x > 0 ? '+' : '') + x.toFixed(1));
+
+function toast(m){
+  const el = $('snack');
+  if(!el) return;
+  el.textContent = m;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+/* --- Patient Data Loader --- */
+function loadData(){
+  try {
+    const raw = localStorage.getItem(KEY);
+    const d = JSON.parse(raw || 'null');
+    if (Array.isArray(d?.pts)) return d.pts;
+  } catch(e){}
+  return [];
+}
+
+/* Clinical helpers */
+function has(v){
+  return Object.keys(v||{}).some(k => k !== 'done' && v[k] !== '' && v[k] != null && typeof v[k] !== 'object') ||
+    (v.g && Object.values(v.g).some(x => x.status));
+}
+
+function act(v){
+  return PL.filter(([q]) => G(v, 'g.' + q + '.status') === 'Active').length;
+}
+
+function window_(p, k){
+  const b = p.v?.b?.date;
+  if (k === 'b' || !b) return null;
+  const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14: 21;
+  return [addD(b, t - w), addD(b, t + w), t, w];
+}
+
+function vstat(p, k){
+  const v = p.v?.[k] || {};
+  if (v.done) return 'Completed';
+  const b = p.v?.b?.done ? p.v.b.date : null;
+  let late = false, due = false, missed = false;
+  if (k !== 'b' && b) {
+    const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21, T = new Date();
+    late = T > addD(b, t + w);
+    due = T >= addD(b, t - w);
+    missed = T > addD(b, t + w + 30) && !has(v);
+  }
+  return missed ? 'Missed' : late ? 'Overdue' : has(v) ? 'In Progress' : due ? 'Due' : 'Not Started';
+}
+
+const chipCls = s => s === 'Missed' ? 'Overdue' : s === 'In Progress' ? 'In' : s === 'Not Started' ? 'Not' : s.split(' ')[0];
+const nextVisit = p => VK.map(([k]) => k).find(k => !p.v?.[k]?.done) || null;
+const visitName = k => VK.find(a => a[0] === k)?.[1] || '';
+
+function onTime(p, k){
+  if (k === 'b' || !p.v?.b?.date || !p.v?.[k]?.done || !p.v?.[k]?.date) return null;
+  const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21;
+  const d = Math.round((day(p.v[k].date) - day(p.v.b.date)) / DAY);
+  return Math.abs(d - t) <= w;
+}
+
+/* Statistics aggregator for any patient list */
+function aggregateStats(list){
+  const n = list.length;
+  const b = list.filter(p => p.v?.b?.done).length;
+  const m3 = list.filter(p => p.v?.m3?.done).length;
+  const m6 = list.filter(p => p.v?.m6?.done).length;
+  const all3 = list.filter(p => p.v?.b?.done && p.v?.m3?.done && p.v?.m6?.done).length;
+
+  const fu = list.flatMap(p => ['m3','m6'].map(k => onTime(p, k))).filter(x => x !== null);
+  const ontimeRate = fu.length ? Math.round(100 * fu.filter(Boolean).length / fu.length) : null;
+
+  const overdueCount = list.reduce((c, p) => c + ['m3','m6'].filter(k => ['Overdue','Missed'].includes(vstat(p, k))).length, 0);
+  const dueCount = list.reduce((c, p) => c + ['m3','m6'].filter(k => vstat(p, k) === 'Due').length, 0);
+
+  // GDMT 4-pillar calculation at latest done visit
+  const latestPillars = list.map(p => {
+    const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+    return last ? act(p.v[last]) : null;
+  }).filter(x => x !== null);
+  const fourPillars = latestPillars.filter(x => x === 4).length;
+  const gdmtRate = latestPillars.length ? Math.round(100 * fourPillars / latestPillars.length) : null;
+
+  // Primary functional outcomes
+  const dMsts = list.filter(p => p.v?.b?.msts !== '' && p.v?.b?.msts != null && p.v?.m6?.msts !== '' && p.v?.m6?.msts != null)
+    .map(p => +p.v.m6.msts - +p.v.b.msts);
+  const dEf = list.filter(p => p.v?.b?.lvef !== '' && p.v?.b?.lvef != null && p.v?.m6?.lvef !== '' && p.v?.m6?.lvef != null)
+    .map(p => +p.v.m6.lvef - +p.v.b.lvef);
+
+  // Adverse Clinical Events recorded at 3M and 6M
+  const events = {
+    hf: list.filter(p => ['m3','m6'].some(k => G(p.v?.[k], 'ev.hf'))).length,
+    other: list.filter(p => ['m3','m6'].some(k => G(p.v?.[k], 'ev.all'))).length,
+    death: list.filter(p => ['m3','m6'].some(k => G(p.v?.[k], 'ev.death'))).length
+  };
+
+  const pendingSync = list.filter(p => p.sync === 'Pending').length;
+
+  return { n, b, m3, m6, all3, ontimeRate, overdueCount, dueCount, fourPillars, gdmtRate, dMsts, dEf, events, pendingSync };
+}
+
+/* Time period filter state: 1 = Today, 7 = Week, 30 = Month, 0 = All */
+let periodDays = 7;
+function matchesPeriod(p){
+  if (periodDays === 0) return true;
+  if (!p.consent) return false;
+  const d = day(p.consent), now = new Date();
+  now.setHours(0,0,0,0);
+  return (now - d) / DAY < periodDays;
+}
+
+/* Global search query from top bar */
+let searchQuery = '';
+
+/* Filter states for Central & Super Admin */
+let filterZone = 'all';
+let filterSite = 'all';
+let filterInv = 'all';
+let filterGdmt = 'all'; // 'all', '4', 'incomplete'
+
+/* Helper to map site code to zone */
+function getSiteZone(code){
+  const s = accessStore();
+  const found = s.sites.find(x => x.code === code);
+  return found?.zone || 'Central';
+}
+
+/* ==========================================================================
+   VIEW 1: SITE INVESTIGATOR DASHBOARD
+   ========================================================================== */
+function renderInvestigatorView(allPts){
+  const mine = allPts.filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME);
+  const st = aggregateStats(mine);
+  const newCount = mine.filter(matchesPeriod).length;
+  const sites = [...new Set(mine.map(p => p.site).filter(Boolean))].sort();
+
+  // Upcoming visits needing attention
+  const upcoming = mine.map(p => {
+    const k = nextVisit(p);
+    if (!k) return null;
+    return { p, k, s: vstat(p, k), win: window_(p, k) };
+  }).filter(Boolean);
+  const rank = { Missed: 0, Overdue: 0, Due: 1, 'In Progress': 2, 'Not Started': 3, Completed: 4 };
+  upcoming.sort((a,b) => (rank[a.s] - rank[b.s]) || ((a.win ? a.win[0] : 0) - (b.win ? b.win[0] : 0)));
+
+  return `
     <div class="hello">
       <div>
-        <h1 id="welcome">Welcome</h1>
-        <p id="meta"></p>
+        <h1 id="welcome">Welcome, Dr. ${esc(USER_NAME.split(/\s+/)[0])}</h1>
+        <p id="meta">Assigned Sites: ${sites.join(', ') || 'No site assigned'} · Clinical Outpatient HF Registry</p>
       </div>
       <div class="actions">
-        <a class="btn" href="../records/"><i class="ms">edit_note</i>Patient records</a>
-        <a class="btn primary" href="../records/?new=1"><i class="ms">person_add</i>Add patient</a>
+        <a class="btn" href="${ECRF}"><i class="ms">edit_note</i>Patient records</a>
+        <a class="btn primary" href="${ECRF}?new=1"><i class="ms">person_add</i>Add patient</a>
       </div>
     </div>
 
     <!-- KPIs -->
-    <section class="kpis" id="kpis"></section>
+    <section class="kpis">
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">group</i></span></div>
+        <b>${st.n}</b><span>My patients</span><small>All patients you entered</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">person_add</i></span><span class="tag info">New</span></div>
+        <b>${newCount}</b><span>New patients</span><small>Consented in selected period</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">biotech</i></span><span class="tag ${pct(st.b, st.n)>=80?'good':''}">${pct(st.b, st.n)??'0'}%</span></div>
+        <b>${st.b}</b><span>Baseline complete</span><small>${st.b} of ${st.n} enrolled</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">event_upcoming</i></span>${st.overdueCount?'<span class="tag warn">Action</span>':'<span class="tag good">Clear</span>'}</div>
+        <b style="${st.overdueCount?'color:var(--error)':''}">${st.overdueCount + st.dueCount}</b><span>Follow-ups due</span><small>${st.overdueCount} overdue/missed</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">cloud_sync</i></span>${st.pendingSync?'<span class="tag warn">Pending</span>':'<span class="tag good">Synced</span>'}</div>
+        <b>${st.pendingSync}</b><span>Pending sync</span><small>${st.pendingSync?'Saved on this device':'All synced'}</small>
+      </div>
+    </section>
 
     <!-- Phase progress and enrolment -->
     <section class="row two">
       <div class="card">
         <div class="card-head"><h2>Phase progress</h2><small>Share of your patients with each visit complete</small></div>
-        <div class="rings" id="rings"></div>
+        <div class="rings">${renderInvestigatorRings(mine)}</div>
         <div class="legend"><span><i style="background:var(--success)"></i>Complete</span><span><i style="background:var(--primary)"></i>In progress</span><span><i style="background:var(--warning)"></i>Due</span><span><i style="background:var(--error)"></i>Overdue</span></div>
       </div>
       <div class="card">
         <div class="card-head"><h2>Enrolment</h2><small>New patients per month, last 6 months</small></div>
-        <svg class="chart" id="enrol" viewBox="0 0 600 200" role="img" aria-label="New patients per month"></svg>
+        <svg class="chart" id="enrolSvg" viewBox="0 0 600 200" role="img" aria-label="New patients per month">${renderEnrolmentSvg(mine)}</svg>
       </div>
     </section>
 
-    <!-- Patients, selected patient, upcoming visits -->
+    <!-- Patients, Selected patient detail, Upcoming visits -->
     <section class="row three">
       <div class="card">
-        <div class="card-head"><h2>My patients</h2><small id="count"></small></div>
-        <div class="plist" id="plist"></div>
+        <div class="card-head"><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
+        <div class="plist" id="invPlist">${renderInvestigatorList(upcoming)}</div>
       </div>
-      <div class="card" id="detail"></div>
+      <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming[0])}</div>
       <div class="card">
         <div class="card-head"><h2>Upcoming visits</h2><small>Next visit window per patient</small></div>
-        <div class="upc" id="upcoming"></div>
+        <div class="upc" id="invUpcoming">${renderInvestigatorUpcoming(upcoming)}</div>
       </div>
     </section>
 
-    <!-- Performance and sites -->
-    <section class="row two-even" id="performance">
+    <!-- Clinical Performance & Sites -->
+    <section class="row two-even">
       <div class="card">
-        <div class="card-head"><h2>Performance</h2><small>From your entered data</small></div>
-        <div id="perf"></div>
+        <div class="card-head"><h2>Clinical Performance</h2><small>From your verified patient data</small></div>
+        <div id="perfMetrics">
+          <div class="metric"><span>Follow-up visits within protocol window</span><b class="${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b></div>
+          <div class="metric"><span>Mean 1MSTS change (Baseline to 6 Months)</span><b class="${mean(st.dMsts)>0?'good':''}">${signed(mean(st.dMsts))} reps</b></div>
+          <div class="metric"><span>Mean LVEF change (Baseline to 6 Months)</span><b class="${mean(st.dEf)>0?'good':''}">${signed(mean(st.dEf))}%</b></div>
+          <div class="metric"><span>Patients at 4 of 4 GDMT pillars (latest visit)</span><b class="${st.gdmtRate>=70?'good':''}">${st.fourPillars} / ${st.n} (${st.gdmtRate??0}%)</b></div>
+        </div>
       </div>
-      <div class="card" id="sites">
-        <div class="card-head"><h2>Sites</h2><small>Sites your patients belong to</small></div>
-        <div class="table-wrap" id="siteTable"></div>
+      <div class="card">
+        <div class="card-head"><h2>My Assigned Sites</h2><small>Cardiology centres assigned to you</small></div>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Site</th><th class="num">Patients</th><th class="num">Baseline</th><th class="num">3M</th><th class="num">6M</th><th class="num">All Complete</th></tr>
+            ${sites.map(s => {
+              const ps = mine.filter(p => p.site === s);
+              return `<tr>
+                <td><b>${esc(s)}</b><div class="muted">${esc(getSiteZone(s))} Zone</div></td>
+                <td class="num">${ps.length}</td>
+                <td class="num">${ps.filter(p=>p.v?.b?.done).length}</td>
+                <td class="num">${ps.filter(p=>p.v?.m3?.done).length}</td>
+                <td class="num">${ps.filter(p=>p.v?.m6?.done).length}</td>
+                <td class="num">${ps.filter(p=>p.v?.b?.done && p.v?.m3?.done && p.v?.m6?.done).length}</td>
+              </tr>`;
+            }).join('') || '<tr><td colspan="6" class="muted">No sites assigned yet.</td></tr>'}
+          </table>
+        </div>
       </div>
     </section>
-
-  </main>
-</div>
-
-<script src="../assets/access.js?v=20261015a"></script>
-<script src="../assets/notifications-data.js?v=20261015a"></script>
-<script src="../assets/dialog.js?v=20261015a"></script>
-<script src="../assets/header.js?v=20261015a" data-root="../"></script>
-<script src="../assets/nav.js?v=20261015a"></script>
-<script>
-const ECRF='../records/', LOGIN='../login/';
-const KEY='standhf_ecrf_v1', PL=['arni','bb','mra','sg'], VK=[['b','Baseline'],['m3','3 months'],['m6','6 months']];
-const DAY=864e5;
-
-/* Guard: signed in, and the investigator role only */
-const ss=k=>{try{return sessionStorage.getItem(k)||''}catch(e){return ''}};
-if(ss('standhf_auth')!=='1'){location.replace(LOGIN)}
-else if(ss('standhf_role')!=='investigator'){location.replace(ECRF)}
-
-const $=id=>document.getElementById(id);
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const G=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o);
-const day=s=>new Date(s+'T00:00:00');
-const addD=(s,n)=>{const d=day(s);d.setDate(d.getDate()+n);return d};
-const fmtD=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
-const initials=s=>String(s||'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';
-const pct=(a,b)=>b?Math.round(100*a/b):null;
-const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
-const signed=x=>x==null?'–':(x>0?'+':'')+x.toFixed(1);
-
-function load(){
-  try{
-    const d=JSON.parse(localStorage.getItem(KEY)||'null');
-    if(!Array.isArray(d?.pts))return [];
-    /* Demo patients are re-assigned to the signed-in investigator, as in the E-CRF */
-    if(name&&d.pts.some(p=>p.inv==='Demo investigator')){
-      d.pts.forEach(p=>{if(p.inv==='Demo investigator')p.inv=name});
-      localStorage.setItem(KEY,JSON.stringify(d));
-    }
-    return d.pts;
-  }catch(e){return []}
-}
-function has(v){return Object.keys(v).some(k=>k!=='done'&&v[k]!==''&&v[k]!=null&&typeof v[k]!=='object')||(v.g&&Object.values(v.g).some(x=>x.status))}
-function act(v){return PL.filter(q=>G(v,'g.'+q+'.status')==='Active').length}
-function window_(p,k){const b=p.v.b.date;if(k==='b'||!b)return null;const t=k==='m3'?90:180,w=k==='m3'?14:21;return[addD(b,t-w),addD(b,t+w),t,w]}
-function vstat(p,k){
-  const v=p.v[k];if(v.done)return'Completed';
-  const b=p.v.b.done?p.v.b.date:null;let late=false,due=false,missed=false;
-  if(k!=='b'&&b){const t=k==='m3'?90:180,w=k==='m3'?14:21,T=new Date();
-    late=T>addD(b,t+w);due=T>=addD(b,t-w);missed=T>addD(b,t+w+30)&&!has(v)}
-  return missed?'Missed':late?'Overdue':has(v)?'In Progress':due?'Due':'Not Started';
-}
-const chipCls=s=>s==='Missed'?'Overdue':s==='In Progress'?'In':s.split(' ')[0];
-const nextVisit=p=>VK.map(([k])=>k).find(k=>!p.v[k].done)||null;
-const visitName=k=>VK.find(a=>a[0]===k)?.[1]||'';
-
-/* Signed-in investigator and their patients */
-const name=ss('standhf_user');
-const mine=load().filter(p=>p.inv===name);
-const sites=[...new Set(mine.map(p=>p.site).filter(Boolean))].sort();
-
-/* Header */
-$('userName').textContent=name||'Signed in';
-$('userRole').textContent='Site Investigator';
-$('avatar').textContent=initials(name);
-$('welcome').textContent=name?'Welcome, '+name.split(/\s+/)[0]:'Welcome';
-$('meta').textContent=(sites.length?'Sites: '+sites.join(', ')+' · ':'')+'Updated '+new Date().toLocaleString('en-GB');
-
-/* Follow-ups needing attention */
-const upcoming=mine.map(p=>{const k=nextVisit(p);if(!k)return null;return{p,k,s:vstat(p,k),win:window_(p,k)}}).filter(Boolean);
-const rank={Missed:0,Overdue:0,Due:1,'In Progress':2,'Not Started':3,Completed:4};
-upcoming.sort((a,b)=>(rank[a.s]-rank[b.s])||((a.win?a.win[0]:0)-(b.win?b.win[0]:0)));
-const attention=upcoming.filter(u=>['Missed','Overdue','Due'].includes(u.s)).length;
-
-
-/* Period filter: new patients by consent date */
-let period=7;
-function inPeriod(p){if(!p.consent)return false;const d=day(p.consent),now=new Date();now.setHours(0,0,0,0);return (now-d)/DAY<period}
-
-/* KPIs */
-function kpis(){
-  const n=mine.length,bDone=mine.filter(p=>p.v.b.done).length;
-  const followDue=mine.reduce((c,p)=>c+['m3','m6'].filter(k=>['Due','Overdue','Missed'].includes(vstat(p,k))).length,0);
-  const pending=mine.filter(p=>p.sync==='Pending').length;
-  const newP=mine.filter(inPeriod).length;
-  const tiles=[
-    ['group','My patients',n,n?'':'','All patients you entered'],
-    ['person_add','New patients',newP,'info','Consented in the last '+(period===1?'day':period===7?'7 days':'30 days')],
-    ['biotech','Baseline complete',bDone,pct(bDone,n)!=null?'good':'',(pct(bDone,n)??'–')+'% of your patients'],
-    ['event_upcoming','Follow-ups due',followDue,followDue?'warn':'good','Due, overdue or missed'],
-    ['cloud_sync','Pending sync',pending,pending?'warn':'good',pending?'Saved on this device':'All synced'],
-  ];
-  $('kpis').innerHTML=tiles.map(([ico,l,v,tag,sub])=>`<div class="kpi"><div class="top"><span class="ico"><i class="ms">${ico}</i></span>${tag?`<span class="tag ${tag}">${tag==='good'?'On track':tag==='warn'?'Action':'Info'}</span>`:''}</div><b>${v}</b><span>${l}</span><small>${sub}</small></div>`).join('');
+  `;
 }
 
-/* Phase rings: complete share per visit */
-function rings(){
-  const n=mine.length;
-  if(!n){$('rings').innerHTML='<div class="empty"><i class="ms">donut_large</i>No patients yet.</div>';return}
-  const R=46,C=2*Math.PI*R;
-  $('rings').innerHTML=VK.map(([k,lbl])=>{
-    const done=mine.filter(p=>p.v[k].done).length,p=pct(done,n)||0;
-    const inprog=mine.filter(p=>!p.v[k].done&&vstat(p,k)==='In Progress').length;
-    const over=mine.filter(p=>['Overdue','Missed'].includes(vstat(p,k))).length;
-    const colour=over?'var(--error)':p>=100?'var(--success)':'var(--primary)';
+function renderInvestigatorRings(pts){
+  const n = pts.length;
+  if (!n) return '<div class="empty"><i class="ms">donut_large</i>No patients enrolled yet.</div>';
+  const R = 46, C = 2 * Math.PI * R;
+  return VK.map(([k, lbl]) => {
+    const done = pts.filter(p => p.v?.[k]?.done).length, p = pct(done, n) || 0;
+    const inprog = pts.filter(p => !p.v?.[k]?.done && vstat(p, k) === 'In Progress').length;
+    const over = pts.filter(p => ['Overdue','Missed'].includes(vstat(p, k))).length;
+    const colour = over ? 'var(--error)' : p >= 100 ? 'var(--success)' : 'var(--primary)';
     return `<div class="ring-wrap"><div class="dial"><svg viewBox="0 0 120 120" role="img" aria-label="${lbl}: ${p}% complete">
       <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--soft)" stroke-width="12"/>
       <circle cx="60" cy="60" r="${R}" fill="none" stroke="${colour}" stroke-width="12" stroke-linecap="round"
-        stroke-dasharray="${C*p/100} ${C}" transform="rotate(-90 60 60)"/></svg></div>
+        stroke-dasharray="${C * p / 100} ${C}" transform="rotate(-90 60 60)"/></svg></div>
       <div class="pct">${p}%</div><div class="lbl">${lbl}</div>
-      <div class="cnt">${done} of ${n} complete${inprog?' · '+inprog+' in progress':''}${over?' · '+over+' overdue':''}</div></div>`;
+      <div class="cnt">${done} of ${n} complete${inprog ? ' · ' + inprog + ' in progress' : ''}${over ? ' · ' + over + ' overdue' : ''}</div></div>`;
   }).join('');
 }
 
-/* Enrolment: new patients per month, last 6 months */
-function enrol(){
-  const now=new Date(),months=[];
-  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({y:d.getFullYear(),m:d.getMonth(),lbl:d.toLocaleDateString('en-GB',{month:'short'}),n:0})}
-  mine.forEach(p=>{if(!p.consent)return;const d=day(p.consent);const h=months.find(x=>x.y===d.getFullYear()&&x.m===d.getMonth());if(h)h.n++});
-  const max=Math.max(1,...months.map(x=>x.n)),W=600,H=200,pad=28,bw=(W-pad*2)/months.length;
-  const bars=months.map((x,i)=>{const h=(H-pad-14)*x.n/max,xx=pad+i*bw+bw*0.2,w=bw*0.6;
-    return `<rect x="${xx}" y="${H-pad-h}" width="${w}" height="${h}" rx="8" fill="${x.n?'var(--primary)':'var(--soft)'}"/>
-      <text x="${xx+w/2}" y="${H-pad+16}" text-anchor="middle" font-size="13" fill="var(--ink-3)">${x.lbl}</text>
-      <text x="${xx+w/2}" y="${H-pad-h-6}" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">${x.n}</text>`}).join('');
-  const grid=[0,0.5,1].map(f=>`<line x1="${pad}" x2="${W-pad}" y1="${H-pad-(H-pad-14)*f}" y2="${H-pad-(H-pad-14)*f}" stroke="var(--line)"/>`).join('');
-  $('enrol').innerHTML=grid+bars;
+function renderEnrolmentSvg(pts){
+  const now = new Date(), months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ y: d.getFullYear(), m: d.getMonth(), lbl: d.toLocaleDateString('en-GB', { month: 'short' }), n: 0 });
+  }
+  pts.forEach(p => {
+    if (!p.consent) return;
+    const d = day(p.consent);
+    const h = months.find(x => x.y === d.getFullYear() && x.m === d.getMonth());
+    if (h) h.n++;
+  });
+  const max = Math.max(1, ...months.map(x => x.n)), W = 600, H = 200, pad = 28, bw = (W - pad * 2) / months.length;
+  const bars = months.map((x, i) => {
+    const h = (H - pad - 14) * x.n / max, xx = pad + i * bw + bw * 0.2, w = bw * 0.6;
+    return `<rect x="${xx}" y="${H - pad - h}" width="${w}" height="${h}" rx="8" fill="${x.n ? 'var(--primary)' : 'var(--soft)'}"/>
+      <text x="${xx + w/2}" y="${H - pad + 16}" text-anchor="middle" font-size="13" fill="var(--ink-3)">${x.lbl}</text>
+      <text x="${xx + w/2}" y="${H - pad - h - 6}" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">${x.n}</text>`;
+  }).join('');
+  const grid = [0, 0.5, 1].map(f => `<line x1="${pad}" x2="${W - pad}" y1="${H - pad - (H - pad - 14) * f}" y2="${H - pad - (H - pad - 14) * f}" stroke="var(--line)"/>`).join('');
+  return grid + bars;
 }
 
-/* Patient list */
-let selId=null;
-function plist(){
-  const q=$('search').value.trim().toLowerCase();
-  const rows=upcoming.filter(u=>!q||(u.p.id+' '+u.p.site+' '+visitName(u.k)+' '+u.s).toLowerCase().includes(q));
-  $('count').textContent=rows.length+' of '+mine.length;
-  if(!mine.length){$('plist').innerHTML='<div class="empty"><i class="ms">groups</i>No patients yet. Add one to get started.</div>';return}
-  if(!rows.length){$('plist').innerHTML='<div class="empty"><i class="ms">search_off</i>No patients match your search.</div>';return}
-  if(!rows.some(u=>u.p.id===selId))selId=rows[0].p.id;
-  $('plist').innerHTML=rows.map(u=>`<button type="button" class="pitem ${u.p.id===selId?'on':''}" data-id="${esc(u.p.id)}">
-    <span class="avatar">${initials(u.p.id.replace(/[-\d]+$/,'')||u.p.id)}</span>
-    <span class="pitem-body"><b>${esc(u.p.id)}</b><small>${esc(u.p.site)} · ${u.k?visitName(u.k):'Complete'}</small></span>
+let invSelectedId = null;
+function renderInvestigatorList(upcoming){
+  if (!upcoming.length) return '<div class="empty"><i class="ms">groups</i>No patients yet. Add one to start.</div>';
+  const q = searchQuery.toLowerCase();
+  const rows = upcoming.filter(u => !q || (u.p.id + ' ' + u.p.site + ' ' + (u.p.name||'')).toLowerCase().includes(q));
+  if (!rows.length) return '<div class="empty"><i class="ms">search_off</i>No matching patients.</div>';
+  if (!rows.some(u => u.p.id === invSelectedId)) invSelectedId = rows[0].p.id;
+  return rows.map(u => `<button type="button" class="pitem ${u.p.id === invSelectedId ? 'on' : ''}" data-invid="${esc(u.p.id)}">
+    <span class="avatar">${initials(u.p.name || u.p.id)}</span>
+    <span class="pitem-body"><b>${esc(u.p.id)}</b><small>${esc(u.p.site)} · ${u.k ? visitName(u.k) : 'Complete'}</small></span>
     <span class="side-info"><span class="chip ${chipCls(u.s)}">${u.s}</span></span></button>`).join('');
 }
 
-/* Selected patient */
-function detail(){
-  const u=upcoming.find(x=>x.p.id===selId)||upcoming[0];
-  if(!u){$('detail').innerHTML='<div class="empty"><i class="ms">person_search</i>Select a patient to see details.</div>';return}
-  const p=u.p;
-  const last=['m6','m3','b'].find(k=>p.v[k].done)||'b';
-  const lv=p.v[last];
-  const visits=VK.map(([k,lbl])=>{const s=vstat(p,k),w=window_(p,k);
-    const when=p.v[k].date?fmtD(day(p.v[k].date)):w?fmtD(w[0])+' – '+fmtD(w[1]):'Baseline date';
+function renderInvestigatorDetail(selectedU){
+  if (!selectedU) return '<div class="empty"><i class="ms">person_search</i>Select a patient to see details.</div>';
+  const p = selectedU.p;
+  const last = ['m6','m3','b'].find(k => p.v?.[k]?.done) || 'b';
+  const lv = p.v?.[last];
+  const visits = VK.map(([k, lbl]) => {
+    const s = vstat(p, k), w = window_(p, k);
+    const when = p.v?.[k]?.date ? fmtD(day(p.v[k].date)) : w ? fmtShortD(w[0]) + ' – ' + fmtShortD(w[1]) : 'Baseline date';
     return `<div class="visit"><div><b>${lbl}</b><small>${when}</small></div><span class="chip ${chipCls(s)}">${s}</span>
-      <a class="visit-btn" href="${ECRF}?patient=${encodeURIComponent(p.id)}&tab=${k}">${p.v[k].done?'View':'Enter'}</a></div>`}).join('');
-  $('detail').innerHTML=`<div class="sel-head"><span class="avatar">${initials(p.id.replace(/[-\d]+$/,'')||p.id)}</span>
-      <div><h3>${esc(p.id)}</h3><small>${esc(p.site)} · ${esc(p.inv||'–')}</small></div></div>
+      <a class="visit-btn" href="${ECRF}?patient=${encodeURIComponent(p.id)}&tab=${k}">${p.v?.[k]?.done ? 'View' : 'Enter'}</a></div>`;
+  }).join('');
+
+  return `<div class="sel-head"><span class="avatar">${initials(p.name || p.id)}</span>
+      <div><h3>${esc(p.id)}</h3><small>${esc(p.name || 'Unnamed')} · ${esc(p.site)}</small></div></div>
     <div class="facts">
-      <div class="fact"><small>Consent</small><b>${p.consent?fmtD(day(p.consent)):'–'}</b></div>
-      <div class="fact"><small>Age / sex</small><b>${p.age||'–'} / ${esc(p.sex||'–')}</b></div>
-      <div class="fact"><small>Pillars (latest)</small><b>${lv&&p.v[last].done?act(lv)+' / 4':'–'}</b></div>
+      <div class="fact"><small>Consent</small><b>${p.consent ? fmtShortD(day(p.consent)) : '–'}</b></div>
+      <div class="fact"><small>Age / sex</small><b>${p.age || '–'} / ${esc(p.sex || '–')}</b></div>
+      <div class="fact"><small>Pillars (latest)</small><b>${lv && p.v[last].done ? act(lv) + ' / 4' : '–'}</b></div>
     </div>
     <div class="visits">${visits}</div>
     <div class="sel-actions">
-      <a class="btn primary" href="${ECRF}?patient=${encodeURIComponent(p.id)}&tab=${nextVisit(p)||'b'}"><i class="ms">edit_note</i>${nextVisit(p)?'Enter '+visitName(nextVisit(p)).toLowerCase()+' data':'Open record'}</a>
-      <a class="btn" href="${ECRF}?patient=${encodeURIComponent(p.id)}"><i class="ms">open_in_new</i>Open record</a>
+      <a class="btn primary" href="${ECRF}?patient=${encodeURIComponent(p.id)}&tab=${nextVisit(p) || 'b'}"><i class="ms">edit_note</i>${nextVisit(p) ? 'Enter ' + visitName(nextVisit(p)).toLowerCase() + ' data' : 'Open record'}</a>
+      <a class="btn" href="${ECRF}?patient=${encodeURIComponent(p.id)}"><i class="ms">open_in_new</i>Full Record</a>
     </div>`;
 }
 
-/* Upcoming visits */
-function upc(){
-  const items=upcoming.filter(u=>u.k);
-  if(!items.length){$('upcoming').innerHTML='<div class="empty"><i class="ms">task_alt</i>All visits are complete.</div>';return}
-  $('upcoming').innerHTML=items.map(u=>{
-    const w=u.win?fmtD(u.win[0])+' – '+fmtD(u.win[1]):'Baseline visit';
-    return `<button type="button" class="upc-item ${u.s.split(' ')[0]}" data-id="${esc(u.p.id)}" style="border:0;text-align:left;cursor:pointer;font:inherit;color:inherit">
-      <i></i><span><b>${esc(u.p.id)} · ${visitName(u.k)}</b><small>${w}</small></span><span class="chip ${chipCls(u.s)}">${u.s}</span></button>`}).join('');
+function renderInvestigatorUpcoming(upcoming){
+  const items = upcoming.filter(u => u.k);
+  if (!items.length) return '<div class="empty"><i class="ms">task_alt</i>All visits are complete.</div>';
+  return items.map(u => {
+    const w = u.win ? fmtShortD(u.win[0]) + ' – ' + fmtShortD(u.win[1]) : 'Baseline visit';
+    return `<button type="button" class="upc-item ${u.s.split(' ')[0]}" data-invid="${esc(u.p.id)}" style="border:0;text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%">
+      <i></i><span><b>${esc(u.p.id)} · ${visitName(u.k)}</b><small>${w}</small></span><span class="chip ${chipCls(u.s)}">${u.s}</span></button>`;
+  }).join('');
 }
 
-/* Performance */
-function perf(){
-  const fu=mine.flatMap(p=>['m3','m6'].filter(k=>p.v[k].done&&p.v[k].date&&p.v.b.date).map(k=>({p,k})));
-  const onTime=fu.filter(({p,k})=>{const t=k==='m3'?90:180,w=k==='m3'?14:21,d=Math.round((day(p.v[k].date)-day(p.v.b.date))/DAY);return Math.abs(d-t)<=w});
-  const rate=fu.length?Math.round(100*onTime.length/fu.length):null;
-  const d61=mine.filter(p=>p.v.b.msts!==''&&p.v.b.msts!=null&&p.v.m6.msts!==''&&p.v.m6.msts!=null).map(p=>+p.v.m6.msts-+p.v.b.msts);
-  const dEF=mine.filter(p=>p.v.b.lvef!==''&&p.v.b.lvef!=null&&p.v.m6.lvef!==''&&p.v.m6.lvef!=null).map(p=>+p.v.m6.lvef-+p.v.b.lvef);
-  const four=mine.filter(p=>{const k=['m6','m3','b'].find(x=>p.v[x].done);return k&&act(p.v[k])===4}).length;
-  const pm=(l,v,c)=>`<div class="metric"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
-  $('perf').innerHTML=mine.length?[
-    pm('Follow-up visits within window',rate==null?'–':rate+'%',rate==null?'':rate>=80?'good':'warn'),
-    pm('Mean 1MSTS change, baseline to 6 months',signed(mean(d61)),mean(d61)>0?'good':''),
-    pm('Mean LVEF change, baseline to 6 months',signed(mean(dEF)),mean(dEF)>0?'good':''),
-    pm('Patients at 4 of 4 pillars (latest visit)',four+' / '+mine.length,four?'good':''),
-  ].join(''):'<div class="empty"><i class="ms">analytics</i>Performance appears once patients have visit data.</div>';
+
+/* ==========================================================================
+   VIEW 2: CENTRAL TEAM MONITORING DASHBOARD ("THE BOSS AFTER SUPER ADMIN")
+   ========================================================================== */
+function renderCentralView(allPts){
+  const s = accessStore();
+  const allSites = s.sites;
+  const zones = s.zones || ['North','Central','South'];
+
+  // Apply hierarchy filters
+  let filtered = allPts.slice();
+  if (filterZone !== 'all') {
+    filtered = filtered.filter(p => getSiteZone(p.site) === filterZone);
+  }
+  if (filterSite !== 'all') {
+    filtered = filtered.filter(p => p.site === filterSite);
+  }
+  if (filterInv !== 'all') {
+    filtered = filtered.filter(p => p.inv === filterInv);
+  }
+  if (filterGdmt === '4') {
+    filtered = filtered.filter(p => {
+      const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+      return last && act(p.v[last]) === 4;
+    });
+  } else if (filterGdmt === 'incomplete') {
+    filtered = filtered.filter(p => {
+      const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+      return last && act(p.v[last]) < 4;
+    });
+  }
+
+  // Global search filtering
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter(p => (p.id + ' ' + p.site + ' ' + (p.inv||'') + ' ' + (p.name||'')).toLowerCase().includes(q));
+  }
+
+  const st = aggregateStats(filtered);
+  const totalAll = aggregateStats(allPts);
+
+  // Available sites in the chosen zone
+  const zoneSites = filterZone === 'all' ? allSites : allSites.filter(x => x.zone === filterZone);
+  // Available investigators in the chosen site/zone
+  const relevantInvs = [...new Set(filtered.map(p => p.inv).filter(Boolean))].sort();
+
+  return `
+    <div class="hello">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <h1 id="welcome">Central Registry Oversight</h1>
+          <span class="tag info" style="font-size:12px;padding:3px 10px"><i class="ms" style="font-size:14px;vertical-align:-2px">verified_user</i> Directorate Access</span>
+        </div>
+        <p id="meta">Live statistics and multi-site monitoring across cardiology centres in Pakistan · Read-Only Clinical Governance</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btnExportModal"><i class="ms">download</i>Export Study Data</button>
+        <a class="btn" href="${ECRF}"><i class="ms">visibility</i>View Patient Records</a>
+      </div>
+    </div>
+
+    <!-- Hierarchy & Filtering Toolbar (Zone -> Site -> Investigator) -->
+    <div class="hierarchy-bar">
+      <div class="hierarchy-filters">
+        <div class="filter-group">
+          <i class="ms">travel_explore</i>
+          <label for="selZone" style="font-weight:600">Zone:</label>
+          <select id="selZone" class="filter-select">
+            <option value="all" ${filterZone==='all'?'selected':''}>All Zones (National)</option>
+            ${zones.map(z => `<option value="${z}" ${filterZone===z?'selected':''}>Zone ${z}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <i class="ms">local_hospital</i>
+          <label for="selSite" style="font-weight:600">Site:</label>
+          <select id="selSite" class="filter-select">
+            <option value="all" ${filterSite==='all'?'selected':''}>All Sites (${zoneSites.length})</option>
+            ${zoneSites.map(st => `<option value="${st.code}" ${filterSite===st.code?'selected':''}>${st.code} — ${esc(st.name)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <i class="ms">person</i>
+          <label for="selInv" style="font-weight:600">Investigator:</label>
+          <select id="selInv" class="filter-select">
+            <option value="all" ${filterInv==='all'?'selected':''}>All Investigators</option>
+            ${relevantInvs.map(iv => `<option value="${esc(iv)}" ${filterInv===iv?'selected':''}>${esc(iv)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <i class="ms">pill</i>
+          <label for="selGdmt" style="font-weight:600">GDMT:</label>
+          <select id="selGdmt" class="filter-select">
+            <option value="all" ${filterGdmt==='all'?'selected':''}>All Therapies</option>
+            <option value="4" ${filterGdmt==='4'?'selected':''}>4 of 4 Pillars Only</option>
+            <option value="incomplete" ${filterGdmt==='incomplete'?'selected':''}>Incomplete (&lt;4 Pillars)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hierarchy-meta">
+        <span class="filter-badge"><i class="ms" style="font-size:14px">filter_list</i>Showing ${filtered.length} of ${allPts.length} Patients</span>
+        ${(filterZone!=='all'||filterSite!=='all'||filterInv!=='all'||filterGdmt!=='all') ? `<button type="button" class="btn" id="btnResetFilters" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:14px">restart_alt</i>Reset</button>` : ''}
+      </div>
+    </div>
+
+    <!-- Live Registry KPIs -->
+    <section class="kpis">
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">groups</i></span><span class="tag good">Live</span></div>
+        <b>${st.n}</b><span>Enrolled Patients</span><small>Registry total: ${totalAll.n}</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">domain</i></span><span class="tag info">Sites</span></div>
+        <b>${[...new Set(filtered.map(p=>p.site))].length} <small style="font-size:14px;color:var(--ink-3)">/ ~100</small></b><span>Reporting Centres</span><small>Target: 100 cardiology sites</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">biotech</i></span><span class="tag ${st.n&&pct(st.b,st.n)>=80?'good':''}">${pct(st.b,st.n)??0}%</span></div>
+        <b>${st.b}</b><span>Baseline Complete</span><small>${st.b} verified complete</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">event_available</i></span><span class="tag ${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</span></div>
+        <b>${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b><span>Follow-up Adherence</span><small>${st.overdueCount} overdue/missed visits</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">medication</i></span><span class="tag ${st.gdmtRate>=70?'good':''}">${st.gdmtRate??0}%</span></div>
+        <b style="color:var(--brand-magenta)">${st.fourPillars}</b><span>4-Pillar GDMT (4/4)</span><small>${st.gdmtRate??0}% optimized therapy</small>
+      </div>
+    </section>
+
+    <!-- Multi-Site League Table / Performance Grid -->
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>Site Performance &amp; League Table</h2>
+          <small>Longitudinal completion, follow-up timing, and GDMT compliance across sites</small>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button type="button" class="btn" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="rows-rounded">
+          <thead>
+            <tr>
+              <th>Site &amp; Centre Name</th>
+              <th>Zone</th>
+              <th>Lead Investigator</th>
+              <th class="num">Enrolled</th>
+              <th>Baseline %</th>
+              <th>3 Months %</th>
+              <th>6 Months %</th>
+              <th class="num">On-Time %</th>
+              <th class="num">Overdue</th>
+              <th class="num">GDMT 4/4 %</th>
+              <th>Quick Export</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${renderCentralSiteTableRows(zoneSites, filtered, allPts)}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Visual Analytics: Recruitment Trajectory & GDMT Coverage -->
+    <div class="dash-grid">
+      <!-- Recruitment Trajectory by Zone/Site -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Recruitment Trajectory</h2>
+          <small>Monthly patient intake by centre (last 6 months)</small>
+        </div>
+        ${renderCentralEnrolmentBars(filtered, zoneSites)}
+      </section>
+
+      <!-- Visit Milestone Distribution -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Visit Milestone Status</h2>
+          <small>Status of all scheduled visits across registry</small>
+        </div>
+        ${renderCentralMilestoneDonut(filtered)}
+      </section>
+
+      <!-- GDMT 4 Foundational Pillars Breakdown -->
+      <section class="card" id="gdmt">
+        <div class="card-head">
+          <h2>GDMT 4 Foundational Pillars (DSH-03)</h2>
+          <small>First pillar is ARNI (Sacubitril + Valsartan), not ACE-I/ARB</small>
+        </div>
+        ${renderCentralGdmtPanel(filtered)}
+      </section>
+
+      <!-- Clinical Trajectories & Functional Outcomes (DSH-04) -->
+      <section class="card" id="performance">
+        <div class="card-head">
+          <h2>Clinical Outcomes &amp; Trajectories (DSH-04)</h2>
+          <small>Longitudinal NYHA class, 1MSTS functional capacity &amp; LVEF recovery</small>
+        </div>
+        ${renderCentralTrajectoriesPanel(filtered, st)}
+      </section>
+    </div>
+
+    <!-- Critical Overdue & At-Risk Follow-up Queue (Central Monitor Outreach) -->
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>Registry Overdue &amp; At-Risk Follow-up Queue</h2>
+          <small>Patients currently outside their visit window requiring monitoring contact</small>
+        </div>
+        <span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount} Action Required</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Study ID</th>
+              <th>Site</th>
+              <th>Zone</th>
+              <th>Investigator</th>
+              <th>Visit Due</th>
+              <th>Expected Window</th>
+              <th>Status</th>
+              <th>Contact Number</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${renderCentralOverdueQueue(filtered)}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
 }
 
-/* Sites */
-function siteTable(){
-  $('siteTable').innerHTML=sites.length?`<table>
-    <tr><th>Site</th><th class="num">Patients</th><th class="num">Baseline</th><th class="num">3 months</th><th class="num">6 months</th><th class="num">All visits</th></tr>
-    ${sites.map(s=>{const ps=mine.filter(p=>p.site===s);return `<tr><td><b>${esc(s)}</b></td><td class="num">${ps.length}</td>
-      <td class="num">${ps.filter(p=>p.v.b.done).length}</td><td class="num">${ps.filter(p=>p.v.m3.done).length}</td>
-      <td class="num">${ps.filter(p=>p.v.m6.done).length}</td><td class="num">${ps.filter(p=>VK.every(([k])=>p.v[k].done)).length}</td></tr>`}).join('')}
-  </table>`:'<div class="empty"><i class="ms">location_on</i>No sites yet.</div>';
+function renderCentralSiteTableRows(sites, filteredPts, allPts){
+  if (!sites.length) return '<tr><td colspan="11" class="muted">No sites match the current filter.</td></tr>';
+  return sites.map(st => {
+    const sPts = filteredPts.filter(p => p.site === st.code);
+    const sAllPts = allPts.filter(p => p.site === st.code);
+    const n = sPts.length;
+    const bPct = pct(sPts.filter(p => p.v?.b?.done).length, n);
+    const m3Pct = pct(sPts.filter(p => p.v?.m3?.done).length, n);
+    const m6Pct = pct(sPts.filter(p => p.v?.m6?.done).length, n);
+
+    const fu = sPts.flatMap(p => ['m3','m6'].map(k => onTime(p, k))).filter(x => x !== null);
+    const ontimePct = fu.length ? Math.round(100 * fu.filter(Boolean).length / fu.length) : null;
+    const overdue = sPts.reduce((c, p) => c + ['m3','m6'].filter(k => ['Overdue','Missed'].includes(vstat(p, k))).length, 0);
+
+    const latestPills = sPts.map(p => {
+      const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+      return last ? act(p.v[last]) : null;
+    }).filter(x => x !== null);
+    const gdmt4Pct = latestPills.length ? Math.round(100 * latestPills.filter(x => x === 4).length / latestPills.length) : null;
+
+    const invs = [...new Set(sAllPts.map(p => p.inv).filter(Boolean))].join(', ') || 'Pending Assignment';
+
+    return `<tr>
+      <td>
+        <b>${esc(st.code)}</b>
+        <div class="muted" style="font-size:12px">${esc(st.name)}</div>
+      </td>
+      <td><span class="tag" style="background:var(--soft);color:var(--ink-2)">${esc(st.zone || 'Central')}</span></td>
+      <td><div style="font-weight:500">${esc(invs)}</div></td>
+      <td class="num"><b>${n}</b></td>
+      <td>${renderMiniBar(bPct)}</td>
+      <td>${renderMiniBar(m3Pct)}</td>
+      <td>${renderMiniBar(m6Pct)}</td>
+      <td class="num"><b class="${ontimePct>=80?'good':ontimePct?'warn':''}">${ontimePct!=null?ontimePct+'%':'–'}</b></td>
+      <td class="num"><span class="${overdue?'chip Overdue':'muted'}">${overdue || '0'}</span></td>
+      <td class="num"><b style="${gdmt4Pct>=70?'color:var(--success)':''}">${gdmt4Pct!=null?gdmt4Pct+'%':'–'}</b></td>
+      <td>
+        <button type="button" class="btn" data-export-site="${esc(st.code)}" style="padding:4px 10px;font-size:12px">
+          <i class="ms" style="font-size:15px">download</i>CSV
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
-/* Events */
-function render(){kpis();rings();enrol();plist();detail();upc();perf();siteTable()}
-$('search').addEventListener('input',()=>{plist();detail()});
-$('plist').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(!b)return;selId=b.dataset.id;plist();detail()});
-$('upcoming').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(!b)return;selId=b.dataset.id;plist();detail();document.querySelector('.row.three').scrollIntoView({behavior:'smooth',block:'start'})});
-document.querySelectorAll('[data-period]').forEach(b=>b.onclick=()=>{period=+b.dataset.period;document.querySelectorAll('[data-period]').forEach(x=>x.classList.toggle('on',x===b));kpis()});
+function renderMiniBar(val){
+  const v = val || 0;
+  return `<div style="display:flex;align-items:center;gap:6px">
+    <div style="flex:1;height:6px;background:var(--line);border-radius:4px;overflow:hidden">
+      <div style="width:${v}%;height:100%;background:${v>=80?'var(--success)':'var(--primary)'};border-radius:4px"></div>
+    </div>
+    <span style="font-size:11px;font-weight:600;min-width:28px">${val != null ? val + '%' : '–'}</span>
+  </div>`;
+}
 
-render();
+function renderCentralEnrolmentBars(pts, sites){
+  const now = new Date(), months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ y: d.getFullYear(), m: d.getMonth(), lbl: d.toLocaleDateString('en-GB', { month: 'short' }), counts: {} });
+  }
+  pts.forEach(p => {
+    if (!p.consent) return;
+    const d = day(p.consent);
+    const h = months.find(x => x.y === d.getFullYear() && x.m === d.getMonth());
+    if (h) h.counts[p.site] = (h.counts[p.site] || 0) + 1;
+  });
+  const codes = sites.map(s => s.code);
+  const totals = months.map(m => Object.values(m.counts).reduce((x, y) => x + y, 0));
+  const max = Math.max(1, ...totals);
+  const W = 620, H = 240, pad = 36, top = 16, gw = (W - pad - 10) / 6, bw = Math.min(36, gw * 0.55);
+  const cols = ['#1a5fb4','#1e7a4c','#9a5b00','#b3261e','#6b4fbb','#0f7c8c','#7a5c3e'];
+
+  let g = '';
+  [0, 0.5, 1].forEach(f => {
+    const y = H - pad - (H - pad - top) * f;
+    g += `<line x1="${pad}" x2="${W - 10}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pad - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${Math.round(max * f)}</text>`;
+  });
+  months.forEach((m, i) => {
+    const x = pad + i * gw + (gw - bw) / 2;
+    let base = H - pad;
+    codes.forEach((c, ci) => {
+      const v = m.counts[c] || 0;
+      if (!v) return;
+      const h = (H - pad - top) * v / max;
+      base -= h;
+      g += `<rect x="${x}" y="${base}" width="${bw}" height="${h}" fill="${cols[ci % cols.length]}"><title>${esc(c)} · ${m.lbl}: ${v}</title></rect>`;
+    });
+    g += `<text x="${x + bw/2}" y="${H - pad + 18}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${m.lbl}</text>`;
+    if (totals[i]) g += `<text x="${x + bw/2}" y="${base - 6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${totals[i]}</text>`;
+  });
+  const legend = codes.map((c, ci) => `<span><i style="background:${cols[ci % cols.length]}"></i>${esc(c)}</span>`).join('');
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="New patients per month by centre">${g}</svg><div class="legend-row">${legend}</div>`;
+}
+
+function renderCentralMilestoneDonut(pts){
+  const counts = { Completed: 0, 'In progress': 0, Due: 0, Overdue: 0, 'Not started': 0 };
+  pts.forEach(p => ['b','m3','m6'].forEach(k => {
+    const v = vstat(p, k);
+    const key = v === 'Missed' ? 'Overdue' : v === 'In Progress' ? 'In progress' : v === 'Not Started' ? 'Not started' : v;
+    counts[key] = (counts[key] || 0) + 1;
+  }));
+  const parts = [
+    { label: 'Completed', value: counts.Completed, color: 'var(--success)' },
+    { label: 'In progress', value: counts['In progress'], color: 'var(--primary)' },
+    { label: 'Due', value: counts.Due, color: 'var(--warning)' },
+    { label: 'Overdue', value: counts.Overdue, color: 'var(--error)' },
+    { label: 'Not started', value: counts['Not started'], color: 'var(--ink-3)' }
+  ];
+  const total = parts.reduce((x, p) => x + p.value, 0), R = 54, C = 2 * Math.PI * R;
+  let off = 0;
+  const segs = parts.filter(p => p.value > 0).map(p => {
+    const len = total ? C * p.value / total : 0;
+    const s = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${p.color}" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${p.label}: ${p.value}</title></circle>`;
+    off += len;
+    return s;
+  }).join('');
+  return `<div class="donut-wrap">
+    <svg viewBox="0 0 140 140" role="img" aria-label="Visit status breakdown">
+      <circle cx="70" cy="70" r="${R}" fill="none" stroke="var(--soft-2)" stroke-width="18"/>${segs}
+      <text x="70" y="68" text-anchor="middle" font-size="22" font-weight="600" fill="var(--ink)">${total}</text>
+      <text x="70" y="86" text-anchor="middle" font-size="11" fill="var(--ink-3)">visits</text>
+    </svg>
+    <ul class="legend-list">${parts.map(p => `<li><i style="background:${p.color}"></i><span>${p.label}</span><b>${p.value}</b></li>`).join('')}</ul>
+  </div>`;
+}
+
+function renderCentralGdmtPanel(pts){
+  const n = pts.length;
+  if (!n) return '<div class="empty"><i class="ms">medication</i>No patients to analyze.</div>';
+
+  // Calculate coverage for each of the 4 foundational pillars across latest visit
+  const pillarCounts = { arni: 0, bb: 0, mra: 0, sg: 0 };
+  const reasons = {};
+
+  pts.forEach(p => {
+    const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+    if (!last) return;
+    const v = p.v[last];
+    PL.forEach(([q]) => {
+      if (G(v, 'g.' + q + '.status') === 'Active') pillarCounts[q]++;
+    });
+    // Incomplete reasons
+    if (v.rs) {
+      Object.entries(v.rs).forEach(([rCode, active]) => {
+        if (active) reasons[rCode] = (reasons[rCode] || 0) + 1;
+      });
+    }
+  });
+
+  const R_NAMES = {
+    hypo: 'Hypotension', brady: 'Bradycardia', renal: 'Renal dysfunction',
+    k: 'Hyperkalemia', intol: 'Intolerance', cost: 'Cost/access',
+    pref: 'Patient preference', phys: 'Physician decision'
+  };
+
+  return `
+    <div class="gdmt-grid">
+      <div class="gdmt-card p1">
+        <div class="gdmt-head">
+          <span class="gdmt-title">1. ARNI (Sacubitril+Valsartan)</span>
+          <span class="gdmt-val">${pct(pillarCounts.arni, n)??0}%</span>
+        </div>
+        <div class="gdmt-bar"><i style="width:${pct(pillarCounts.arni, n)??0}%;background:var(--brand-magenta)"></i></div>
+        <small class="muted">${pillarCounts.arni} of ${n} patients on ARNI</small>
+      </div>
+
+      <div class="gdmt-card p2">
+        <div class="gdmt-head">
+          <span class="gdmt-title">2. Beta-blocker</span>
+          <span class="gdmt-val">${pct(pillarCounts.bb, n)??0}%</span>
+        </div>
+        <div class="gdmt-bar"><i style="width:${pct(pillarCounts.bb, n)??0}%;background:var(--primary)"></i></div>
+        <small class="muted">${pillarCounts.bb} of ${n} patients on BB</small>
+      </div>
+
+      <div class="gdmt-card p3">
+        <div class="gdmt-head">
+          <span class="gdmt-title">3. MRA</span>
+          <span class="gdmt-val">${pct(pillarCounts.mra, n)??0}%</span>
+        </div>
+        <div class="gdmt-bar"><i style="width:${pct(pillarCounts.mra, n)??0}%;background:var(--warning)"></i></div>
+        <small class="muted">${pillarCounts.mra} of ${n} patients on MRA</small>
+      </div>
+
+      <div class="gdmt-card p4">
+        <div class="gdmt-head">
+          <span class="gdmt-title">4. SGLT2 inhibitor</span>
+          <span class="gdmt-val">${pct(pillarCounts.sg, n)??0}%</span>
+        </div>
+        <div class="gdmt-bar"><i style="width:${pct(pillarCounts.sg, n)??0}%;background:var(--success)"></i></div>
+        <small class="muted">${pillarCounts.sg} of ${n} patients on SGLT2i</small>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px">Documented Clinical Reasons for Incomplete GDMT:</div>
+      <div class="reason-tags">
+        ${Object.entries(reasons).map(([code, cnt]) => `
+          <span class="reason-tag"><b>${R_NAMES[code]||code}:</b> ${cnt} patients</span>
+        `).join('') || '<span class="muted" style="font-size:12px">None documented or fully optimized</span>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderCentralTrajectoriesPanel(pts, st){
+  // Calculate NYHA distribution at Baseline vs 6M
+  const bNyha = { I: 0, II: 0, III: 0, IV: 0 };
+  const m6Nyha = { I: 0, II: 0, III: 0, IV: 0 };
+  let m6Count = 0;
+
+  pts.forEach(p => {
+    if (p.v?.b?.nyha && bNyha[p.v.b.nyha] !== undefined) bNyha[p.v.b.nyha]++;
+    if (p.v?.m6?.done && p.v?.m6?.nyha && m6Nyha[p.v.m6.nyha] !== undefined) {
+      m6Nyha[p.v.m6.nyha]++;
+      m6Count++;
+    }
+  });
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="traj-row">
+        <div>
+          <b>NYHA Functional Class Shift</b>
+          <div class="muted" style="font-size:12px">Baseline vs Month 6 Cohort (${m6Count} finished M6)</div>
+        </div>
+        <div class="traj-stages">
+          <span class="traj-pill" title="Baseline Class III/IV">B: ${bNyha.III + bNyha.IV} in Cl III/IV</span>
+          <span class="traj-arrow">➔</span>
+          <span class="traj-pill" style="background:var(--success-soft);color:var(--on-success-soft)" title="M6 Class I/II">M6: ${m6Nyha.I + m6Nyha.II} in Cl I/II</span>
+        </div>
+      </div>
+
+      <div class="traj-row">
+        <div>
+          <b>Functional Capacity (1MSTS)</b>
+          <div class="muted" style="font-size:12px">Mean 1-Minute Sit-to-Stand repetitions gain</div>
+        </div>
+        <b style="font-size:18px;color:${mean(st.dMsts)>0?'var(--success)':'var(--ink)'}">${signed(mean(st.dMsts))} reps</b>
+      </div>
+
+      <div class="traj-row">
+        <div>
+          <b>Echocardiographic Recovery (LVEF)</b>
+          <div class="muted" style="font-size:12px">Mean left ventricular ejection fraction improvement</div>
+        </div>
+        <b style="font-size:18px;color:${mean(st.dEf)>0?'var(--success)':'var(--ink)'}">${signed(mean(st.dEf))}%</b>
+      </div>
+
+      <div class="traj-row">
+        <div>
+          <b>Adverse Hospitalization &amp; Event Rates</b>
+          <div class="muted" style="font-size:12px">Reported during longitudinal follow-up</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <span class="chip ${st.events.hf?'Overdue':'good'}">${st.events.hf} HF Hosp</span>
+          <span class="chip ${st.events.death?'Overdue':'good'}">${st.events.death} Death</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCentralOverdueQueue(pts){
+  const overdueList = [];
+  pts.forEach(p => {
+    ['m3','m6'].forEach(k => {
+      const s = vstat(p, k);
+      if (s === 'Overdue' || s === 'Missed') {
+        const win = window_(p, k);
+        const daysOver = win ? Math.round((new Date() - win[1]) / DAY) : 0;
+        overdueList.push({ p, k, s, win, daysOver });
+      }
+    });
+  });
+
+  if (!overdueList.length) {
+    return '<tr><td colspan="9" class="muted" style="text-align:center;padding:24px"><i class="ms" style="font-size:24px;vertical-align:-4px;color:var(--success)">check_circle</i> No overdue or missed follow-up visits across the registry. Excellent site protocol compliance!</td></tr>';
+  }
+
+  overdueList.sort((a,b) => b.daysOver - a.daysOver);
+
+  return overdueList.slice(0, 15).map(o => `
+    <tr>
+      <td><b>${esc(o.p.id)}</b><div class="muted" style="font-size:11px">${esc(o.p.name || 'Patient')}</div></td>
+      <td><b>${esc(o.p.site)}</b></td>
+      <td><span class="tag" style="background:var(--soft);color:var(--ink-2)">${esc(getSiteZone(o.p.site))}</span></td>
+      <td>${esc(o.p.inv || '–')}</td>
+      <td><b>${o.k === 'm3' ? 'Month 3' : 'Month 6'}</b></td>
+      <td><small>${o.win ? fmtShortD(o.win[0]) + ' – ' + fmtShortD(o.win[1]) : '–'}</small></td>
+      <td><span class="chip Overdue">${o.s} (+${o.daysOver}d)</span></td>
+      <td><code>${esc(o.p.contact || '–')}</code></td>
+      <td>
+        <a class="btn" href="${ECRF}?patient=${encodeURIComponent(o.p.id)}&tab=${o.k}" style="padding:4px 8px;font-size:12px">
+          <i class="ms" style="font-size:15px">visibility</i>Inspect
+        </a>
+      </td>
+    </tr>
+  `).join('');
+}
+
+
+/* ==========================================================================
+   VIEW 3: SUPER ADMIN DASHBOARD
+   ========================================================================== */
+function renderSuperAdminView(allPts){
+  const s = accessStore();
+  const st = aggregateStats(allPts);
+  const centralUsers = s.users.filter(u => u.role === 'central');
+  const invUsers = s.users.filter(u => u.role === 'investigator');
+  const auditLogs = centralAuditLog();
+
+  return `
+    <div class="hello">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <h1 id="welcome">Super Admin Study Executive Dashboard</h1>
+          <span class="tag" style="background:#1b1d22;color:#fff;font-size:12px;padding:3px 10px"><i class="ms" style="font-size:14px;vertical-align:-2px">shield</i> Super Admin</span>
+        </div>
+        <p id="meta">System administrator oversight across ~100 Cardiology Sites, Central Monitoring Team &amp; Site Investigators</p>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="${ADMIN}#users"><i class="ms">manage_accounts</i>Manage Teams</a>
+        <a class="btn" href="${ADMIN}#sites"><i class="ms">add_location_alt</i>Manage Sites</a>
+        <button type="button" class="btn" id="btnExportModal"><i class="ms">download</i>Export All Data</button>
+      </div>
+    </div>
+
+    <!-- Global KPIs -->
+    <section class="kpis">
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">group</i></span></div>
+        <b>${st.n}</b><span>Total Registry Patients</span><small>All hospital sites</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">domain</i></span></div>
+        <b>${s.sites.length}</b><span>Participating Sites</span><small>Target: ~100 sites</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">clinical_notes</i></span></div>
+        <b>${invUsers.filter(u=>u.active).length}</b><span>Site Investigators</span><small>${invUsers.length} total registered</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">supervisor_account</i></span></div>
+        <b>${centralUsers.filter(u=>u.active).length}</b><span>Central Team Monitors</span><small>${centralUsers.length} total registered</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">event_busy</i></span><span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount}</span></div>
+        <b>${st.overdueCount}</b><span>Overdue Follow-ups</span><small>Study-wide alerts</small>
+      </div>
+    </section>
+
+    <!-- Two Separate Teams Presentation (Central Team vs Site Investigators) -->
+    <section class="teams-grid">
+      <!-- Team 1: Central Monitoring Directorate -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Central Monitoring Directorate</h2>
+            <small>Study oversight, data quality monitors &amp; research export authority</small>
+          </div>
+          <a class="btn" href="${ADMIN}#users" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">add</i>Add Central User</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Member</th><th>Username</th><th>Assigned Zone(s)</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${centralUsers.map(u => `
+                <tr>
+                  <td><b>${esc(u.name)}</b></td>
+                  <td><code>${esc(u.username)}</code></td>
+                  <td>${u.zones?.length ? u.zones.join(', ') : 'All Zones (National)'}</td>
+                  <td><span class="chip ${u.active?'In':'Not'}">${u.active?'Active':'Inactive'}</span></td>
+                </tr>
+              `).join('') || '<tr><td colspan="4" class="muted">No Central Team users configured.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:8px"><i class="ms" style="font-size:14px;vertical-align:-2px">receipt_long</i> Central Team Monitoring Audit Log (Latest 5 Events):</div>
+          <div style="font-size:12px;color:var(--ink-2)">
+            ${auditLogs.slice(0, 5).map(a => `
+              <div style="padding:6px 0;border-bottom:1px dashed var(--line);display:flex;justify-content:space-between">
+                <span><b>${esc(a.name)}:</b> ${esc(a.action)} — <span class="muted">${esc(a.details)}</span></span>
+                <span class="muted">${esc(a.t)}</span>
+              </div>
+            `).join('') || '<div class="muted">No central export or audit actions recorded yet.</div>'}
+          </div>
+        </div>
+      </div>
+
+      <!-- Team 2: Clinical Site Investigators -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Site Investigators Team</h2>
+            <small>Frontline clinicians entering patient data at cardiology centres</small>
+          </div>
+          <a class="btn" href="${ADMIN}#users" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">add</i>Add Investigator</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Investigator</th><th>Assigned Sites</th><th class="num">Patients</th><th class="num">On-Time %</th><th>Drill-Down</th></tr>
+            </thead>
+            <tbody>
+              ${invUsers.map(u => {
+                const uPts = allPts.filter(p => p.inv === u.name || p.owner === u.username);
+                const uSt = aggregateStats(uPts);
+                return `
+                  <tr>
+                    <td><b>${esc(u.name)}</b><div class="muted" style="font-size:11px">${esc(u.username)}</div></td>
+                    <td>${u.sites?.join(', ') || 'No Sites'}</td>
+                    <td class="num"><b>${uPts.length}</b></td>
+                    <td class="num">${uSt.ontimeRate!=null?uSt.ontimeRate+'%':'–'}</td>
+                    <td>
+                      <a class="btn" href="${ADMIN}#dash" style="padding:4px 8px;font-size:12px" title="View ${esc(u.name)} Profile">
+                        <i class="ms" style="font-size:15px">account_circle</i>Profile
+                      </a>
+                    </td>
+                  </tr>
+                `;
+              }).join('') || '<tr><td colspan="5" class="muted">No Site Investigators configured.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Global Study Progress & Enrolment -->
+    <div class="dash-grid" style="margin-top:16px">
+      <section class="card">
+        <div class="card-head"><h2>Registry Enrolment by Centre</h2><small>Monthly volume by site</small></div>
+        ${renderCentralEnrolmentBars(allPts, s.sites)}
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>Global Milestone Breakdown</h2><small>Status of all patient visits</small></div>
+        ${renderCentralMilestoneDonut(allPts)}
+      </section>
+    </div>
+  `;
+}
+
+
+/* ==========================================================================
+   RESEARCH-READY EXPORT MODULE (CSV / EXCEL DATASETS)
+   ========================================================================== */
+function generateAndDownloadExport(scope, visits, only4Pillars, format){
+  const allPts = loadData();
+  let targetPts = allPts.slice();
+
+  let targetDesc = 'All Registry Patients';
+  if (scope === 'filtered') {
+    if (filterZone !== 'all') targetPts = targetPts.filter(p => getSiteZone(p.site) === filterZone);
+    if (filterSite !== 'all') targetPts = targetPts.filter(p => p.site === filterSite);
+    if (filterInv !== 'all') targetPts = targetPts.filter(p => p.inv === filterInv);
+    targetDesc = `Zone:${filterZone}, Site:${filterSite}, Inv:${filterInv}`;
+  }
+
+  if (only4Pillars) {
+    targetPts = targetPts.filter(p => {
+      const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+      return last && act(p.v[last]) === 4;
+    });
+    targetDesc += ' (4/4 GDMT Only)';
+  }
+
+  if (format === 'summary') {
+    // Generate site league summary
+    const s = accessStore();
+    const rows = [['Site Code','Site Name','Zone','Enrolled Patients','Baseline Completed','3M Completed','6M Completed','On-Time Adherence %','Overdue Count','GDMT 4/4 Rate %']];
+    s.sites.forEach(st => {
+      const ps = targetPts.filter(p => p.site === st.code);
+      const n = ps.length;
+      const b = ps.filter(p => p.v?.b?.done).length;
+      const m3 = ps.filter(p => p.v?.m3?.done).length;
+      const m6 = ps.filter(p => p.v?.m6?.done).length;
+      const fu = ps.flatMap(p => ['m3','m6'].map(k => onTime(p, k))).filter(x => x !== null);
+      const ontime = fu.length ? Math.round(100 * fu.filter(Boolean).length / fu.length) : '';
+      const overdue = ps.reduce((c, p) => c + ['m3','m6'].filter(k => ['Overdue','Missed'].includes(vstat(p, k))).length, 0);
+      const gdmt4 = ps.filter(p => {
+        const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+        return last && act(p.v[last]) === 4;
+      }).length;
+      const gdmtPct = n ? Math.round(100 * gdmt4 / n) : '';
+      rows.push([st.code, st.name, st.zone||'', n, b, m3, m6, ontime, overdue, gdmtPct]);
+    });
+    downloadCsv(rows, 'stand-hf-site-league-summary', targetDesc);
+    return;
+  }
+
+  // 1-Row-Per-Patient-Visit Research Dataset (Compliant with FSD & Brief)
+  const header = [
+    'Study_ID','Site_Code','Site_Zone','Investigator_Name','Patient_Name','Contact_Number','Consent_Date','Age','Sex','HF_Etiology',
+    'Visit_Stage','Visit_Status','Visit_Date','Weight_kg','Heart_Rate_bpm','Systolic_BP_mmHg','Diastolic_BP_mmHg',
+    'NYHA_Class','1MSTS_Reps_60s','LVEF_Percent','Echo_Date','Active_GDMT_Pillars_Count',
+    'ARNI_Drug','ARNI_Dose','ARNI_Status',
+    'BetaBlocker_Drug','BetaBlocker_Dose','BetaBlocker_Status',
+    'MRA_Drug','MRA_Dose','MRA_Status',
+    'SGLT2i_Drug','SGLT2i_Dose','SGLT2i_Status',
+    'HF_Hospitalization','Other_Hospitalization','Death','Major_Intervention_Notes'
+  ];
+
+  const rows = [header];
+  const visitLabels = { b: 'Baseline', m3: 'Month 3', m6: 'Month 6' };
+
+  targetPts.forEach(p => {
+    visits.forEach(k => {
+      const v = p.v?.[k] || {};
+      const g = q => (v.g && v.g[q]) || {};
+      const ev = v.ev || {};
+      const activeCount = act(v);
+
+      rows.push([
+        p.id, p.site, getSiteZone(p.site), p.inv || '', p.name || '', p.contact || '', p.consent || '', p.age || '', p.sex || '', p.etio || '',
+        visitLabels[k], vstat(p, k), v.date || '', v.wt || '', v.hr || '', v.sbp || '', v.dbp || '',
+        v.nyha || '', v.msts != null ? v.msts : '', v.lvef != null ? v.lvef : '', v.echoDate || '', activeCount,
+        g('arni').drug || '', g('arni').dose || '', g('arni').status || '',
+        g('bb').drug || '', g('bb').dose || '', g('bb').status || '',
+        g('mra').drug || '', g('mra').dose || '', g('mra').status || '',
+        g('sg').drug || '', g('sg').dose || '', g('sg').status || '',
+        ev.hf ? 1 : 0, ev.all ? 1 : 0, ev.death ? 1 : 0, ev.notes || ''
+      ]);
+    });
+  });
+
+  downloadCsv(rows, 'stand-hf-research-dataset', targetDesc);
+}
+
+function downloadCsv(rows, filenamePrefix, targetDescription){
+  const csvContent = rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  // Record into Central Audit Log (accessible to Super Admin)
+  logCentralAction('Export CSV', `${rows.length - 1} rows (${targetDescription})`, targetDescription);
+  toast(`Export complete: ${rows.length - 1} rows downloaded & logged to central audit.`);
+}
+
+
+/* ==========================================================================
+   INITIALIZATION & EVENT BINDINGS
+   ========================================================================== */
+function renderDashboard(){
+  const allPts = loadData();
+  const root = $('dashRoot');
+  if (!root) return;
+
+  if (ROLE === 'investigator') {
+    root.innerHTML = renderInvestigatorView(allPts);
+  } else if (ROLE === 'superadmin') {
+    root.innerHTML = renderSuperAdminView(allPts);
+  } else {
+    // Default to Central Team Monitoring Dashboard
+    root.innerHTML = renderCentralView(allPts);
+  }
+
+  attachEvents();
+}
+
+function attachEvents(){
+  // Period filter clicks (Today, Week, Month from header.js)
+  document.querySelectorAll('[data-period]').forEach(btn => {
+    btn.onclick = () => {
+      periodDays = +btn.dataset.period;
+      document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('on', b === btn));
+      renderDashboard();
+    };
+  });
+
+  // Topbar global search input
+  const searchInput = $('search');
+  if (searchInput) {
+    searchInput.oninput = () => {
+      searchQuery = searchInput.value;
+      renderDashboard();
+    };
+  }
+
+  // Investigator patient selection
+  document.querySelectorAll('[data-invid]').forEach(btn => {
+    btn.onclick = () => {
+      invSelectedId = btn.dataset.invid;
+      const allPts = loadData();
+      const mine = allPts.filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME);
+      const upcoming = mine.map(p => ({ p, k: nextVisit(p), s: vstat(p, nextVisit(p)||'b'), win: window_(p, nextVisit(p)||'b') })).filter(Boolean);
+      const selU = upcoming.find(x => x.p.id === invSelectedId) || upcoming[0];
+      const plistEl = $('invPlist');
+      const detailEl = $('invDetail');
+      if (plistEl) plistEl.innerHTML = renderInvestigatorList(upcoming);
+      if (detailEl) detailEl.innerHTML = renderInvestigatorDetail(selU);
+    };
+  });
+
+  // Central Team Hierarchy Filters
+  const selZone = $('selZone');
+  if (selZone) {
+    selZone.onchange = () => {
+      filterZone = selZone.value;
+      filterSite = 'all'; // reset dependent site
+      filterInv = 'all';  // reset dependent inv
+      renderDashboard();
+    };
+  }
+
+  const selSite = $('selSite');
+  if (selSite) {
+    selSite.onchange = () => {
+      filterSite = selSite.value;
+      filterInv = 'all';
+      renderDashboard();
+    };
+  }
+
+  const selInv = $('selInv');
+  if (selInv) {
+    selInv.onchange = () => {
+      filterInv = selInv.value;
+      renderDashboard();
+    };
+  }
+
+  const selGdmt = $('selGdmt');
+  if (selGdmt) {
+    selGdmt.onchange = () => {
+      filterGdmt = selGdmt.value;
+      renderDashboard();
+    };
+  }
+
+  const btnReset = $('btnResetFilters');
+  if (btnReset) {
+    btnReset.onclick = () => {
+      filterZone = 'all';
+      filterSite = 'all';
+      filterInv = 'all';
+      filterGdmt = 'all';
+      renderDashboard();
+    };
+  }
+
+  // Quick Site Export buttons
+  document.querySelectorAll('[data-export-site]').forEach(btn => {
+    btn.onclick = () => {
+      const siteCode = btn.dataset.exportSite;
+      const allPts = loadData().filter(p => p.site === siteCode);
+      const header = ['Study_ID','Site','Consent_Date','Age','Sex','Etiology','Baseline_Status','3M_Status','6M_Status','GDMT_Pillars'];
+      const rows = [header];
+      allPts.forEach(p => {
+        const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+        rows.push([p.id, p.site, p.consent||'', p.age||'', p.sex||'', p.etio||'', vstat(p,'b'), vstat(p,'m3'), vstat(p,'m6'), last ? act(p.v[last]) : 0]);
+      });
+      downloadCsv(rows, `stand-hf-site-${siteCode}`, `Site ${siteCode}`);
+    };
+  });
+
+  // Export League CSV button
+  const btnExportLeague = $('btnExportLeague');
+  if (btnExportLeague) {
+    btnExportLeague.onclick = () => {
+      generateAndDownloadExport('all', ['b','m3','m6'], false, 'summary');
+    };
+  }
+
+  // Export Modal trigger
+  const btnExportModal = $('btnExportModal');
+  const exportDlg = $('exportDlg');
+  if (btnExportModal && exportDlg) {
+    btnExportModal.onclick = () => {
+      const lbl = $('edScopeFilterLabel');
+      if (lbl) lbl.textContent = `Zone:${filterZone}, Site:${filterSite}, Inv:${filterInv}`;
+      exportDlg.showModal();
+    };
+  }
+
+  const edClose = $('edClose');
+  const edCancel = $('edCancel');
+  if (edClose && exportDlg) edClose.onclick = () => exportDlg.close();
+  if (edCancel && exportDlg) edCancel.onclick = () => exportDlg.close();
+
+  // Export download button inside modal
+  const edDownloadBtn = $('edDownloadBtn');
+  if (edDownloadBtn && exportDlg) {
+    edDownloadBtn.onclick = () => {
+      const scope = document.querySelector('input[name="edScope"]:checked')?.value || 'all';
+      const visits = Array.from(document.querySelectorAll('input[name="edVisits"]:checked')).map(x => x.value);
+      const only4 = !!document.querySelector('input[name="edOnly4Pillars"]:checked');
+      const format = document.querySelector('input[name="edFormat"]:checked')?.value || 'csv';
+
+      if (!visits.length && format === 'csv') {
+        toast('Please select at least one visit stage.');
+        return;
+      }
+      exportDlg.close();
+      generateAndDownloadExport(scope, visits, only4, format);
+    };
+  }
+}
+
+// Initial Render
+renderDashboard();
+
+})();
 </script>
 </body>
 </html>

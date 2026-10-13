@@ -19,29 +19,65 @@ const ALL_PERMS=Object.fromEntries(PERMS.map(([k])=>[k,true]));
 /* Super Admin oversees the study; patient data entry belongs to site and central staff */
 const SUPER_NO=['add_patient','enter_data','mark_complete'];
 const DEFAULT_ACCESS={
+  zones:['North','Central','South'],
   sites:[
-    {code:'RIC',name:'Riverside Cardiac Centre'},
-    {code:'LHR',name:'Lakeview Heart Clinic'},
-    {code:'KHI',name:'Harbor Heart Institute'},
-    {code:'ISB',name:'Highland Cardiology'}
+    {code:'RIC',name:'Riverside Cardiac Centre',zone:'North',city:'Rawalpindi'},
+    {code:'LHR',name:'Lakeview Heart Clinic',zone:'Central',city:'Lahore'},
+    {code:'KHI',name:'Harbor Heart Institute',zone:'South',city:'Karachi'},
+    {code:'ISB',name:'Highland Cardiology',zone:'North',city:'Islamabad'}
   ],
   users:[
-    {username:'michael.johnson',name:'Michael Johnson',role:'superadmin',sites:[],active:true},
-    {username:'emily.carter',name:'Emily Carter',role:'investigator',sites:['RIC','LHR'],active:true},
-    {username:'robert.wilson',name:'Robert Wilson',role:'central',sites:[],active:true},
-    {username:'adnan.khan',name:'Adnan Khan',role:'investigator',sites:['KHI','ISB'],active:true}
+    {username:'michael.johnson',name:'Michael Johnson',role:'superadmin',sites:[],zones:[],active:true},
+    {username:'emily.carter',name:'Emily Carter',role:'investigator',sites:['RIC','LHR'],zones:['North','Central'],active:true},
+    {username:'robert.wilson',name:'Robert Wilson',role:'central',sites:[],zones:['North','Central','South'],active:true},
+    {username:'adnan.khan',name:'Adnan Khan',role:'investigator',sites:['KHI','ISB'],zones:['South','North'],active:true}
   ],
   perms:{
     superadmin:ALL_PERMS,
     investigator:{add_patient:true,enter_data:true,mark_complete:true,load_demo:true,clear_all:true},
-    central:{view_all_sites:true,export_data:true,mark_complete:true,assign_investigators:true}
+    central:{view_all_sites:true,export_data:true}
   }
 };
+
+const AUDIT_CENTRAL_KEY='standhf_central_audit_v1';
+function centralAuditLog(){
+  try{return JSON.parse(localStorage.getItem(AUDIT_CENTRAL_KEY)||'[]')}catch(e){return []}
+}
+function logCentralAction(action,details,target){
+  try{
+    const list=centralAuditLog();
+    const s=session();
+    list.unshift({
+      id:'aud-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
+      username:s.username||'unknown',
+      name:s.name||'Central Team User',
+      role:s.role||'central',
+      action:action||'Export',
+      details:details||'',
+      target:target||'All Sites',
+      t:new Date().toLocaleString('en-GB'),
+      timestamp:Date.now()
+    });
+    localStorage.setItem(AUDIT_CENTRAL_KEY,JSON.stringify(list.slice(0,500)));
+  }catch(e){}
+}
 
 function accessStore(){
   try{
     const s=JSON.parse(localStorage.getItem(ACCESS_KEY)||'null');
     if(s&&Array.isArray(s.sites)&&Array.isArray(s.users)&&s.perms){
+      if(!Array.isArray(s.zones))s.zones=['North','Central','South'];
+      const zMap={RIC:'North',ISB:'North',LHR:'Central',KHI:'South'};
+      s.sites.forEach(st=>{if(!st.zone)st.zone=zMap[st.code]||'Central'});
+      /* Ensure central role is strictly read-only monitoring + export */
+      if(s.perms.central){
+        delete s.perms.central.assign_investigators;
+        delete s.perms.central.add_patient;
+        delete s.perms.central.enter_data;
+        delete s.perms.central.mark_complete;
+        s.perms.central.view_all_sites=true;
+        s.perms.central.export_data=true;
+      }
       /* Add permissions introduced later; keep anything an admin has already set */
       Object.entries(DEFAULT_ACCESS.perms).forEach(([r,defs])=>{
         if(r==='superadmin')return;

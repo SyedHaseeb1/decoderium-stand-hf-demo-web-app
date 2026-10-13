@@ -108,37 +108,117 @@ function sitePreview(){
 
 function usersView(){
   const s=accessStore(),central=isCentral();
-  const visible=central?s.users.filter(u=>u.role==='investigator'):s.users;
-  const rows=visible.map(u=>`<tr>
+  const centralUsers=s.users.filter(u=>u.role==='central');
+  const invUsers=s.users.filter(u=>u.role==='investigator');
+  const adminUsers=s.users.filter(u=>u.role===SUPER);
+  const auditLogs=typeof centralAuditLog==='function'?centralAuditLog():[];
+
+  const userRow=(u,isInv)=>`<tr>
     <td><b>${esc(u.name)}</b><div class="muted">${esc(u.username)}</div></td>
-    <td>${central?esc(ROLE_NAMES[u.role]):`<select data-role-of="${esc(u.username)}" aria-label="Role for ${esc(u.name)}">${roleOptions(u.role)}</select>`}</td>
-    <td>${u.role===SUPER?'<span class="muted">All sites</span>':siteBoxes(s,u,`data-site-of="${esc(u.username)}"`)}</td>
+    <td><select data-role-of="${esc(u.username)}" aria-label="Role for ${esc(u.name)}">${roleOptions(u.role)}</select></td>
+    <td>${u.role===SUPER?'<span class="muted">All sites (Global)</span>':u.role==='central'?'<span class="tag info" style="font-size:12px">All Sites & Zones (National Oversight)</span>':siteBoxes(s,u,`data-site-of="${esc(u.username)}"`)}</td>
     <td><label class="check-row"><input type="checkbox" data-active-of="${esc(u.username)}" ${u.active?'checked':''}><span>Active</span></label></td>
-  </tr>`).join('');
+  </tr>`;
+
   const roleCards=['investigator','central','superadmin'].map(r=>`<label class="role-card">
       <input type="radio" name="role" value="${r}" ${r==='investigator'?'checked':''}>
       <span class="rc-title">${ROLE_NAMES[r]}</span><span class="rc-desc">${ROLE_HINT[r]}</span></label>`).join('');
-  const roleField=central
-    ? `<div class="fld-wide"><span class="field-label">Role</span><span class="rc-desc">Site Investigator. Assign one or more sites below.</span></div>`
-    : `<div class="fld-wide"><span class="field-label">Role</span><div class="role-cards">${roleCards}</div></div>`;
-  return `<section class="card">
-      <div class="card-head"><h2>${central?'Site investigators':'Users'}</h2><small>${visible.length} ${central?'investigators':'accounts'}</small></div>
-      <div class="table-wrap"><table><tr><th>${central?'Investigator':'User'}</th><th>Role</th><th>Sites</th><th>Access</th></tr>${rows||'<tr><td colspan="4" class="muted">No investigators yet.</td></tr>'}</table></div>
+
+  return `
+    <!-- Distinct Team 1: Central Monitoring Directorate -->
+    <section class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <div>
+          <h2>Central Monitoring Directorate</h2>
+          <small>Study leadership &amp; data monitors ("The boss after super admin") · Read-only patient data with full export power</small>
+        </div>
+        <span class="tag info">${centralUsers.length} Monitors</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Member</th><th>Role</th><th>Scope &amp; Zones</th><th>Access</th></tr></thead>
+          <tbody>${centralUsers.map(u=>userRow(u,false)).join('')||'<tr><td colspan="4" class="muted">No Central Team users configured.</td></tr>'}</tbody>
+        </table>
+      </div>
     </section>
+
+    <!-- Distinct Team 2: Clinical Site Investigators -->
+    <section class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <div>
+          <h2>Site Investigators Team</h2>
+          <small>Cardiologists &amp; clinical coordinators entering patient visits at assigned hospital sites</small>
+        </div>
+        <span class="tag good">${invUsers.length} Clinicians</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Investigator</th><th>Role</th><th>Assigned Sites</th><th>Access</th></tr></thead>
+          <tbody>${invUsers.map(u=>userRow(u,true)).join('')||'<tr><td colspan="4" class="muted">No Site Investigators configured.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Super Administrators -->
+    <section class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <div>
+          <h2>System Administrators</h2>
+          <small>Full governance over users, sites, and system configuration</small>
+        </div>
+        <span class="tag" style="background:#1b1d22;color:#fff">${adminUsers.length} Admins</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Administrator</th><th>Role</th><th>Scope</th><th>Access</th></tr></thead>
+          <tbody>${adminUsers.map(u=>userRow(u,false)).join('')}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Central Team Export & Monitoring Audit Trail -->
+    <section class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <div>
+          <h2>Central Team Export &amp; Monitoring Audit Log</h2>
+          <small>Governance trail of all research exports and data inspections performed by the Central Team</small>
+        </div>
+        <span class="tag" style="background:var(--soft);color:var(--ink)">${auditLogs.length} Events</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Timestamp</th><th>Central User</th><th>Action</th><th>Target Scope</th><th>Details</th></tr></thead>
+          <tbody>
+            ${auditLogs.slice(0, 15).map(a=>`<tr>
+              <td style="font-size:12px;white-space:nowrap">${esc(a.t)}</td>
+              <td><b>${esc(a.name)}</b> <span class="muted">(${esc(a.username)})</span></td>
+              <td><span class="tag info" style="font-size:11px">${esc(a.action)}</span></td>
+              <td><code>${esc(a.target)}</code></td>
+              <td><span class="muted">${esc(a.details)}</span></td>
+            </tr>`).join('') || '<tr><td colspan="5" class="muted">No Central Team export actions recorded yet.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Add User Form -->
     <section class="card addcard">
-      <div class="addform-head"><h3>${central?'Add a site investigator':'Add a user'}</h3><p>${central?'They sign in with the username set here and can enter patients at their sites.':'They sign in with the username and role set here.'}</p></div>
+      <div class="addform-head">
+        <h3>Add a User</h3>
+        <p>Create Central Team monitors or Site Investigators and assign them to sites or zones.</p>
+      </div>
       <form id="fUser" class="addform" novalidate style="margin-top:16px">
         <div class="form-grid">
-          <div class="fld"><label for="uName">Full name</label><input id="uName" name="name" autocomplete="off" placeholder="e.g. Sara Ahmed"><span class="fmsg hint-txt" data-for="uName"></span></div>
+          <div class="fld"><label for="uName">Full name</label><input id="uName" name="name" autocomplete="off" placeholder="e.g. Dr. Sara Ahmed"><span class="fmsg hint-txt" data-for="uName"></span></div>
           <div class="fld"><label for="uUser">Username</label><input id="uUser" name="username" autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="e.g. sara.ahmed"><span class="fmsg hint-txt" data-for="uUser">Lowercase letters, numbers, dot or underscore</span></div>
         </div>
-        ${roleField}
+        <div class="fld-wide"><span class="field-label">Role</span><div class="role-cards">${roleCards}</div></div>
         <div class="fld-wide" id="siteBlock">
-          <div class="site-head"><span class="field-label">Sites</span><button type="button" class="link-btn" id="allSites">Select all</button></div>
+          <div class="site-head"><span class="field-label">Assigned Sites (for Site Investigators)</span><button type="button" class="link-btn" id="allSites">Select all</button></div>
           ${siteBoxes(s,null,'name="site"')}
           <span class="fmsg" data-for="sites"></span>
         </div>
-        <div class="addform-foot"><span class="muted" id="userPreview"></span><button type="submit" class="pri">${central?'Add investigator':'Add user'}</button></div>
+        <div class="addform-foot"><span class="muted" id="userPreview"></span><button type="submit" class="pri">Create User</button></div>
       </form>
     </section>`;
 }

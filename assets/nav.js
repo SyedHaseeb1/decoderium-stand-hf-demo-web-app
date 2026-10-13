@@ -22,16 +22,18 @@
 
   const groups=[
     {label:'General',items:[
-      {key:'dashboard',label:'Dashboard',href:isSuper?ADMIN+'#dash':DASH,icon:'space_dashboard',show:isInv||isSuper},
-      {key:'add',label:'Add patient',href:ECRF+'?new=1',icon:'person_add',show:!isSuper},
+      {key:'dashboard',label:'Dashboard',href:DASH,icon:'space_dashboard',show:true},
+      {key:'add',label:'Add patient',href:ECRF+'?new=1',icon:'person_add',show:isInv},
       {key:'records',label:'Patient records',href:ECRF,icon:'edit_note',show:true}
     ]},
     {label:'Reports',items:[
-      {key:'performance',label:'Performance',href:DASH+'#performance',icon:'monitoring',show:isInv},
-      {key:'sites',label:'Sites',href:DASH+'#sites',icon:'location_on',show:isInv}
+      {key:'performance',label:'Performance',href:DASH+'#performance',icon:'monitoring',show:isInv||isCentral},
+      {key:'sites',label:'Sites & League',href:DASH+'#sites',icon:'location_on',show:isInv||isCentral},
+      {key:'gdmt',label:'GDMT Coverage',href:DASH+'#gdmt',icon:'pill',show:isCentral}
     ]},
     {label:'Administration',items:[
-      {key:'adm-users',label:'Users',href:ADMIN+'#users',icon:'group',show:isSuper||can('assign_investigators')},
+      {key:'adm-dash',label:'Admin Overview',href:ADMIN+'#dash',icon:'admin_panel_settings',show:isSuper},
+      {key:'adm-users',label:'Users',href:ADMIN+'#users',icon:'group',show:isSuper},
       {key:'adm-sites',label:'Sites',href:ADMIN+'#sites',icon:'location_on',show:isSuper},
       {key:'adm-perms',label:'Permissions',href:ADMIN+'#perms',icon:'shield_person',show:isSuper}
     ]}
