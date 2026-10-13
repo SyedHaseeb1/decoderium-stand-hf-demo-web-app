@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261015k">
+  <link rel="stylesheet" href="../assets/base.css?v=20261015m">
 <script>
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
@@ -90,7 +90,71 @@ function siteBoxes(s,user,attr){
   return `<div class="site-opts">${s.sites.map(x=>`<label class="check-row"><input type="checkbox" ${attr} value="${esc(x.code)}" ${user&&user.sites.includes(x.code)?'checked':''}><span>${esc(x.code)}</span></label>`).join('')}</div>`;
 }
 
-const ROLE_HINT={superadmin:'Oversees all sites. Does not enter patient data.',investigator:'Enters patients and visits at assigned sites.',central:'Sees all sites. Monitors and exports data.'};
+const ROLE_HINT={superadmin:'Oversees all sites and system configuration. Does not enter patient data.',investigator:'Enters patients and completes clinical visit forms at assigned sites.',central:'National oversight across all ~100 sites and zones. Monitors and exports data.'};
+const ROLE_META={
+  investigator:{
+    icon:'clinical_notes',
+    title:'Site Investigator',
+    badge:'Clinical Care Lead',
+    badgeCls:'inv',
+    desc:'Enrolls patients and records Baseline (B), M3, and M6 clinical CRFs at assigned medical centres.',
+    feats:[{t:'Patient intake & visits',ok:true},{t:'Scoped to assigned sites',ok:true},{t:'No admin oversight',lock:true}]
+  },
+  central:{
+    icon:'travel_explore',
+    title:'Central Directorate',
+    badge:'National Oversight',
+    badgeCls:'central',
+    desc:'Oversees ~100 participating sites across Pakistan. Read-only patient data with full export power.',
+    feats:[{t:'All sites & zones scope',ok:true},{t:'Audit-logged CSV export',ok:true},{t:'Read-only clinical forms',lock:true}]
+  },
+  superadmin:{
+    icon:'admin_panel_settings',
+    title:'Super Administrator',
+    badge:'Global System Admin',
+    badgeCls:'super',
+    desc:'Configures medical centres, provisions user credentials, and maintains access permissions.',
+    feats:[{t:'Manage users & sites',ok:true},{t:'Full security controls',ok:true},{t:'No clinical data tampering',lock:true}]
+  }
+};
+function renderRoleCards(){
+  return ['investigator','central','superadmin'].map(r=>{
+    const m=ROLE_META[r];
+    const locked=isCentral()&&r!=='investigator';
+    return `<label class="role-card-pro ${locked?'is-locked':''}">
+      <input type="radio" name="role" value="${r}" ${r==='investigator'?'checked':''} ${locked?'disabled':''}>
+      <div class="rc-header">
+        <div class="rc-icon-box"><i class="ms">${m.icon}</i></div>
+        <div class="rc-check-circle"><i class="ms">check</i></div>
+      </div>
+      <div class="rc-title-row">
+        <span class="rc-title-text">${esc(m.title)}</span>
+        <span class="rc-scope-tag ${m.badgeCls}">${esc(m.badge)}</span>
+      </div>
+      <div class="rc-desc-text">${esc(m.desc)}</div>
+      <div class="rc-pill-features">
+        ${m.feats.map(f=>`<span class="rc-feat"><i class="ms ${f.ok?'ok':'lock'}">${f.ok?'check_circle':'lock'}</i>${esc(f.t)}</span>`).join('')}
+      </div>
+    </label>`;
+  }).join('');
+}
+function renderSiteCards(sites){
+  if(!sites.length)return '<div class="muted" style="padding:16px;text-align:center">No medical centres configured. Please add a site first.</div>';
+  return sites.map(x=>{
+    const zone=x.zone||'Central';
+    const city=x.city||zone;
+    return `<label class="site-card-item" data-zone="${esc(zone)}" data-code="${esc(x.code)}">
+      <input type="checkbox" name="site" value="${esc(x.code)}">
+      <div class="site-card-top">
+        <span class="site-code-badge">${esc(x.code)}</span>
+        <span class="site-zone-tag zone-${zone.toLowerCase()}">${esc(zone)}</span>
+      </div>
+      <div class="site-name-text">${esc(x.name)}</div>
+      <div class="site-city-text"><i class="ms">location_on</i>${esc(city)}</div>
+    </label>`;
+  }).join('');
+}
+
 const slug=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'.').replace(/^\.+|\.+$/g,'');
 let userTouched=false;
 /* Field message: an error (red) or a hint (muted) under a form field */
@@ -111,19 +175,149 @@ function refreshUsernameMsg(){
   const taken=!badChars&&!!v&&usernameTaken(v);
   const msg=badChars?'Use lowercase letters, numbers, dot or underscore':taken?'That username already exists. Choose another.':'Lowercase letters, numbers, dot or underscore';
   setMsg('uUser',msg,badChars||taken);
+  const badge=$('uAvailBadge');
+  if(badge){
+    if(!v){badge.innerHTML='';badge.className='avail-badge'}
+    else if(badChars||taken){badge.innerHTML='<i class="ms" style="color:var(--error);font-size:16px">cancel</i>';badge.className='avail-badge error'}
+    else{badge.innerHTML='<i class="ms" style="color:var(--success);font-size:16px">check_circle</i>';badge.className='avail-badge ok'}
+  }
 }
 function userPreview(){
   const el=$('userPreview');if(!el)return;
   const n=($('uName')?.value||'').trim();
   const u=($('uUser')?.value||'').trim();
   const r=document.querySelector('#fUser input[name="role"]:checked');
+  const roleVal=r?r.value:'investigator';
   const sites=[...document.querySelectorAll('#fUser input[name="site"]:checked')].map(x=>x.value);
+  
   el.innerHTML=`Will sign in as <code>${esc(u||'username')}</code>`;
   const set=(id,t)=>{const x=$(id);if(x)x.textContent=t};
-  set('sumName',n||'—');
-  set('sumUser',u||'—');
-  set('sumRole',r?ROLE_NAMES[r.value]:'—');
-  set('sumSites',r&&r.value===SUPER?'All sites':(sites.join(', ')||'None selected'));
+  set('sumName',n||'New User Account');
+  set('sumUser',u?`@${u}`:'@username');
+  set('sumRole',ROLE_NAMES[roleVal]||'Site Investigator');
+
+  // Avatar initials
+  const av=$('sumAvatar');
+  if(av) av.textContent=initials(n);
+
+  // Role preview styling
+  const wrapCard=$('userPreviewCard');
+  if(wrapCard) wrapCard.className=`user-preview-card role-${roleVal}`;
+
+  // Designation & Qualification meta preview
+  const desig=($('uDesig')?.value||'').trim();
+  const qual=($('uQual')?.value||'').trim();
+  const metaParts=[desig,qual].filter(Boolean);
+  const sm=$('sumMetaText');
+  if(sm) sm.textContent=metaParts.length?metaParts.join(' · '):'Clinical Staff';
+
+  // Contact chips
+  const email=($('uEmail')?.value||'').trim();
+  const phone=($('uPhone')?.value||'').trim();
+  const ec=$('sumEmailChip'), pc=$('sumPhoneChip');
+  if(ec){
+    ec.innerHTML=email?`<i class="ms">mail</i>${esc(email)}`:'<i class="ms">mail</i>No email';
+    ec.className=email?'chip':'chip muted';
+  }
+  if(pc){
+    pc.innerHTML=phone?`<i class="ms">call</i>${esc(phone)}`:'<i class="ms">call</i>No mobile';
+    pc.className=phone?'chip':'chip muted';
+  }
+
+  // Sites summary text, pills, and counter
+  const sw=$('sumSites');
+  const sp=$('sumSitesPills');
+  const sc=$('sitesCount');
+  if(roleVal===SUPER){
+    if(sw)sw.textContent='All sites (Global System Access)';
+    if(sp)sp.innerHTML='<span class="site-chip admin">Global System Scope</span>';
+    if(sc)sc.textContent='Global administrative access';
+  } else if(roleVal==='central'){
+    if(sw)sw.textContent='All ~100 sites & zones (National Oversight)';
+    if(sp)sp.innerHTML='<span class="site-chip central">All Pakistan Zones (~100 sites)</span>';
+    if(sc)sc.textContent='Study-wide national access';
+  } else {
+    if(sw)sw.textContent=sites.length?`${sites.length} centre${sites.length>1?'s':''} assigned`:'None selected (Required)';
+    if(sp){
+      sp.innerHTML=sites.length?sites.map(c=>`<span class="site-chip">${esc(c)}</span>`).join(''):'<span class="muted" style="font-size:12px;font-style:italic">Assign at least 1 medical centre</span>';
+    }
+    if(sc)sc.textContent=`${sites.length} centre${sites.length!==1?'s':''} selected`;
+  }
+
+  // Readiness progress
+  const hasName=!!n;
+  const hasUser=!!u&&!usernameTaken(u);
+  const hasSites=roleVal!=='investigator'||sites.length>0;
+  const readyFill=$('readinessFill');
+  const readyText=$('readinessText');
+  let pctVal=25;
+  if(hasName)pctVal+=25;
+  if(hasUser)pctVal+=25;
+  if(hasSites)pctVal+=25;
+  if(readyFill&&readyFill.style)readyFill.style.width=`${pctVal}%`;
+  if(readyText){
+    if(pctVal===100){
+      readyText.innerHTML='<i class="ms" style="color:var(--success)">check_circle</i> Account configuration complete';
+      readyText.className='readiness-text ready';
+    } else if(!hasName){
+      readyText.innerHTML='<i class="ms">pending</i> Enter full name';
+      readyText.className='readiness-text';
+    } else if(!hasUser){
+      readyText.innerHTML='<i class="ms">pending</i> Enter unique username';
+      readyText.className='readiness-text';
+    } else if(!hasSites){
+      readyText.innerHTML='<i class="ms">pending</i> Select at least 1 medical centre';
+      readyText.className='readiness-text';
+    }
+  }
+
+  // Show/Hide site selection area vs Scope info banner
+  const siteArea=$('siteSelectionArea');
+  const scopeBanner=$('siteScopeBanner');
+  const siteBlockTitle=$('siteBlockTitle');
+  const siteBlockDesc=$('siteBlockDesc');
+  if(roleVal==='investigator'){
+    if(siteArea)siteArea.hidden=false;
+    if(scopeBanner)scopeBanner.hidden=true;
+    if(siteBlockTitle)siteBlockTitle.innerHTML='Assigned Medical Centres (Sites) <span class="req">*</span>';
+    if(siteBlockDesc)siteBlockDesc.textContent='Site Investigators require at least one hospital centre to enroll patients and enter clinical CRFs.';
+  } else if(roleVal==='central'){
+    if(siteArea)siteArea.hidden=true;
+    if(scopeBanner){
+      scopeBanner.hidden=false;
+      scopeBanner.className='site-scope-banner central-banner';
+      scopeBanner.innerHTML=`<div class="banner-icon"><i class="ms">travel_explore</i></div>
+        <div class="banner-content">
+          <h4>Study-Wide National Monitoring Scope</h4>
+          <p>Central Monitoring Directorate members have continuous oversight across <strong>all participating cardiology centres and zones</strong> in Pakistan (~100 sites). Centre-specific assignment is not required.</p>
+          <div class="scope-tags">
+            <span class="tag info"><i class="ms">public</i>All Pakistan Zones</span>
+            <span class="tag info"><i class="ms">visibility</i>Read-Only Clinical Oversight</span>
+            <span class="tag info"><i class="ms">download</i>Full Registry Export (Audit Logged)</span>
+          </div>
+        </div>`;
+    }
+    if(siteBlockTitle)siteBlockTitle.textContent='Medical Centres Scope';
+    if(siteBlockDesc)siteBlockDesc.textContent='National oversight across all participating cardiology centres.';
+  } else if(roleVal===SUPER){
+    if(siteArea)siteArea.hidden=true;
+    if(scopeBanner){
+      scopeBanner.hidden=false;
+      scopeBanner.className='site-scope-banner admin-banner';
+      scopeBanner.innerHTML=`<div class="banner-icon"><i class="ms">admin_panel_settings</i></div>
+        <div class="banner-content">
+          <h4>Global System Administration Scope</h4>
+          <p>Super Administrators configure cardiology centres, provision user accounts, and maintain system security across all sites. Centre-specific assignment is not required.</p>
+          <div class="scope-tags">
+            <span class="tag"><i class="ms">domain</i>Manage All Sites</span>
+            <span class="tag"><i class="ms">manage_accounts</i>Manage All Users</span>
+            <span class="tag"><i class="ms">shield</i>Role &amp; Permissions Governance</span>
+          </div>
+        </div>`;
+    }
+    if(siteBlockTitle)siteBlockTitle.textContent='Medical Centres Scope';
+    if(siteBlockDesc)siteBlockDesc.textContent='Global system administrative oversight across all sites.';
+  }
 }
 function sitePreview(){
   const el=$('sitePreview');if(!el)return;
@@ -146,9 +340,7 @@ function usersView(){
   </tr>`;
 
   /* Central Team can only add Site Investigators, so the other roles are shown but locked */
-  const roleCards=['investigator','central','superadmin'].map(r=>`<label class="role-card ${isCentral()&&r!=='investigator'?'is-locked':''}">
-      <input type="radio" name="role" value="${r}" ${r==='investigator'?'checked':''} ${isCentral()&&r!=='investigator'?'disabled':''}>
-      <span class="rc-title">${ROLE_NAMES[r]}</span><span class="rc-desc">${ROLE_HINT[r]}</span></label>`).join('');
+  const roleCards=renderRoleCards();
 
   return `
     <!-- Distinct Team 1: Central Monitoring Directorate -->
@@ -229,48 +421,195 @@ function usersView(){
 
     <!-- Add User Form -->
     <section class="card addcard">
-      <div class="card-head"><h2>Add a user</h2><small>Create a Central Team monitor or a Site Investigator. Fields marked <span class="req" aria-hidden="true">*</span> are required.</small></div>
+      <div class="card-head">
+        <div>
+          <h2>Provision User Account</h2>
+          <small>Enroll clinical site investigators or central monitoring officers. Fields marked <span class="req" aria-hidden="true">*</span> are required.</small>
+        </div>
+        <div class="form-head-badges" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="tag info"><i class="ms" style="font-size:14px;vertical-align:-2px">shield_person</i>Access Governance</span>
+          <span class="tag"><i class="ms" style="font-size:14px;vertical-align:-2px">verified_user</i>Role Security</span>
+        </div>
+      </div>
       <form id="fUser" class="addform" novalidate>
         <div class="add-layout">
-          <div class="tint">
-            <div class="sec">Account</div>
-            <div class="g">
-              <label for="uName">Full name<span class="req" aria-hidden="true">*</span><input id="uName" name="name" autocomplete="name" aria-required="true" placeholder="e.g. Dr. Sara Ahmed"><span class="fmsg" data-for="uName"></span></label>
-              <label for="uUser">Username<span class="req" aria-hidden="true">*</span><input id="uUser" name="username" autocapitalize="off" spellcheck="false" autocomplete="off" aria-required="true" placeholder="e.g. sara.ahmed"><span class="fmsg hint-txt" data-for="uUser">Filled from the name. Lowercase letters, numbers, dot or underscore.</span></label>
+          <div class="form-steps-container">
+            <!-- Step 1: Account & Credentials -->
+            <div class="form-step">
+              <div class="step-head">
+                <span class="step-num">1</span>
+                <div class="step-head-text">
+                  <h3>Authentication &amp; System Credentials</h3>
+                  <p>Core login identifier used for signing in and clinical audit trail attribution</p>
+                </div>
+              </div>
+              <div class="fld-grid-2">
+                <div class="fld">
+                  <label for="uName">Full Name <span class="req" aria-hidden="true">*</span></label>
+                  <div class="input-wrap">
+                    <i class="ms input-icon">person</i>
+                    <input id="uName" name="name" autocomplete="name" aria-required="true" placeholder="e.g. Dr. Sara Ahmed">
+                  </div>
+                  <span class="fmsg" data-for="uName"></span>
+                </div>
+                <div class="fld">
+                  <label for="uUser">Username Handle <span class="req" aria-hidden="true">*</span></label>
+                  <div class="input-wrap">
+                    <i class="ms input-icon">alternate_email</i>
+                    <input id="uUser" name="username" autocapitalize="off" spellcheck="false" autocomplete="off" aria-required="true" placeholder="e.g. sara.ahmed">
+                    <span class="avail-badge" id="uAvailBadge"></span>
+                  </div>
+                  <span class="fmsg hint-txt" data-for="uUser">Auto-filled from name. Lowercase letters, numbers, dot or underscore.</span>
+                </div>
+              </div>
             </div>
 
-            <div class="sec">Personal details (optional)</div>
-            <div class="g">
-              <label for="uEmail">Email<input id="uEmail" name="email" type="email" inputmode="email" autocapitalize="off" spellcheck="false" autocomplete="email" placeholder="e.g. sara.ahmed@hospital.pk"><span class="fmsg" data-for="uEmail"></span></label>
-              <label for="uPhone">Mobile number<input id="uPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="e.g. 0300 1234567"><span class="fmsg hint-txt" data-for="uPhone">7 to 15 digits</span></label>
-              <label for="uDesig">Designation<input id="uDesig" name="designation" autocomplete="organization-title" placeholder="e.g. Consultant Cardiologist"><span class="fmsg" data-for="uDesig"></span></label>
-              <label for="uQual">Qualification<input id="uQual" name="qualification" autocomplete="off" placeholder="e.g. MBBS, FCPS"><span class="fmsg" data-for="uQual"></span></label>
+            <!-- Step 2: Professional & Contact Details -->
+            <div class="form-step">
+              <div class="step-head">
+                <span class="step-num">2</span>
+                <div class="step-head-text">
+                  <h3>Professional Background &amp; Contact Details</h3>
+                  <p>Clinical qualifications, designation and contact channels (optional details)</p>
+                </div>
+              </div>
+              <div class="fld-grid-2">
+                <div class="fld">
+                  <label for="uDesig">Clinical Designation</label>
+                  <div class="input-wrap">
+                    <i class="ms input-icon">medical_services</i>
+                    <input id="uDesig" name="designation" autocomplete="organization-title" placeholder="e.g. Consultant Cardiologist">
+                  </div>
+                  <span class="fmsg" data-for="uDesig"></span>
+                </div>
+                <div class="fld">
+                  <label for="uQual">Medical Qualification</label>
+                  <div class="input-wrap">
+                    <i class="ms input-icon">school</i>
+                    <input id="uQual" name="qualification" autocomplete="off" placeholder="e.g. MBBS, FCPS (Cardiology)">
+                  </div>
+                  <span class="fmsg" data-for="uQual"></span>
+                </div>
+                <div class="fld">
+                  <label for="uEmail">Official Email</label>
+                  <div class="input-wrap">
+                    <i class="ms input-icon">mail</i>
+                    <input id="uEmail" name="email" type="email" inputmode="email" autocapitalize="off" spellcheck="false" autocomplete="email" placeholder="e.g. sara.ahmed@hospital.pk">
+                  </div>
+                  <span class="fmsg" data-for="uEmail"></span>
+                </div>
+                <div class="fld">
+                  <label for="uPhone">Mobile Number</label>
+                  <div class="input-wrap">
+                    <i class="ms input-icon">call</i>
+                    <input id="uPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="e.g. 0300 1234567">
+                  </div>
+                  <span class="fmsg hint-txt" data-for="uPhone">7 to 15 digits</span>
+                </div>
+              </div>
             </div>
 
-            <div class="sec">Role<span class="req" aria-hidden="true">*</span></div>
-            ${isCentral()?`<p class="np-lead">${esc(CENTRAL_MSG)}</p>`:''}
-            <div class="role-cards">${roleCards}</div>
+            <!-- Step 3: Role & System Privileges -->
+            <div class="form-step">
+              <div class="step-head">
+                <span class="step-num">3</span>
+                <div class="step-head-text">
+                  <h3>Role &amp; System Privileges <span class="req" aria-hidden="true">*</span></h3>
+                  <p>Determines CRF data entry rights, multi-site scope and administrative capabilities</p>
+                </div>
+              </div>
+              ${isCentral()?`<p class="np-lead" style="margin-bottom:12px">${esc(CENTRAL_MSG)}</p>`:''}
+              <div class="role-cards-grid">${roleCards}</div>
+            </div>
 
-            <div id="siteBlock">
-              <div class="sec"><span>Assigned sites<span class="req" aria-hidden="true">*</span></span><button type="button" class="link-btn" id="allSites">Select all</button></div>
-              <p class="np-lead">Site Investigators need at least one site.</p>
-              ${siteBoxes(s,null,'name="site"')}
-              <span class="fmsg" data-for="sites"></span>
+            <!-- Step 4: Medical Centres Assignment -->
+            <div class="form-step" id="siteBlock">
+              <div class="step-head">
+                <span class="step-num">4</span>
+                <div class="step-head-text" style="flex:1">
+                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                    <div>
+                      <h3 id="siteBlockTitle">Assigned Medical Centres (Sites) <span class="req" aria-hidden="true">*</span></h3>
+                      <p id="siteBlockDesc">Site Investigators require at least one hospital centre to enroll patients and enter clinical CRFs.</p>
+                    </div>
+                    <span class="site-selection-counter" id="sitesCount">0 centres selected</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interactive site grid for Site Investigators -->
+              <div class="site-selection-container" id="siteSelectionArea">
+                <div class="site-filter-bar">
+                  <div class="site-zone-chips" id="zoneFilterChips">
+                    <button type="button" class="zone-chip active" data-zone="all">All Centres (${s.sites.length})</button>
+                    ${s.zones.map(z=>`<button type="button" class="zone-chip" data-zone="${esc(z)}">${esc(z)} (${s.sites.filter(x=>x.zone===z).length})</button>`).join('')}
+                  </div>
+                  <div class="site-quick-actions">
+                    <button type="button" class="btn" id="allSites"><i class="ms">select_all</i>Select all</button>
+                    <button type="button" class="btn" id="clearSites"><i class="ms">deselect</i>Clear</button>
+                  </div>
+                </div>
+                <div class="site-cards-grid" id="siteCardsGrid">
+                  ${renderSiteCards(s.sites)}
+                </div>
+                <span class="fmsg" data-for="sites"></span>
+              </div>
+
+              <!-- Scope Callout Banner for Central Directorate and Super Admin -->
+              <div id="siteScopeBanner" hidden></div>
             </div>
           </div>
 
-          <aside class="add-summary" aria-label="Summary">
-            <div class="add-summary-title">Summary</div>
-            <dl class="add-summary-list">
-              <dt>Name</dt><dd id="sumName">—</dd>
-              <dt>Username</dt><dd id="sumUser">—</dd>
-              <dt>Role</dt><dd id="sumRole">—</dd>
-              <dt>Sites</dt><dd id="sumSites">—</dd>
-            </dl>
-            <p class="muted add-summary-note" id="userPreview" aria-live="polite"></p>
+          <!-- Right Column: Live User Identity Profile Preview -->
+          <aside class="add-summary" aria-label="Profile Identity Preview">
+            <div class="add-summary-header">
+              <div class="summary-badge-live">
+                <span class="pulse-dot"></span>Live Profile Preview
+              </div>
+              <span class="summary-id-label">STAND-HF</span>
+            </div>
+
+            <div class="user-preview-card" id="userPreviewCard">
+              <div class="user-preview-avatar-wrap">
+                <div class="user-preview-avatar" id="sumAvatar">?</div>
+                <div class="user-preview-status-dot"></div>
+              </div>
+              <div class="user-preview-name" id="sumName">New User Account</div>
+              <div class="user-preview-handle" id="sumUser">@username</div>
+              <div class="user-preview-role-tag">
+                <span class="role-chip" id="sumRole">Site Investigator</span>
+              </div>
+              <div class="user-preview-meta">
+                <span id="sumMetaText">Clinical Staff</span>
+              </div>
+            </div>
+
+            <div class="preview-details-group">
+              <div class="preview-item">
+                <span class="preview-label"><i class="ms">contact_mail</i>Contact Channels</span>
+                <div class="preview-val-chips">
+                  <span class="chip muted" id="sumEmailChip"><i class="ms">mail</i>No email</span>
+                  <span class="chip muted" id="sumPhoneChip"><i class="ms">call</i>No mobile</span>
+                </div>
+              </div>
+
+              <div class="preview-item">
+                <span class="preview-label"><i class="ms">local_hospital</i>Assigned Centres</span>
+                <div class="sites-summary-text" id="sumSites">None selected (Required)</div>
+                <div class="sites-summary-pills" id="sumSitesPills"></div>
+              </div>
+            </div>
+
+            <div class="preview-readiness">
+              <div class="readiness-bar"><div class="readiness-fill" id="readinessFill" style="width:25%"></div></div>
+              <div class="readiness-text" id="readinessText"><i class="ms">pending</i> Enter full name</div>
+            </div>
+
+            <p class="muted add-summary-note" id="userPreview" aria-live="polite">Will sign in as <code>username</code></p>
+
             <div class="foot-actions">
-              <button type="button" class="btn" id="uReset">Clear</button>
-              <button type="submit" class="pri">Create user</button>
+              <button type="button" class="btn" id="uReset"><i class="ms">restart_alt</i>Clear Form</button>
+              <button type="submit" class="pri" id="uSubmit"><i class="ms">person_add</i>Create User Account</button>
             </div>
           </aside>
         </div>
@@ -343,7 +682,7 @@ window.addEventListener('hashchange',()=>{tab=tabFromHash();render()});
 /* Edits in the tables */
 $('view').addEventListener('change',e=>{
   const t=e.target,me=session().username;
-  if(t.name==='role'){$('siteBlock').hidden=t.value===SUPER;userPreview();return}
+  if(t.name==='role'){userPreview();return}
   if(t.name==='site'){userPreview();return}
   if(t.dataset.roleOf){
     const u=t.dataset.roleOf,role=t.value;
@@ -412,10 +751,15 @@ $('view').addEventListener('input',e=>{
   else if(x.id==='uEmail'){
     const v=x.value.trim(),bad=!!v&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
     setMsg('uEmail',bad?'Enter a valid email address':'',bad);
+    userPreview();
   }
   else if(x.id==='uPhone'){
     const d=x.value.replace(/\D/g,''),bad=!!x.value.trim()&&(d.length<7||d.length>15);
     setMsg('uPhone',bad?'Enter 7 to 15 digits':'7 to 15 digits',bad);
+    userPreview();
+  }
+  else if(x.id==='uDesig'||x.id==='uQual'){
+    userPreview();
   }
 });
 
@@ -439,14 +783,38 @@ $('view').addEventListener('click',e=>{
   }
 });
 
-/* Select all / clear all sites in the new-user form */
+/* Select all / clear all sites and zone filtering in the new-user form */
 $('view').addEventListener('click',e=>{
-  const btn=e.target.closest('#allSites');if(!btn)return;
-  const boxes=[...document.querySelectorAll('#fUser input[name="site"]')];
-  const all=boxes.some(x=>!x.checked);
-  boxes.forEach(x=>{x.checked=all});
-  btn.textContent=all?'Clear all':'Select all';
-  setMsg('sites','',false);
+  const chip=e.target.closest('.zone-chip');
+  if(chip){
+    const zone=chip.dataset.zone;
+    document.querySelectorAll('.zone-chip').forEach(c=>c.classList.toggle('active',c===chip));
+    document.querySelectorAll('#siteCardsGrid .site-card-item').forEach(card=>{
+      card.style.display=(zone==='all'||card.dataset.zone===zone)?'':'none';
+    });
+    return;
+  }
+  const clearBtn=e.target.closest('#clearSites');
+  if(clearBtn){
+    const boxes=[...document.querySelectorAll('#fUser input[name="site"]')];
+    boxes.forEach(x=>{x.checked=false});
+    const allBtn=$('allSites');
+    if(allBtn) allBtn.innerHTML='<i class="ms">select_all</i>Select all';
+    setMsg('sites','',false);
+    userPreview();
+    return;
+  }
+  const allBtn=e.target.closest('#allSites');
+  if(allBtn){
+    const visibleCards=[...document.querySelectorAll('#siteCardsGrid .site-card-item')].filter(c=>c.style.display!=='none');
+    const boxes=visibleCards.map(c=>c.querySelector('input[name="site"]')).filter(Boolean);
+    const anyUnchecked=boxes.some(x=>!x.checked);
+    boxes.forEach(x=>{x.checked=anyUnchecked});
+    allBtn.innerHTML=anyUnchecked?'<i class="ms">deselect</i>Clear all':'<i class="ms">select_all</i>Select all';
+    setMsg('sites','',false);
+    userPreview();
+    return;
+  }
 });
 
 /* Add user and add site */
@@ -458,7 +826,7 @@ document.addEventListener('submit',e=>{
     const sites=[...f.querySelectorAll('input[name="site"]:checked')].map(x=>x.value);
     const users=accessStore().users;
     const uMsg=!username?'Enter a username':!/^[a-z0-9._]+$/.test(username)?'Use lowercase letters, numbers, dot or underscore':users.some(u=>u.username===username)?'That username is already used':'';
-    const sMsg=role!==SUPER&&!sites.length?'Choose at least one site':'';
+    const sMsg=role==='investigator'&&!sites.length?'Choose at least one medical centre for Site Investigator':'';
     /* Optional personal details: only validated when filled in */
     const email=$('uEmail').value.trim(),phone=$('uPhone').value.replace(/\D/g,''),desig=$('uDesig').value.trim(),qual=$('uQual').value.trim();
     const eMsg=email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)?'Enter a valid email address':'';
@@ -472,7 +840,9 @@ document.addEventListener('submit',e=>{
     const personal={email,phone,designation:desig,qualification:qual};
     const saved=commit(s=>{
       if(s.users.some(u=>u.username===username))return 'That username was just taken. Choose another.';
-      s.users.push({username,name,role,sites:role===SUPER?[]:sites,active:true,personal});
+      const userSites=role==='investigator'?sites:[];
+      const userZones=role==='central'?['North','Central','South']:role===SUPER?[]:[...new Set(sites.map(c=>s.sites.find(st=>st.code===c)?.zone).filter(Boolean))];
+      s.users.push({username,name,role,sites:userSites,zones:userZones,active:true,personal});
       return '';
     });
     if(!saved)return;
