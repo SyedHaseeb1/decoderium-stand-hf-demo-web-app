@@ -20,6 +20,7 @@
       if(['performance','clinical','report','reports','analytics'].includes(h)) return 'performance';
       if(['sites','league'].includes(h)) return 'sites';
       if(h==='gdmt') return 'gdmt';
+      if(['export','exports','downloads','download'].includes(h)) return 'export';
       return 'dashboard';
     }
     const isNew=(typeof window.standhfIsNewMode==='function'&&window.standhfIsNewMode())||(/[?&]new=1/.test(location.search));
@@ -37,7 +38,8 @@
     {label:'Reports',items:[
       {key:'performance',label:'Performance',href:DASH+'#performance',icon:'monitoring',show:true},
       {key:'sites',label:'Sites & League',href:DASH+'#sites',icon:'leaderboard',show:true},
-      {key:'gdmt',label:'GDMT Coverage',href:DASH+'#gdmt',icon:'medication',show:true}
+      {key:'gdmt',label:'GDMT Coverage',href:DASH+'#gdmt',icon:'medication',show:true},
+      {key:'export',label:'Data Export',href:DASH+'#export',icon:'file_download',show:true}
     ]},
     {label:'Administration',items:[
       {key:'adm-users',label:'Users & Teams',href:ADMIN+'#users',icon:'group',show:isSuper},
@@ -95,7 +97,7 @@
         else location.href=ECRF+'?new=1';
       }
     } else if(page==='dashboard'){
-      if(['performance','sites','gdmt'].includes(a.dataset.key)){
+      if(['performance','sites','gdmt','export'].includes(a.dataset.key)){
         if(location.hash === '#'+a.dataset.key){
           e.preventDefault();
           if(typeof window.standhfApplyHash==='function') window.standhfApplyHash(a.dataset.key);

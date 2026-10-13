@@ -34,7 +34,7 @@ const DEFAULT_ACCESS={
   ],
   perms:{
     superadmin:{view_all_sites:true,export_data:true,assign_investigators:true,manage_users:true,manage_sites:true},
-    investigator:{add_patient:true,enter_data:true,mark_complete:true,load_demo:true,clear_all:true},
+    investigator:{add_patient:true,enter_data:true,mark_complete:true,load_demo:true,clear_all:true,export_data:true},
     central:{view_all_sites:true,export_data:true}
   }
 };

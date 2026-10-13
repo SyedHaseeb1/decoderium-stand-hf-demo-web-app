@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261015b">
+  <link rel="stylesheet" href="../assets/base.css?v=20261015k">
 <script>
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
@@ -58,6 +58,8 @@ const isCentral=()=>session().role==='central';
 const CENTRAL_MSG='Central team can only manage site investigators';
 /* Central team can only manage site investigators */
 const centralMay=(user,newRole)=>!isCentral()||(user.role==='investigator'&&newRole==='investigator');
+/* Dashboard "Edit user" links here with ?user=<username>: that row is highlighted */
+const highlightUser=new URLSearchParams(location.search).get('user')||'';
 const tabFromHash=()=>{
   const h=location.hash.slice(1);
   if(h==='dash'){location.replace('../dashboard/');return 'users'}
@@ -98,11 +100,30 @@ function setMsg(id,msg,isErr){
   const input=document.getElementById(id);
   if(input)input.setAttribute('aria-invalid',String(!!isErr));
 }
+/* Usernames are checked against the existing user list (the same list the Users table shows).
+   Keep this one function as the single check, so a server-side lookup can replace it later. */
+function usernameTaken(username){
+  return accessStore().users.some(u=>u.username===username);
+}
+function refreshUsernameMsg(){
+  const raw=$('uUser').value,v=raw.trim().toLowerCase();
+  const badChars=!/^[a-z0-9._]*$/.test(raw);
+  const taken=!badChars&&!!v&&usernameTaken(v);
+  const msg=badChars?'Use lowercase letters, numbers, dot or underscore':taken?'That username already exists. Choose another.':'Lowercase letters, numbers, dot or underscore';
+  setMsg('uUser',msg,badChars||taken);
+}
 function userPreview(){
   const el=$('userPreview');if(!el)return;
-  const u=($('uUser')?.value||'').trim()||'username';
+  const n=($('uName')?.value||'').trim();
+  const u=($('uUser')?.value||'').trim();
   const r=document.querySelector('#fUser input[name="role"]:checked');
-  el.innerHTML=`Will sign in as <code>${esc(u)}</code> · ${esc(r?ROLE_NAMES[r.value]:'')}`;
+  const sites=[...document.querySelectorAll('#fUser input[name="site"]:checked')].map(x=>x.value);
+  el.innerHTML=`Will sign in as <code>${esc(u||'username')}</code>`;
+  const set=(id,t)=>{const x=$(id);if(x)x.textContent=t};
+  set('sumName',n||'—');
+  set('sumUser',u||'—');
+  set('sumRole',r?ROLE_NAMES[r.value]:'—');
+  set('sumSites',r&&r.value===SUPER?'All sites':(sites.join(', ')||'None selected'));
 }
 function sitePreview(){
   const el=$('sitePreview');if(!el)return;
@@ -117,15 +138,16 @@ function usersView(){
   const adminUsers=s.users.filter(u=>u.role===SUPER);
   const auditLogs=typeof centralAuditLog==='function'?centralAuditLog():[];
 
-  const userRow=(u,isInv)=>`<tr>
+  const userRow=(u,isInv)=>`<tr data-user-row="${esc(u.username)}" ${u.username===highlightUser?'style="background:var(--soft-2);outline:2px solid var(--primary);outline-offset:-2px"':''}>
     <td><b>${esc(u.name)}</b><div class="muted">${esc(u.username)}</div></td>
     <td><select data-role-of="${esc(u.username)}" aria-label="Role for ${esc(u.name)}">${roleOptions(u.role)}</select></td>
     <td>${u.role===SUPER?'<span class="muted">All sites (Global)</span>':u.role==='central'?'<span class="tag info" style="font-size:12px">All Sites & Zones (National Oversight)</span>':siteBoxes(s,u,`data-site-of="${esc(u.username)}"`)}</td>
     <td><label class="check-row"><input type="checkbox" data-active-of="${esc(u.username)}" ${u.active?'checked':''}><span>Active</span></label></td>
   </tr>`;
 
-  const roleCards=['investigator','central','superadmin'].map(r=>`<label class="role-card">
-      <input type="radio" name="role" value="${r}" ${r==='investigator'?'checked':''}>
+  /* Central Team can only add Site Investigators, so the other roles are shown but locked */
+  const roleCards=['investigator','central','superadmin'].map(r=>`<label class="role-card ${isCentral()&&r!=='investigator'?'is-locked':''}">
+      <input type="radio" name="role" value="${r}" ${r==='investigator'?'checked':''} ${isCentral()&&r!=='investigator'?'disabled':''}>
       <span class="rc-title">${ROLE_NAMES[r]}</span><span class="rc-desc">${ROLE_HINT[r]}</span></label>`).join('');
 
   return `
@@ -207,22 +229,51 @@ function usersView(){
 
     <!-- Add User Form -->
     <section class="card addcard">
-      <div class="addform-head">
-        <h3>Add a User</h3>
-        <p>Create Central Team monitors or Site Investigators and assign them to sites or zones.</p>
-      </div>
-      <form id="fUser" class="addform" novalidate style="margin-top:16px">
-        <div class="form-grid">
-          <div class="fld"><label for="uName">Full name</label><input id="uName" name="name" autocomplete="off" placeholder="e.g. Dr. Sara Ahmed"><span class="fmsg hint-txt" data-for="uName"></span></div>
-          <div class="fld"><label for="uUser">Username</label><input id="uUser" name="username" autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="e.g. sara.ahmed"><span class="fmsg hint-txt" data-for="uUser">Lowercase letters, numbers, dot or underscore</span></div>
+      <div class="card-head"><h2>Add a user</h2><small>Create a Central Team monitor or a Site Investigator. Fields marked <span class="req" aria-hidden="true">*</span> are required.</small></div>
+      <form id="fUser" class="addform" novalidate>
+        <div class="add-layout">
+          <div class="tint">
+            <div class="sec">Account</div>
+            <div class="g">
+              <label for="uName">Full name<span class="req" aria-hidden="true">*</span><input id="uName" name="name" autocomplete="name" aria-required="true" placeholder="e.g. Dr. Sara Ahmed"><span class="fmsg" data-for="uName"></span></label>
+              <label for="uUser">Username<span class="req" aria-hidden="true">*</span><input id="uUser" name="username" autocapitalize="off" spellcheck="false" autocomplete="off" aria-required="true" placeholder="e.g. sara.ahmed"><span class="fmsg hint-txt" data-for="uUser">Filled from the name. Lowercase letters, numbers, dot or underscore.</span></label>
+            </div>
+
+            <div class="sec">Personal details (optional)</div>
+            <div class="g">
+              <label for="uEmail">Email<input id="uEmail" name="email" type="email" inputmode="email" autocapitalize="off" spellcheck="false" autocomplete="email" placeholder="e.g. sara.ahmed@hospital.pk"><span class="fmsg" data-for="uEmail"></span></label>
+              <label for="uPhone">Mobile number<input id="uPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="e.g. 0300 1234567"><span class="fmsg hint-txt" data-for="uPhone">7 to 15 digits</span></label>
+              <label for="uDesig">Designation<input id="uDesig" name="designation" autocomplete="organization-title" placeholder="e.g. Consultant Cardiologist"><span class="fmsg" data-for="uDesig"></span></label>
+              <label for="uQual">Qualification<input id="uQual" name="qualification" autocomplete="off" placeholder="e.g. MBBS, FCPS"><span class="fmsg" data-for="uQual"></span></label>
+            </div>
+
+            <div class="sec">Role<span class="req" aria-hidden="true">*</span></div>
+            ${isCentral()?`<p class="np-lead">${esc(CENTRAL_MSG)}</p>`:''}
+            <div class="role-cards">${roleCards}</div>
+
+            <div id="siteBlock">
+              <div class="sec"><span>Assigned sites<span class="req" aria-hidden="true">*</span></span><button type="button" class="link-btn" id="allSites">Select all</button></div>
+              <p class="np-lead">Site Investigators need at least one site.</p>
+              ${siteBoxes(s,null,'name="site"')}
+              <span class="fmsg" data-for="sites"></span>
+            </div>
+          </div>
+
+          <aside class="add-summary" aria-label="Summary">
+            <div class="add-summary-title">Summary</div>
+            <dl class="add-summary-list">
+              <dt>Name</dt><dd id="sumName">—</dd>
+              <dt>Username</dt><dd id="sumUser">—</dd>
+              <dt>Role</dt><dd id="sumRole">—</dd>
+              <dt>Sites</dt><dd id="sumSites">—</dd>
+            </dl>
+            <p class="muted add-summary-note" id="userPreview" aria-live="polite"></p>
+            <div class="foot-actions">
+              <button type="button" class="btn" id="uReset">Clear</button>
+              <button type="submit" class="pri">Create user</button>
+            </div>
+          </aside>
         </div>
-        <div class="fld-wide"><span class="field-label">Role</span><div class="role-cards">${roleCards}</div></div>
-        <div class="fld-wide" id="siteBlock">
-          <div class="site-head"><span class="field-label">Assigned Sites (for Site Investigators)</span><button type="button" class="link-btn" id="allSites">Select all</button></div>
-          ${siteBoxes(s,null,'name="site"')}
-          <span class="fmsg" data-for="sites"></span>
-        </div>
-        <div class="addform-foot"><span class="muted" id="userPreview"></span><button type="submit" class="pri">Create User</button></div>
       </form>
     </section>`;
 }
@@ -239,13 +290,20 @@ function sitesView(){
       <div class="table-wrap"><table><tr><th>Code</th><th>Name</th><th class="num">Patients</th><th class="num">Investigators</th></tr>${rows}</table></div>
     </section>
     <section class="card addcard">
-      <div class="addform-head"><h3>Add a site</h3><p>Sites group patients and decide who can see them.</p></div>
+      <div class="card-head"><h2>Add a site</h2><small>Sites group patients and decide who can see them. Fields marked <span class="req" aria-hidden="true">*</span> are required.</small></div>
       <form id="fSite" class="addform" novalidate>
-        <div class="form-grid">
-          <div class="fld"><label for="sCode">Site code</label><input id="sCode" name="code" maxlength="5" autocapitalize="characters" autocomplete="off" placeholder="e.g. RIC"><span class="fmsg hint-txt" data-for="sCode">2 to 5 letters or numbers</span></div>
-          <div class="fld"><label for="sName">Site name</label><input id="sName" name="name" autocomplete="off" placeholder="e.g. Riverside Cardiac Centre"><span class="fmsg hint-txt" data-for="sName"></span></div>
+        <div class="sec">Site details</div>
+        <div class="g tint">
+          <label for="sCode">Site code<span class="req" aria-hidden="true">*</span><input id="sCode" name="code" maxlength="5" autocapitalize="characters" autocomplete="off" aria-required="true" placeholder="e.g. RIC"><span class="fmsg hint-txt" data-for="sCode">2 to 5 letters or numbers. Used to number patients, for example RIC-001.</span></label>
+          <label for="sName">Site name<span class="req" aria-hidden="true">*</span><input id="sName" name="name" autocomplete="off" aria-required="true" placeholder="e.g. Riverside Cardiac Centre"><span class="fmsg" data-for="sName"></span></label>
         </div>
-        <div class="addform-foot"><span class="muted" id="sitePreview"></span><button type="submit" class="pri">Add site</button></div>
+        <div class="addform-foot">
+          <span class="muted" id="sitePreview" aria-live="polite"></span>
+          <div class="foot-actions">
+            <button type="button" class="btn" id="sReset">Clear</button>
+            <button type="submit" class="pri">Add site</button>
+          </div>
+        </div>
       </form>
     </section>`;
 }
@@ -274,6 +332,7 @@ function render(){
   $('view').innerHTML=tab==='users'?usersView():tab==='sites'?sitesView():permsView();
   $('view').classList.remove('form-in');void $('view').offsetWidth;$('view').classList.add('form-in');
   applySearch();
+  if(tab==='users'&&highlightUser){const hl=document.querySelector(`[data-user-row="${CSS.escape(highlightUser)}"]`);if(hl)hl.scrollIntoView({block:'center'})}
   userPreview();sitePreview();
 }
 $('search').addEventListener('input',()=>{query=$('search').value;applySearch()});
@@ -285,6 +344,7 @@ window.addEventListener('hashchange',()=>{tab=tabFromHash();render()});
 $('view').addEventListener('change',e=>{
   const t=e.target,me=session().username;
   if(t.name==='role'){$('siteBlock').hidden=t.value===SUPER;userPreview();return}
+  if(t.name==='site'){userPreview();return}
   if(t.dataset.roleOf){
     const u=t.dataset.roleOf,role=t.value;
     commit(s=>{
@@ -335,21 +395,48 @@ $('view').addEventListener('input',e=>{
   const x=e.target;
   if(x.id==='uName'){
     if(!userTouched)$('uUser').value=slug(x.value);
-    setMsg('uName','',false);userPreview();
+    setMsg('uName','',false);refreshUsernameMsg();userPreview();
   }
   else if(x.id==='uUser'){
     userTouched=true;
-    const ok=/^[a-z0-9._]*$/.test(x.value);
-    setMsg('uUser',ok?'Lowercase letters, numbers, dot or underscore':'Use lowercase letters, numbers, dot or underscore',!ok);
+    refreshUsernameMsg();
     userPreview();
   }
   else if(x.id==='sCode'){
     x.value=x.value.toUpperCase();
     const c=x.value.trim(),used=accessStore().sites.some(y=>y.code===c);
-    setMsg('sCode',used?'That code is already used':'2 to 5 letters or numbers',used);
+    setMsg('sCode',used?'That code is already used':'2 to 5 letters or numbers. Used to number patients, for example RIC-001.',used);
     sitePreview();
   }
   else if(x.id==='sName')setMsg('sName','',false);
+  else if(x.id==='uEmail'){
+    const v=x.value.trim(),bad=!!v&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    setMsg('uEmail',bad?'Enter a valid email address':'',bad);
+  }
+  else if(x.id==='uPhone'){
+    const d=x.value.replace(/\D/g,''),bad=!!x.value.trim()&&(d.length<7||d.length>15);
+    setMsg('uPhone',bad?'Enter 7 to 15 digits':'7 to 15 digits',bad);
+  }
+});
+
+/* Name is checked when the field is left, not on every keystroke */
+$('view').addEventListener('focusout',e=>{
+  const x=e.target;
+  if(x.id==='uName'&&x.value.trim()===''&&x.dataset.touched==='1')setMsg('uName','Enter the full name',true);
+  if(x.id==='uName')x.dataset.touched='1';
+});
+
+/* Clear the new-user and new-site forms back to their defaults */
+$('view').addEventListener('click',e=>{
+  if(e.target.closest('#uReset')){
+    userTouched=false;
+    render();
+    $('uName')?.focus();
+  }
+  else if(e.target.closest('#sReset')){
+    render();
+    $('sCode')?.focus();
+  }
 });
 
 /* Select all / clear all sites in the new-user form */
@@ -372,22 +459,36 @@ document.addEventListener('submit',e=>{
     const users=accessStore().users;
     const uMsg=!username?'Enter a username':!/^[a-z0-9._]+$/.test(username)?'Use lowercase letters, numbers, dot or underscore':users.some(u=>u.username===username)?'That username is already used':'';
     const sMsg=role!==SUPER&&!sites.length?'Choose at least one site':'';
+    /* Optional personal details: only validated when filled in */
+    const email=$('uEmail').value.trim(),phone=$('uPhone').value.replace(/\D/g,''),desig=$('uDesig').value.trim(),qual=$('uQual').value.trim();
+    const eMsg=email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)?'Enter a valid email address':'';
+    const pMsg=$('uPhone').value.trim()&&(phone.length<7||phone.length>15)?'Enter 7 to 15 digits':'';
     setMsg('uName',name?'':'Enter the full name',!name);
     setMsg('uUser',uMsg||'Lowercase letters, numbers, dot or underscore',!!uMsg);
     setMsg('sites',sMsg,!!sMsg);
-    if(!name||uMsg||sMsg){(f.querySelector('[aria-invalid="true"]')||$('uName')).focus();return}
-    commit(s=>{s.users.push({username,name,role,sites:role===SUPER?[]:sites,active:true});return ''});
+    setMsg('uEmail',eMsg,!!eMsg);
+    setMsg('uPhone',pMsg||'7 to 15 digits',!!pMsg);
+    if(!name||uMsg||sMsg||eMsg||pMsg){(f.querySelector('[aria-invalid="true"]')||$('uName')).focus();return}
+    const personal={email,phone,designation:desig,qualification:qual};
+    const saved=commit(s=>{
+      if(s.users.some(u=>u.username===username))return 'That username was just taken. Choose another.';
+      s.users.push({username,name,role,sites:role===SUPER?[]:sites,active:true,personal});
+      return '';
+    });
+    if(!saved)return;
     userTouched=false;
     toast(`${name} added as ${ROLE_NAMES[role]}`);
+    $('uName')?.focus();
   }
   else if(f.id==='fSite'){
     const code=$('sCode').value.trim().toUpperCase(),name=$('sName').value.trim();
     const cMsg=!code?'Enter a site code':!/^[A-Z0-9]{2,5}$/.test(code)?'Use 2 to 5 letters or numbers':accessStore().sites.some(x=>x.code===code)?'That code is already used':'';
-    setMsg('sCode',cMsg||'2 to 5 letters or numbers',!!cMsg);
+    setMsg('sCode',cMsg||'2 to 5 letters or numbers. Used to number patients, for example RIC-001.',!!cMsg);
     setMsg('sName',name?'':'Enter the site name',!name);
     if(cMsg||!name){(f.querySelector('[aria-invalid="true"]')||$('sCode')).focus();return}
     commit(s=>{s.sites.push({code,name});return ''});
     toast(`Site ${code} added`);
+    $('sCode')?.focus();
   }
 });
 

@@ -744,9 +744,9 @@ function paneNew(){
       ${ddHtml('id="nEtio"','dd:nEtio','HF etiology<span class="req" aria-hidden="true">*</span>',lookup('patient.etiology'),'','','',{req:'',msg:''})}
       <label>If other, specify<input id="nEtioO" maxlength="100" autocomplete="off" placeholder="Specify other etiology"></label>
     </div>
-    <div class="dlg-actions" style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
-      <button type="button" id="cNew" class="btn" style="border:1px solid var(--border);background:var(--card);padding:8px 16px;border-radius:6px;cursor:pointer"><i class="ms" style="font-size:16px;vertical-align:-2px">close</i> Cancel</button>
-      <button type="submit" class="pri" style="padding:8px 20px;border-radius:6px;cursor:pointer"><i class="ms" style="font-size:16px;vertical-align:-2px">check</i> Create patient</button>
+    <div class="foot-actions">
+      <button type="button" id="cNew" class="btn"><i class="ms">close</i> Cancel</button>
+      <button type="submit" class="pri"><i class="ms">check</i> Create patient</button>
     </div>
   </form>`;
   const siteBox=$('fNew').querySelector('[data-cb="site"]');

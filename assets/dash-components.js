@@ -517,6 +517,9 @@
               </div>
               <div style="display:flex;align-items:center;gap:10px">
                 <span class="chip ${pu.active ? 'In' : 'Not'}">${pu.active ? 'Active Clinician' : 'Inactive'}</span>
+                <a class="btn btn-sm" href="../admin/?user=${encodeURIComponent(pu.username)}#users">
+                  <i class="ms">manage_accounts</i>Edit user
+                </a>
                 <button type="button" class="btn btn-sm" data-export-inv="${esc(pu.username)}">
                   <i class="ms">download</i>Export CSV
                 </button>

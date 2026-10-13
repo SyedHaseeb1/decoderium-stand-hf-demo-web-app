@@ -272,6 +272,11 @@ function getSiteZone(code){
   const found = s.sites.find(x => x.code === code);
   return found?.zone || 'Central';
 }
+function getSiteName(code){
+  const s = accessStore();
+  const found = s.sites.find(x => x.code === code);
+  return found?.name || code;
+}
 
 /* Active dashboard view tabs */
 let currentInvTab = 'all';
@@ -292,6 +297,8 @@ function applyHash(h){
       if (currentInvTab !== 'patients') { currentInvTab = 'patients'; changed = true; }
     } else if (['upcoming', 'queue', 'visits'].includes(clean)) {
       if (currentInvTab !== 'upcoming') { currentInvTab = 'upcoming'; changed = true; }
+    } else if (['export', 'exports', 'download', 'downloads'].includes(clean)) {
+      if (currentInvTab !== 'export') { currentInvTab = 'export'; changed = true; }
     } else if (clean === 'all' || clean === 'overview') {
       if (currentInvTab !== 'all') { currentInvTab = 'all'; changed = true; }
     }
@@ -304,6 +311,8 @@ function applyHash(h){
       if (currentSuperTab !== 'teams') { currentSuperTab = 'teams'; changed = true; }
     } else if (['queue', 'overdue', 'alerts'].includes(clean)) {
       if (currentSuperTab !== 'queue') { currentSuperTab = 'queue'; changed = true; }
+    } else if (['export', 'exports', 'download', 'downloads'].includes(clean)) {
+      if (currentSuperTab !== 'export') { currentSuperTab = 'export'; changed = true; }
     } else if (clean === 'all' || clean === 'overview') {
       if (currentSuperTab !== 'all') { currentSuperTab = 'all'; changed = true; }
     }
@@ -315,6 +324,8 @@ function applyHash(h){
       if (currentCentralTab !== 'league') { currentCentralTab = 'league'; changed = true; }
     } else if (['queue', 'overdue', 'alerts'].includes(clean)) {
       if (currentCentralTab !== 'queue') { currentCentralTab = 'queue'; changed = true; }
+    } else if (['export', 'exports', 'download', 'downloads'].includes(clean)) {
+      if (currentCentralTab !== 'export') { currentCentralTab = 'export'; changed = true; }
     } else if (clean === 'all' || clean === 'overview') {
       if (currentCentralTab !== 'all') { currentCentralTab = 'all'; changed = true; }
     }
@@ -366,7 +377,8 @@ function renderInvestigatorView(allPts){
     { id: 'patients', label: 'My Patients', icon: 'group', badge: mine.length },
     { id: 'upcoming', label: 'Upcoming Visits', icon: 'event_upcoming', badge: upcoming.length },
     { id: 'clinical', label: 'Clinical Performance', icon: 'monitoring' },
-    { id: 'sites', label: 'Assigned Sites', icon: 'local_hospital', badge: sites.length }
+    { id: 'sites', label: 'Assigned Sites', icon: 'local_hospital', badge: sites.length },
+    { id: 'export', label: 'Data Export & Reports', icon: 'file_download' }
   ];
 
   const headerHtml = `
@@ -376,6 +388,7 @@ function renderInvestigatorView(allPts){
         <p id="meta">Assigned Sites: ${sites.join(', ') || 'No site assigned'} · Clinical Outpatient HF Registry</p>
       </div>
       <div class="actions">
+        <button type="button" class="btn" id="btnExportModal"><i class="ms">download</i>Data Export</button>
         <a class="btn" href="${ECRF}"><i class="ms">edit_note</i>Patient records</a>
         <a class="btn primary" href="${ECRF}?new=1"><i class="ms">person_add</i>Add patient</a>
       </div>
@@ -460,6 +473,12 @@ function renderInvestigatorView(allPts){
           </table>
         </div>
       </section>
+    `;
+  } else if (currentInvTab === 'export') {
+    bodyHtml = `
+      <div class="dash-fade-in">
+        ${renderExportStudioSection(mine, 'Assigned Sites (' + (sites.join(', ') || 'None') + ')')}
+      </div>
     `;
   } else {
     // 'all'
@@ -667,7 +686,8 @@ function renderCentralView(allPts){
     { id: 'all', label: 'Full Oversight', icon: 'dashboard' },
     { id: 'league', label: 'Site League Table', icon: 'leaderboard', badge: zoneSites.length },
     { id: 'analytics', label: 'Trajectories & GDMT', icon: 'monitoring' },
-    { id: 'queue', label: 'Overdue Follow-up Queue', icon: 'warning', badge: st.overdueCount }
+    { id: 'queue', label: 'Overdue Follow-up Queue', icon: 'warning', badge: st.overdueCount },
+    { id: 'export', label: 'Data Export & Reports', icon: 'file_download' }
   ];
 
   const headerHtml = `
@@ -793,6 +813,8 @@ function renderCentralView(allPts){
     bodyHtml = `<div class="dash-fade-in">${analyticsHtml}</div>`;
   } else if (currentCentralTab === 'queue') {
     bodyHtml = `<div class="dash-fade-in">${queueHtml}</div>`;
+  } else if (currentCentralTab === 'export') {
+    bodyHtml = `<div class="dash-fade-in">${renderExportStudioSection(allPts, 'National Registry Oversight (All Centres)')}</div>`;
   } else {
     // 'all'
     bodyHtml = `
@@ -898,7 +920,8 @@ function renderSuperAdminView(allPts){
     { id: 'teams', label: 'Teams & Oversight', icon: 'diversity_3', badge: `${invUsers.length + centralUsers.length}` },
     { id: 'analytics', label: 'Visual Analytics', icon: 'analytics' },
     { id: 'league', label: 'Site League Table', icon: 'leaderboard', badge: s.sites.length },
-    { id: 'queue', label: 'Overdue Queue', icon: 'warning', badge: st.overdueCount }
+    { id: 'queue', label: 'Overdue Queue', icon: 'warning', badge: st.overdueCount },
+    { id: 'export', label: 'Data Export & Reports', icon: 'file_download' }
   ];
 
   const headerHtml = `
@@ -1037,6 +1060,8 @@ function renderSuperAdminView(allPts){
     bodyHtml = `<div class="dash-fade-in">${leagueHtml}</div>`;
   } else if (currentSuperTab === 'queue') {
     bodyHtml = `<div class="dash-fade-in">${queueHtml}</div>`;
+  } else if (currentSuperTab === 'export') {
+    bodyHtml = `<div class="dash-fade-in">${renderExportStudioSection(allPts, 'Super Admin Global Scope (All Centres & Teams)')}</div>`;
   } else {
     // 'all'
     bodyHtml = `
@@ -1055,12 +1080,147 @@ function renderSuperAdminView(allPts){
 
 
 /* ==========================================================================
-   RESEARCH-READY EXPORT MODULE (CSV / EXCEL DATASETS)
+   RESEARCH-READY EXPORT MODULE & CUSTOM FILTER STUDIO (CSV / TSV / JSON)
    ========================================================================== */
+let exportFilterState = {
+  zone: 'all',
+  site: 'all',
+  inv: 'all',
+  visits: ['b', 'm3', 'm6'],
+  vstat: 'all',          // 'all' | 'completed' | 'in_progress' | 'overdue'
+  gdmt: 'all',           // 'all' | '4' | 'suboptimal'
+  pillar: 'all',         // 'all' | 'arni' | 'bb' | 'mra' | 'sg'
+  etio: 'all',           // 'all' | 'ischemic' | 'non_ischemic' | 'other'
+  period: 'all',         // 'all' | '30' | '90' | '180'
+  deidentify: true,      // true: mask names & contacts
+  format: 'csv'          // 'csv' | 'tsv' | 'json'
+};
+
+function getExportFilteredCohort(ptsPool) {
+  let list = ptsPool.slice();
+  const f = exportFilterState;
+
+  // Zone filter
+  if (f.zone !== 'all') {
+    list = list.filter(p => getSiteZone(p.site) === f.zone);
+  }
+  // Site filter
+  if (f.site !== 'all') {
+    list = list.filter(p => p.site === f.site);
+  }
+  // Investigator filter
+  if (f.inv !== 'all') {
+    list = list.filter(p => p.inv === f.inv || p.owner === f.inv);
+  }
+  // Enrollment period
+  if (f.period !== 'all') {
+    const daysLimit = parseInt(f.period, 10);
+    const now = new Date();
+    list = list.filter(p => {
+      if (!p.consent) return false;
+      const d = day(p.consent);
+      return (now - d) / DAY <= daysLimit;
+    });
+  }
+  // HF Etiology
+  if (f.etio !== 'all') {
+    list = list.filter(p => {
+      const et = (p.etio || '').toLowerCase();
+      if (f.etio === 'ischemic') return et.includes('ischemic') && !et.includes('non');
+      if (f.etio === 'non_ischemic') return et.includes('non-ischemic') || et.includes('non ischemic') || et.includes('dilated') || et.includes('idiopathic');
+      return !et.includes('ischemic');
+    });
+  }
+  // GDMT 4/4 or sub-optimal
+  if (f.gdmt === '4') {
+    list = list.filter(p => {
+      const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+      return last && act(p.v[last]) === 4;
+    });
+  } else if (f.gdmt === 'suboptimal') {
+    list = list.filter(p => {
+      const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+      return last && act(p.v[last]) < 4;
+    });
+  }
+  // Specific medication pillar
+  if (f.pillar !== 'all') {
+    list = list.filter(p => {
+      const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+      if (!last || !p.v[last].g) return false;
+      const st = p.v[last].g[f.pillar]?.status;
+      return st === 'Prescribed' || st === 'Maintained' || st === 'Active';
+    });
+  }
+  // Visit status
+  if (f.vstat !== 'all') {
+    list = list.filter(p => {
+      if (f.vstat === 'completed') {
+        return f.visits.some(k => p.v?.[k]?.done);
+      }
+      if (f.vstat === 'in_progress') {
+        return f.visits.some(k => vstat(p, k) === 'In Progress');
+      }
+      if (f.vstat === 'overdue') {
+        return f.visits.some(k => ['Overdue', 'Missed'].includes(vstat(p, k)));
+      }
+      return true;
+    });
+  }
+
+  return list;
+}
+
+function maskPatientName(name, id) {
+  if (!name) return `Patient ${id}`;
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0] + '***';
+  return parts[0][0] + '*** ' + parts[parts.length - 1][0] + '***';
+}
+
+function maskContact(contact) {
+  if (!contact) return '';
+  const str = String(contact).replace(/\D/g, '');
+  if (str.length <= 4) return '****';
+  return str.slice(0, 4) + ' **** ' + str.slice(-2);
+}
+
+function triggerBlobDownload(blob, filename, recordCount, targetDescription, formatName){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  logCentralAction(`Export ${formatName}`, `${recordCount} items (${targetDescription})`, targetDescription);
+  toast(`Export complete: ${recordCount} records downloaded as ${formatName} & logged.`);
+}
+
+function downloadCsv(rows, filenamePrefix, targetDescription){
+  const csvContent = rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' });
+  triggerBlobDownload(blob, `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.csv`, rows.length - 1, targetDescription, 'CSV');
+}
+
+function downloadTsv(rows, filenamePrefix, targetDescription){
+  const tsvContent = rows.map(r => r.map(cell => String(cell ?? '').replace(/[\t\r\n]/g, ' ')).join('\t')).join('\r\n');
+  const blob = new Blob(['\ufeff' + tsvContent], { type: 'text/tab-separated-values;charset=utf-8' });
+  triggerBlobDownload(blob, `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.tsv`, rows.length - 1, targetDescription, 'TSV');
+}
+
+function downloadJson(dataObj, filenamePrefix, targetDescription, recordCount){
+  const jsonContent = JSON.stringify(dataObj, null, 2);
+  const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8' });
+  triggerBlobDownload(blob, `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.json`, recordCount, targetDescription, 'JSON');
+}
+
+// Backward compatibility handler
 function generateAndDownloadExport(scope, visits, only4Pillars, format){
   const allPts = loadData();
   let targetPts = allPts.slice();
-
   let targetDesc = 'All Registry Patients';
   if (scope === 'filtered') {
     if (filterZone !== 'all') targetPts = targetPts.filter(p => getSiteZone(p.site) === filterZone);
@@ -1068,7 +1228,6 @@ function generateAndDownloadExport(scope, visits, only4Pillars, format){
     if (filterInv !== 'all') targetPts = targetPts.filter(p => p.inv === filterInv);
     targetDesc = `Zone:${filterZone}, Site:${filterSite}, Inv:${filterInv}`;
   }
-
   if (only4Pillars) {
     targetPts = targetPts.filter(p => {
       const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
@@ -1076,32 +1235,21 @@ function generateAndDownloadExport(scope, visits, only4Pillars, format){
     });
     targetDesc += ' (4/4 GDMT Only)';
   }
-
   if (format === 'summary') {
-    // Generate site league summary
-    const s = accessStore();
-    const rows = [['Site Code','Site Name','Zone','Enrolled Patients','Baseline Completed','3M Completed','6M Completed','On-Time Adherence %','Overdue Count','GDMT 4/4 Rate %']];
-    s.sites.forEach(st => {
-      const ps = targetPts.filter(p => p.site === st.code);
-      const n = ps.length;
-      const b = ps.filter(p => p.v?.b?.done).length;
-      const m3 = ps.filter(p => p.v?.m3?.done).length;
-      const m6 = ps.filter(p => p.v?.m6?.done).length;
-      const fu = ps.flatMap(p => ['m3','m6'].map(k => onTime(p, k))).filter(x => x !== null);
-      const ontime = fu.length ? Math.round(100 * fu.filter(Boolean).length / fu.length) : '';
-      const overdue = ps.reduce((c, p) => c + ['m3','m6'].filter(k => ['Overdue','Missed'].includes(vstat(p, k))).length, 0);
-      const gdmt4 = ps.filter(p => {
-        const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
-        return last && act(p.v[last]) === 4;
-      }).length;
-      const gdmtPct = n ? Math.round(100 * gdmt4 / n) : '';
-      rows.push([st.code, st.name, st.zone||'', n, b, m3, m6, ontime, overdue, gdmtPct]);
-    });
-    downloadCsv(rows, 'stand-hf-site-league-summary', targetDesc);
+    downloadPresetLeague(targetPts);
     return;
   }
+  downloadPresetEcrf(targetPts, visits);
+}
 
-  // 1-Row-Per-Patient-Visit Research Dataset (Compliant with FSD & Brief)
+// Preset 1: Research-Grade Longitudinal eCRF Dataset
+function downloadPresetEcrf(cohort, overrideVisits){
+  const visits = overrideVisits || exportFilterState.visits;
+  if (!visits.length) {
+    toast('Please select at least one visit stage (Baseline, 3M, or 6M).');
+    return;
+  }
+  const deid = exportFilterState.deidentify;
   const header = [
     'Study_ID','Site_Code','Site_Zone','Investigator_Name','Patient_Name','Contact_Number','Consent_Date','Age','Sex','HF_Etiology',
     'Visit_Stage','Visit_Status','Visit_Date','Weight_kg','Heart_Rate_bpm','Systolic_BP_mmHg','Diastolic_BP_mmHg',
@@ -1112,19 +1260,20 @@ function generateAndDownloadExport(scope, visits, only4Pillars, format){
     'SGLT2i_Drug','SGLT2i_Dose','SGLT2i_Status',
     'HF_Hospitalization','Other_Hospitalization','Death','Major_Intervention_Notes'
   ];
-
   const rows = [header];
   const visitLabels = { b: 'Baseline', m3: 'Month 3', m6: 'Month 6' };
 
-  targetPts.forEach(p => {
+  cohort.forEach(p => {
     visits.forEach(k => {
       const v = p.v?.[k] || {};
       const g = q => (v.g && v.g[q]) || {};
       const ev = v.ev || {};
       const activeCount = act(v);
+      const pName = deid ? maskPatientName(p.name, p.id) : (p.name || '');
+      const pPhone = deid ? maskContact(p.contact) : (p.contact || '');
 
       rows.push([
-        p.id, p.site, getSiteZone(p.site), p.inv || '', p.name || '', p.contact || '', p.consent || '', p.age || '', p.sex || '', p.etio || '',
+        p.id, p.site, getSiteZone(p.site), p.inv || '', pName, pPhone, p.consent || '', p.age || '', p.sex || '', p.etio || '',
         visitLabels[k], vstat(p, k), v.date || '', v.wt || '', v.hr || '', v.sbp || '', v.dbp || '',
         v.nyha || '', v.msts != null ? v.msts : '', v.lvef != null ? v.lvef : '', v.echoDate || '', activeCount,
         g('arni').drug || '', g('arni').dose || '', g('arni').status || '',
@@ -1136,24 +1285,604 @@ function generateAndDownloadExport(scope, visits, only4Pillars, format){
     });
   });
 
-  downloadCsv(rows, 'stand-hf-research-dataset', targetDesc);
+  if (exportFilterState.format === 'tsv') {
+    downloadTsv(rows, 'stand-hf-longitudinal-ecrf', `Longitudinal eCRF Dataset (${cohort.length} Patients)`);
+  } else {
+    downloadCsv(rows, 'stand-hf-longitudinal-ecrf', `Longitudinal eCRF Dataset (${cohort.length} Patients)`);
+  }
 }
 
-function downloadCsv(rows, filenamePrefix, targetDescription){
-  const csvContent = rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
-  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+// Preset 2: Patient Master Enrollment Roster
+function downloadPresetRoster(cohort){
+  const deid = exportFilterState.deidentify;
+  const header = [
+    'Study_ID','Site_Code','Site_Zone','Investigator_Name','Patient_Name','Contact_Number','Consent_Date','Age','Sex','HF_Etiology',
+    'Baseline_Status','3M_Status','6M_Status','All_Visits_Complete',
+    'Active_GDMT_Pillars_Latest','Latest_NYHA_Class','Latest_LVEF_Percent'
+  ];
+  const rows = [header];
 
-  // Record into Central Audit Log (accessible to Super Admin)
-  logCentralAction('Export CSV', `${rows.length - 1} rows (${targetDescription})`, targetDescription);
-  toast(`Export complete: ${rows.length - 1} rows downloaded & logged to central audit.`);
+  cohort.forEach(p => {
+    const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+    const lv = last ? p.v[last] : {};
+    const allDone = p.v?.b?.done && p.v?.m3?.done && p.v?.m6?.done ? 'Yes' : 'No';
+    const pName = deid ? maskPatientName(p.name, p.id) : (p.name || '');
+    const pPhone = deid ? maskContact(p.contact) : (p.contact || '');
+
+    rows.push([
+      p.id, p.site, getSiteZone(p.site), p.inv || '', pName, pPhone, p.consent || '', p.age || '', p.sex || '', p.etio || '',
+      vstat(p, 'b'), vstat(p, 'm3'), vstat(p, 'm6'), allDone,
+      last ? act(lv) : 0, lv.nyha || '', lv.lvef != null ? lv.lvef : ''
+    ]);
+  });
+
+  downloadCsv(rows, 'stand-hf-patient-roster', `Patient Master Roster (${cohort.length} Patients)`);
+}
+
+// Preset 3: Multi-Site League Table Summary
+function downloadPresetLeague(cohort){
+  const s = accessStore();
+  const rows = [
+    ['Site_Code','Site_Name','Zone','Enrolled_Patients','Baseline_Completed','3M_Completed','6M_Completed','All_Visits_Completed','OnTime_Adherence_Pct','Overdue_Followups_Count','GDMT_4_of_4_Rate_Pct']
+  ];
+  const sitesToInclude = exportFilterState.site !== 'all' ? s.sites.filter(x => x.code === exportFilterState.site) : (exportFilterState.zone !== 'all' ? s.sites.filter(x => x.zone === exportFilterState.zone) : s.sites);
+
+  sitesToInclude.forEach(st => {
+    const ps = cohort.filter(p => p.site === st.code);
+    const n = ps.length;
+    const b = ps.filter(p => p.v?.b?.done).length;
+    const m3 = ps.filter(p => p.v?.m3?.done).length;
+    const m6 = ps.filter(p => p.v?.m6?.done).length;
+    const allDone = ps.filter(p => p.v?.b?.done && p.v?.m3?.done && p.v?.m6?.done).length;
+    const fu = ps.flatMap(p => ['m3','m6'].map(k => onTime(p, k))).filter(x => x !== null);
+    const ontime = fu.length ? Math.round(100 * fu.filter(Boolean).length / fu.length) : '';
+    const overdue = ps.reduce((c, p) => c + ['m3','m6'].filter(k => ['Overdue','Missed'].includes(vstat(p, k))).length, 0);
+    const gdmt4 = ps.filter(p => {
+      const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+      return last && act(p.v[last]) === 4;
+    }).length;
+    const gdmtPct = n ? Math.round(100 * gdmt4 / n) : '';
+    rows.push([st.code, st.name, st.zone || '', n, b, m3, m6, allDone, ontime, overdue, gdmtPct]);
+  });
+
+  downloadCsv(rows, 'stand-hf-site-league-summary', 'Multi-Site League Table Summary');
+}
+
+// Preset 4: Adverse Clinical Events & Safety Surveillance Log
+function downloadPresetEvents(cohort){
+  const deid = exportFilterState.deidentify;
+  const header = [
+    'Study_ID','Site_Code','Investigator_Name','Patient_Name','Visit_Stage','Visit_Date',
+    'HF_Hospitalization','All_Cause_Hospitalization','Cardiovascular_Death','Major_Intervention_Notes'
+  ];
+  const rows = [header];
+  const visitLabels = { b: 'Baseline', m3: 'Month 3', m6: 'Month 6' };
+
+  cohort.forEach(p => {
+    ['b', 'm3', 'm6'].forEach(k => {
+      const v = p.v?.[k];
+      if (!v) return;
+      const ev = v.ev || {};
+      const hasEvent = ev.hf || ev.all || ev.death || ev.notes;
+      if (hasEvent || v.done) {
+        const pName = deid ? maskPatientName(p.name, p.id) : (p.name || '');
+        rows.push([
+          p.id, p.site, p.inv || '', pName, visitLabels[k], v.date || '',
+          ev.hf ? 1 : 0, ev.all ? 1 : 0, ev.death ? 1 : 0, ev.notes || ''
+        ]);
+      }
+    });
+  });
+
+  downloadCsv(rows, 'stand-hf-adverse-safety-events', `Adverse Safety Events Log (${rows.length - 1} Rows)`);
+}
+
+// Preset 5: GDMT Quadruple Therapy Optimization Report
+function downloadPresetGdmt(cohort){
+  const deid = exportFilterState.deidentify;
+  const header = [
+    'Study_ID','Site_Code','Investigator_Name','Patient_Name','Visit_Stage','Visit_Date','Active_GDMT_Pillars_Count',
+    'ARNI_Drug','ARNI_Dose','ARNI_Status',
+    'BetaBlocker_Drug','BetaBlocker_Dose','BetaBlocker_Status',
+    'MRA_Drug','MRA_Dose','MRA_Status',
+    'SGLT2i_Drug','SGLT2i_Dose','SGLT2i_Status'
+  ];
+  const rows = [header];
+  const visitLabels = { b: 'Baseline', m3: 'Month 3', m6: 'Month 6' };
+
+  cohort.forEach(p => {
+    ['b', 'm3', 'm6'].forEach(k => {
+      const v = p.v?.[k];
+      if (!v || !v.done) return;
+      const g = q => (v.g && v.g[q]) || {};
+      const pName = deid ? maskPatientName(p.name, p.id) : (p.name || '');
+
+      rows.push([
+        p.id, p.site, p.inv || '', pName, visitLabels[k], v.date || '', act(v),
+        g('arni').drug || '', g('arni').dose || '', g('arni').status || '',
+        g('bb').drug || '', g('bb').dose || '', g('bb').status || '',
+        g('mra').drug || '', g('mra').dose || '', g('mra').status || '',
+        g('sg').drug || '', g('sg').dose || '', g('sg').status || ''
+      ]);
+    });
+  });
+
+  downloadCsv(rows, 'stand-hf-gdmt-therapy-audit', `GDMT Quadruple Therapy Audit (${rows.length - 1} Rows)`);
+}
+
+// Preset 6: Complete Hierarchical JSON Package
+function downloadPresetJson(cohort, prefix){
+  const deid = exportFilterState.deidentify;
+  const pkg = {
+    registry: 'STAND-HF E-CRF Registry',
+    exportTimestamp: new Date().toISOString(),
+    exportedBy: USER_NAME,
+    userRole: ROLE,
+    deidentified: !!deid,
+    filterCriteria: { ...exportFilterState },
+    totalPatients: cohort.length,
+    patients: cohort.map(p => {
+      const clone = JSON.parse(JSON.stringify(p));
+      if (deid) {
+        clone.name = maskPatientName(p.name, p.id);
+        clone.contact = maskContact(p.contact);
+      }
+      return clone;
+    })
+  };
+
+  downloadJson(pkg, prefix || 'stand-hf-registry-package', `Structured JSON Package (${cohort.length} Patients)`, cohort.length);
+}
+
+// Run Custom Filtered Export
+function downloadCustomExport(ptsPool){
+  const cohort = getExportFilteredCohort(ptsPool);
+  if (!cohort.length) {
+    toast('No matching patients in current filter selection to export.');
+    return;
+  }
+  if (!exportFilterState.visits.length && exportFilterState.format !== 'json') {
+    toast('Please select at least one visit stage to export.');
+    return;
+  }
+
+  if (exportFilterState.format === 'json') {
+    downloadPresetJson(cohort, 'stand-hf-custom-dataset');
+  } else {
+    downloadPresetEcrf(cohort);
+  }
+}
+
+// --- HTML Component: Live Cohort Stats Strip ---
+function renderExportCohortStatsHtml(cohort){
+  const nPts = cohort.length;
+  const nVisitsTotal = nPts * exportFilterState.visits.length;
+  const nVisitsDone = cohort.reduce((sum, p) => sum + exportFilterState.visits.filter(k => p.v?.[k]?.done).length, 0);
+  const n4Pillars = cohort.filter(p => {
+    const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+    return last && act(p.v[last]) === 4;
+  }).length;
+  const gdmtPct = nPts ? Math.round(100 * n4Pillars / nPts) : 0;
+
+  return `
+    <div class="export-cohort-stats">
+      <div class="export-cohort-stat">
+        <small>Filtered Cohort</small>
+        <b>${nPts} <span style="font-size:14px;font-weight:400;color:var(--ink-2)">Patients</span></b>
+      </div>
+      <div class="export-cohort-stat">
+        <small>Target Visits</small>
+        <b>${nVisitsTotal} <span style="font-size:14px;font-weight:400;color:var(--ink-2)">Rows (${exportFilterState.visits.length} stages)</span></b>
+      </div>
+      <div class="export-cohort-stat">
+        <small>Completed Visits</small>
+        <b class="${nVisitsDone ? 'good' : ''}">${nVisitsDone} <span style="font-size:14px;font-weight:400;color:var(--ink-2)">Complete</span></b>
+      </div>
+      <div class="export-cohort-stat">
+        <small>4/4 GDMT Rate</small>
+        <b style="color:var(--brand-magenta)">${gdmtPct}% <span style="font-size:14px;font-weight:400;color:var(--ink-2)">(${n4Pillars} / ${nPts})</span></b>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="tag good"><i class="ms" style="font-size:14px;vertical-align:-2px">check_circle</i> Ready to Export</span>
+    </div>
+  `;
+}
+
+// --- HTML Component: Live Cohort Preview Table ---
+function renderExportPreviewTable(cohort){
+  if (!cohort.length) {
+    return `<div class="empty" style="padding:32px"><i class="ms" style="font-size:32px">filter_list_off</i><br>No patients match the current filter selection. Adjust filters to broaden your cohort.</div>`;
+  }
+  const sample = cohort.slice(0, 5);
+  const deid = exportFilterState.deidentify;
+
+  return `
+    <table class="export-preview-table">
+      <thead>
+        <tr>
+          <th>Study ID</th>
+          <th>Hospital Centre</th>
+          <th>Zone</th>
+          <th>Patient (${deid ? 'Masked' : 'Name'})</th>
+          <th>Age / Sex</th>
+          <th>Consent Date</th>
+          <th>HF Etiology</th>
+          <th>Baseline</th>
+          <th>3 Months</th>
+          <th>6 Months</th>
+          <th>GDMT Pillars</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sample.map(p => {
+          const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
+          const pName = deid ? maskPatientName(p.name, p.id) : (p.name || 'Unnamed');
+          const pAct = last && p.v[last].done ? act(p.v[last]) : 0;
+          return `
+            <tr>
+              <td><b>${esc(p.id)}</b></td>
+              <td>${esc(p.site)}</td>
+              <td><span class="tag">${esc(getSiteZone(p.site))}</span></td>
+              <td><b>${esc(pName)}</b></td>
+              <td>${p.age || '–'} / ${esc(p.sex || '–')}</td>
+              <td>${p.consent ? fmtShortD(day(p.consent)) : '–'}</td>
+              <td>${esc(p.etio || 'Unknown')}</td>
+              <td><span class="chip ${chipCls(vstat(p, 'b'))}">${vstat(p, 'b')}</span></td>
+              <td><span class="chip ${chipCls(vstat(p, 'm3'))}">${vstat(p, 'm3')}</span></td>
+              <td><span class="chip ${chipCls(vstat(p, 'm6'))}">${vstat(p, 'm6')}</span></td>
+              <td>
+                <span class="tag ${pAct===4 ? 'good' : pAct>=2 ? 'warn' : ''}">
+                  ${pAct} / 4 Pillars
+                </span>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+    <div style="padding:10px 14px;background:var(--soft);font-size:12px;color:var(--ink-2);border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+      <span>Showing preview of first ${sample.length} of ${cohort.length} matching patients</span>
+      <span>Format: <b>${exportFilterState.format.toUpperCase()}</b> · PII: <b>${deid ? 'Masked' : 'Real'}</b></span>
+    </div>
+  `;
+}
+
+// --- Main Section Generator: Data Export Hub & Filter Studio ---
+function renderExportStudioSection(ptsPool, scopeTitle){
+  const s = accessStore();
+  const isInvRole = ROLE === 'investigator';
+  const availableZones = isInvRole ? [...new Set(ptsPool.map(p => getSiteZone(p.site)).filter(Boolean))].sort() : (s.zones || ['North','Central','South']);
+  const availableSites = isInvRole ? [...new Set(ptsPool.map(p => p.site).filter(Boolean))].sort() : (exportFilterState.zone === 'all' ? s.sites.map(x=>x.code) : s.sites.filter(x=>x.zone === exportFilterState.zone).map(x=>x.code));
+  const availableInvs = isInvRole ? [USER_NAME] : [...new Set(ptsPool.map(p => p.inv).filter(Boolean))].sort();
+
+  const cohort = getExportFilteredCohort(ptsPool);
+  const nPts = cohort.length;
+
+  return `
+    <div class="export-studio-wrap">
+      <!-- 1. Section Header & Scope Banner -->
+      <div class="export-hero">
+        <div class="export-hero-content">
+          <div class="export-hero-title">
+            <i class="ms" style="color:var(--primary);font-size:28px">dataset</i>
+            Registry Data Export &amp; Custom Filter Studio
+          </div>
+          <p class="export-hero-desc">
+            Export study data with granular multi-axial filters, GDPR/GCP-grade de-identification controls, and verified clinical research presets in CSV, TSV, and JSON formats.
+          </p>
+          <div class="export-hero-badges">
+            <span class="tag ${isInvRole ? 'warn' : 'info'}">
+              <i class="ms" style="font-size:14px;vertical-align:-2px">${isInvRole ? 'lock' : 'verified_user'}</i>
+              ${esc(scopeTitle)}
+            </span>
+            <span class="tag good"><i class="ms" style="font-size:14px;vertical-align:-2px">check_circle</i> Research-Grade UTF-8 BOM</span>
+            <span class="tag"><i class="ms" style="font-size:14px;vertical-align:-2px">history</i> Audit-Logged</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button type="button" class="btn" id="btnResetExportFilters"><i class="ms">restart_alt</i>Reset Filters</button>
+          <button type="button" class="btn" id="btnExportAllJson"><i class="ms">code</i>Export JSON</button>
+          <button type="button" class="btn primary" id="btnQuickExportCsv"><i class="ms">download</i>Quick CSV Export</button>
+        </div>
+      </div>
+
+      <!-- 2. Studio Two-Column Grid: Filter Studio (Left) + Presets & Live Preview (Right) -->
+      <div class="export-studio-grid">
+        <!-- LEFT COLUMN: Granular Custom Filter Studio -->
+        <div class="export-filter-panel card">
+          <div class="card-head" style="margin-bottom:0">
+            <div>
+              <h2 style="font-size:17px"><i class="ms" style="color:var(--primary);vertical-align:-3px;margin-right:6px">tune</i>Custom Filter Studio</h2>
+              <small>Refine cohort parameters for custom extract</small>
+            </div>
+            <button type="button" class="link-btn" id="btnResetFiltersMini" title="Reset all custom filters" style="font-size:12px">Clear</button>
+          </div>
+
+          <!-- Filter Group 1: Geographic & Team Hierarchy -->
+          <div class="export-filter-group">
+            <div class="export-filter-group-title"><i class="ms">apartment</i>Scope &amp; Team</div>
+            <div class="export-filter-row">
+              <label for="expFilterZone">Zone</label>
+              <select id="expFilterZone" ${isInvRole && availableZones.length<=1 ? 'disabled' : ''}>
+                ${!isInvRole ? '<option value="all">All Zones</option>' : ''}
+                ${availableZones.map(z => `<option value="${esc(z)}"${exportFilterState.zone===z?' selected':''}>${esc(z)} Zone</option>`).join('')}
+              </select>
+            </div>
+            <div class="export-filter-row">
+              <label for="expFilterSite">Hospital Site</label>
+              <select id="expFilterSite" ${isInvRole && availableSites.length<=1 ? 'disabled' : ''}>
+                <option value="all">${isInvRole ? 'All Assigned Sites' : 'All Participating Centres'}</option>
+                ${availableSites.map(code => `<option value="${esc(code)}"${exportFilterState.site===code?' selected':''}>${esc(code)} – ${esc(getSiteName(code))}</option>`).join('')}
+              </select>
+            </div>
+            ${!isInvRole ? `
+              <div class="export-filter-row">
+                <label for="expFilterInv">Site Investigator</label>
+                <select id="expFilterInv">
+                  <option value="all">All Site Investigators</option>
+                  ${availableInvs.map(name => `<option value="${esc(name)}"${exportFilterState.inv===name?' selected':''}>${esc(name)}</option>`).join('')}
+                </select>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Filter Group 2: Longitudinal Visit Stages & Status -->
+          <div class="export-filter-group">
+            <div class="export-filter-group-title"><i class="ms">calendar_month</i>Visits &amp; Windows</div>
+            <div class="export-filter-row">
+              <label>Include Visit Stages</label>
+              <div class="export-pills">
+                <label class="export-pill-check">
+                  <input type="checkbox" id="chkVisitB" value="b" ${exportFilterState.visits.includes('b')?'checked':''}>
+                  <span>Baseline (Day 0)</span>
+                </label>
+                <label class="export-pill-check">
+                  <input type="checkbox" id="chkVisitM3" value="m3" ${exportFilterState.visits.includes('m3')?'checked':''}>
+                  <span>Month 3 (90d)</span>
+                </label>
+                <label class="export-pill-check">
+                  <input type="checkbox" id="chkVisitM6" value="m6" ${exportFilterState.visits.includes('m6')?'checked':''}>
+                  <span>Month 6 (180d)</span>
+                </label>
+              </div>
+            </div>
+            <div class="export-filter-row">
+              <label>Visit Status</label>
+              <div class="export-pills" id="expStatusPills">
+                <button type="button" class="export-pill-btn ${exportFilterState.vstat==='all'?'active':''}" data-vstat="all">All</button>
+                <button type="button" class="export-pill-btn ${exportFilterState.vstat==='completed'?'active':''}" data-vstat="completed">Complete</button>
+                <button type="button" class="export-pill-btn ${exportFilterState.vstat==='in_progress'?'active':''}" data-vstat="in_progress">In Progress</button>
+                <button type="button" class="export-pill-btn ${exportFilterState.vstat==='overdue'?'active':''}" data-vstat="overdue">Overdue / Missed</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter Group 3: Therapy Optimization & GDMT Criteria -->
+          <div class="export-filter-group">
+            <div class="export-filter-group-title"><i class="ms">medication</i>Therapy &amp; Clinical Subgroups</div>
+            <div class="export-filter-row">
+              <label>GDMT Pillar Coverage</label>
+              <div class="export-pills" id="expGdmtPills">
+                <button type="button" class="export-pill-btn ${exportFilterState.gdmt==='all'?'active':''}" data-gdmt="all">All Patients</button>
+                <button type="button" class="export-pill-btn ${exportFilterState.gdmt==='4'?'active':''}" data-gdmt="4">4/4 Quadruple Therapy</button>
+                <button type="button" class="export-pill-btn ${exportFilterState.gdmt==='suboptimal'?'active':''}" data-gdmt="suboptimal">&lt;4 Pillars</button>
+              </div>
+            </div>
+            <div class="export-filter-row">
+              <label for="expFilterPillar">Specific Medication Pillar</label>
+              <select id="expFilterPillar">
+                <option value="all">Any / All Pillars</option>
+                <option value="arni"${exportFilterState.pillar==='arni'?' selected':''}>Pillar 1: ARNI (Sacubitril/Valsartan)</option>
+                <option value="bb"${exportFilterState.pillar==='bb'?' selected':''}>Pillar 2: Evidence-based Beta Blocker</option>
+                <option value="mra"${exportFilterState.pillar==='mra'?' selected':''}>Pillar 3: MRA (Spironolactone/Eplerenone)</option>
+                <option value="sg"${exportFilterState.pillar==='sg'?' selected':''}>Pillar 4: SGLT2 Inhibitor</option>
+              </select>
+            </div>
+            <div class="export-filter-row">
+              <label for="expFilterEtio">Heart Failure Etiology</label>
+              <select id="expFilterEtio">
+                <option value="all">All HF Etiologies</option>
+                <option value="ischemic"${exportFilterState.etio==='ischemic'?' selected':''}>Ischemic Cardiomyopathy</option>
+                <option value="non_ischemic"${exportFilterState.etio==='non_ischemic'?' selected':''}>Non-Ischemic / Dilated</option>
+                <option value="other"${exportFilterState.etio==='other'?' selected':''}>Other / Hypertensive / Valvular</option>
+              </select>
+            </div>
+            <div class="export-filter-row">
+              <label for="expFilterPeriod">Enrollment Date Range</label>
+              <select id="expFilterPeriod">
+                <option value="all"${exportFilterState.period==='all'?' selected':''}>All Time (Entire Study)</option>
+                <option value="30"${exportFilterState.period==='30'?' selected':''}>Last 30 Days</option>
+                <option value="90"${exportFilterState.period==='90'?' selected':''}>Last 90 Days</option>
+                <option value="180"${exportFilterState.period==='180'?' selected':''}>Last 180 Days (6 Months)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Filter Group 4: De-identification & Privacy Controls -->
+          <div class="export-filter-group">
+            <div class="export-filter-group-title"><i class="ms">security</i>Governance &amp; Format</div>
+            <div class="export-toggle-wrap">
+              <div class="export-toggle-info">
+                <b>De-identify Patient PII</b>
+                <small>Mask names &amp; contact numbers for HIPAA/GCP compliance</small>
+              </div>
+              <label class="export-toggle-switch">
+                <input type="checkbox" id="chkDeidentify" ${exportFilterState.deidentify ? 'checked' : ''}>
+                <span class="export-slider"></span>
+              </label>
+            </div>
+            <div class="export-filter-row">
+              <label>File Output Format</label>
+              <div class="export-pills" id="expFormatPills">
+                <button type="button" class="export-pill-btn ${exportFilterState.format==='csv'?'active':''}" data-format="csv">CSV (Excel)</button>
+                <button type="button" class="export-pill-btn ${exportFilterState.format==='tsv'?'active':''}" data-format="tsv">TSV (SPSS / R)</button>
+                <button type="button" class="export-pill-btn ${exportFilterState.format==='json'?'active':''}" data-format="json">JSON Package</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Download Custom Action Button -->
+          <div style="margin-top:6px">
+            <button type="button" class="btn primary" id="btnRunCustomExport" style="width:100%;min-height:46px;font-size:14px;font-weight:600">
+              <i class="ms">file_download</i>
+              Download Custom Dataset (${nPts} Patients, ${exportFilterState.format.toUpperCase()})
+            </button>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Live Cohort Status Strip, 6 Presets, Live Preview Table -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <!-- Live Cohort Status Strip -->
+          <div class="export-cohort-strip" id="exportCohortStrip">
+            ${renderExportCohortStatsHtml(cohort)}
+          </div>
+
+          <!-- Standard Export Presets Section -->
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h2>Standard Study Export Presets</h2>
+                <small>One-click pre-configured datasets complying with study protocol</small>
+              </div>
+            </div>
+            <div class="export-presets-grid">
+              <!-- Preset 1: Research-Grade Longitudinal eCRF -->
+              <div class="export-preset-card">
+                <div>
+                  <div class="export-preset-top">
+                    <div class="export-preset-icon primary"><i class="ms">table_chart</i></div>
+                    <span class="export-preset-badge">CSV / TSV</span>
+                  </div>
+                  <h3 style="margin-top:12px">Longitudinal eCRF Dataset</h3>
+                  <p>1 row per patient-visit across 38 protocol variables: vitals, NYHA, 1MSTS, LVEF, full GDMT pillar dosages, and clinical adverse safety events.</p>
+                </div>
+                <div class="export-preset-foot">
+                  <button type="button" class="btn primary btn-sm" id="btnPresetEcrf"><i class="ms">download</i>Download eCRF (${nPts} Pts)</button>
+                </div>
+              </div>
+
+              <!-- Preset 2: Patient Master Roster -->
+              <div class="export-preset-card">
+                <div>
+                  <div class="export-preset-top">
+                    <div class="export-preset-icon brand"><i class="ms">badge</i></div>
+                    <span class="export-preset-badge">CSV</span>
+                  </div>
+                  <h3 style="margin-top:12px">Patient Master Enrollment Roster</h3>
+                  <p>1 row per enrolled participant containing baseline demographics, consent timestamps, clinical etiology, and longitudinal completion flags.</p>
+                </div>
+                <div class="export-preset-foot">
+                  <button type="button" class="btn btn-sm" id="btnPresetRoster"><i class="ms">download</i>Download Roster (${nPts} Pts)</button>
+                </div>
+              </div>
+
+              <!-- Preset 3: Multi-Site League Summary -->
+              <div class="export-preset-card">
+                <div>
+                  <div class="export-preset-top">
+                    <div class="export-preset-icon success"><i class="ms">leaderboard</i></div>
+                    <span class="export-preset-badge">CSV</span>
+                  </div>
+                  <h3 style="margin-top:12px">Centre Performance &amp; League Table</h3>
+                  <p>Hospital centre-level aggregated report: total enrollment, baseline/M3/M6 completion rates, on-time follow-up adherence %, and 4/4 GDMT optimization.</p>
+                </div>
+                <div class="export-preset-foot">
+                  <button type="button" class="btn btn-sm" id="btnPresetLeague"><i class="ms">download</i>Download League Summary</button>
+                </div>
+              </div>
+
+              <!-- Preset 4: Safety & Adverse Events Log -->
+              <div class="export-preset-card">
+                <div>
+                  <div class="export-preset-top">
+                    <div class="export-preset-icon danger"><i class="ms">warning</i></div>
+                    <span class="export-preset-badge">CSV</span>
+                  </div>
+                  <h3 style="margin-top:12px">Adverse Events &amp; Safety Log</h3>
+                  <p>Detailed event surveillance log tracking Heart Failure hospitalizations, all-cause admissions, cardiovascular interventions, and mortalities.</p>
+                </div>
+                <div class="export-preset-foot">
+                  <button type="button" class="btn btn-sm" id="btnPresetEvents"><i class="ms">download</i>Download Safety Log</button>
+                </div>
+              </div>
+
+              <!-- Preset 5: GDMT Quadruple Therapy Report -->
+              <div class="export-preset-card">
+                <div>
+                  <div class="export-preset-top">
+                    <div class="export-preset-icon warn"><i class="ms">medication_liquid</i></div>
+                    <span class="export-preset-badge">CSV</span>
+                  </div>
+                  <h3 style="margin-top:12px">GDMT Quadruple Therapy Audit</h3>
+                  <p>Comprehensive medication titration log: dosages, prescribing statuses, target dose reach, and documented contraindications per patient-visit.</p>
+                </div>
+                <div class="export-preset-foot">
+                  <button type="button" class="btn btn-sm" id="btnPresetGdmt"><i class="ms">download</i>Download GDMT Audit</button>
+                </div>
+              </div>
+
+              <!-- Preset 6: Complete Hierarchical JSON Package -->
+              <div class="export-preset-card">
+                <div>
+                  <div class="export-preset-top">
+                    <div class="export-preset-icon dark"><i class="ms">code</i></div>
+                    <span class="export-preset-badge">JSON</span>
+                  </div>
+                  <h3 style="margin-top:12px">Structured JSON Package</h3>
+                  <p>Complete hierarchical nested data package with patient demographics, visit sub-records, echo parameters, and audit trails for programmatic analysis.</p>
+                </div>
+                <div class="export-preset-foot">
+                  <button type="button" class="btn btn-sm" id="btnPresetJson"><i class="ms">download</i>Download JSON Package</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Matching Data Preview Table -->
+          <div class="card" id="exportPreviewSection">
+            <div class="card-head">
+              <div>
+                <h2>Live Cohort Preview</h2>
+                <small id="expPreviewSub">Showing first 5 matching patient records in real-time. Exported files will include all ${nPts} records.</small>
+              </div>
+              <span class="tag info" id="expPreviewTag">${nPts} Matching Patients</span>
+            </div>
+            <div class="export-preview-table-wrap" id="exportPreviewWrap">
+              ${renderExportPreviewTable(cohort)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// --- Dynamic Studio UI Updater (No page reload) ---
+function updateExportStudioUI(ptsPool){
+  const cohort = getExportFilteredCohort(ptsPool);
+  const stripEl = $('exportCohortStrip');
+  if (stripEl) stripEl.innerHTML = renderExportCohortStatsHtml(cohort);
+
+  const previewWrap = $('exportPreviewWrap');
+  if (previewWrap) previewWrap.innerHTML = renderExportPreviewTable(cohort);
+
+  const previewSub = $('expPreviewSub');
+  if (previewSub) previewSub.textContent = `Showing first 5 matching patient records in real-time. Exported files will include all ${cohort.length} records.`;
+
+  const previewTag = $('expPreviewTag');
+  if (previewTag) previewTag.textContent = `${cohort.length} Matching Patients`;
+
+  const btnCustom = $('btnRunCustomExport');
+  if (btnCustom) {
+    btnCustom.innerHTML = `<i class="ms">file_download</i> Download Custom Dataset (${cohort.length} Patients, ${exportFilterState.format.toUpperCase()})`;
+  }
+
+  const btnPresetEcrf = $('btnPresetEcrf');
+  if (btnPresetEcrf) btnPresetEcrf.innerHTML = `<i class="ms">download</i>Download eCRF (${cohort.length} Pts)`;
+
+  const btnPresetRoster = $('btnPresetRoster');
+  if (btnPresetRoster) btnPresetRoster.innerHTML = `<i class="ms">download</i>Download Roster (${cohort.length} Pts)`;
 }
 
 
@@ -1305,19 +2034,228 @@ function attachEvents(){
     };
   }
 
-  // Export Modal trigger
+  // Export Modal trigger (routed to full dedicated Export Hub)
   const btnExportModal = $('btnExportModal');
-  const exportDlg = $('exportDlg');
-  if (btnExportModal && exportDlg) {
+  if (btnExportModal) {
     btnExportModal.onclick = () => {
-      const s = accessStore();
-      const allDesc = $('edScopeAllDesc');
-      if (allDesc) allDesc.textContent = `All ${s.sites.length} participating centres, all patient visits`;
-      const lbl = $('edScopeFilterLabel');
-      if (lbl) lbl.textContent = `Zone:${filterZone}, Site:${filterSite}, Inv:${filterInv}`;
-      exportDlg.showModal();
+      window.standhfSelectTab('export');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
   }
+
+  // ==========================================================================
+  // EXPORT HUB & CUSTOM FILTER STUDIO EVENT LISTENERS
+  // ==========================================================================
+  const currentPtsPool = ROLE === 'investigator' ? loadData().filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME) : loadData();
+
+  const expZone = $('expFilterZone');
+  if (expZone) {
+    expZone.onchange = () => {
+      exportFilterState.zone = expZone.value;
+      if (ROLE !== 'investigator') {
+        const s = accessStore();
+        const expSite = $('expFilterSite');
+        if (expSite) {
+          const availSites = exportFilterState.zone === 'all' ? s.sites : s.sites.filter(x => x.zone === exportFilterState.zone);
+          expSite.innerHTML = `<option value="all">All Participating Centres</option>` +
+            availSites.map(x => `<option value="${esc(x.code)}">${esc(x.code)} – ${esc(x.name)}</option>`).join('');
+          exportFilterState.site = 'all';
+        }
+      }
+      updateExportStudioUI(currentPtsPool);
+    };
+  }
+
+  const expSite = $('expFilterSite');
+  if (expSite) {
+    expSite.onchange = () => {
+      exportFilterState.site = expSite.value;
+      updateExportStudioUI(currentPtsPool);
+    };
+  }
+
+  const expInv = $('expFilterInv');
+  if (expInv) {
+    expInv.onchange = () => {
+      exportFilterState.inv = expInv.value;
+      updateExportStudioUI(currentPtsPool);
+    };
+  }
+
+  // Visit Stage checkboxes
+  ['b', 'm3', 'm6'].forEach(k => {
+    const chk = $('chkVisit' + k.toUpperCase());
+    if (chk) {
+      chk.onchange = () => {
+        const active = [];
+        if ($('chkVisitB')?.checked) active.push('b');
+        if ($('chkVisitM3')?.checked) active.push('m3');
+        if ($('chkVisitM6')?.checked) active.push('m6');
+        exportFilterState.visits = active;
+        updateExportStudioUI(currentPtsPool);
+      };
+    }
+  });
+
+  // Visit Status pills
+  const statusPills = $('expStatusPills');
+  if (statusPills) {
+    statusPills.querySelectorAll('[data-vstat]').forEach(btn => {
+      btn.onclick = () => {
+        exportFilterState.vstat = btn.dataset.vstat;
+        statusPills.querySelectorAll('[data-vstat]').forEach(b => b.classList.toggle('active', b === btn));
+        updateExportStudioUI(currentPtsPool);
+      };
+    });
+  }
+
+  // GDMT coverage pills
+  const gdmtPills = $('expGdmtPills');
+  if (gdmtPills) {
+    gdmtPills.querySelectorAll('[data-gdmt]').forEach(btn => {
+      btn.onclick = () => {
+        exportFilterState.gdmt = btn.dataset.gdmt;
+        gdmtPills.querySelectorAll('[data-gdmt]').forEach(b => b.classList.toggle('active', b === btn));
+        updateExportStudioUI(currentPtsPool);
+      };
+    });
+  }
+
+  const expPillar = $('expFilterPillar');
+  if (expPillar) {
+    expPillar.onchange = () => {
+      exportFilterState.pillar = expPillar.value;
+      updateExportStudioUI(currentPtsPool);
+    };
+  }
+
+  const expEtio = $('expFilterEtio');
+  if (expEtio) {
+    expEtio.onchange = () => {
+      exportFilterState.etio = expEtio.value;
+      updateExportStudioUI(currentPtsPool);
+    };
+  }
+
+  const expPeriod = $('expFilterPeriod');
+  if (expPeriod) {
+    expPeriod.onchange = () => {
+      exportFilterState.period = expPeriod.value;
+      updateExportStudioUI(currentPtsPool);
+    };
+  }
+
+  const chkDeid = $('chkDeidentify');
+  if (chkDeid) {
+    chkDeid.onchange = () => {
+      exportFilterState.deidentify = chkDeid.checked;
+      updateExportStudioUI(currentPtsPool);
+    };
+  }
+
+  // Format pills
+  const formatPills = $('expFormatPills');
+  if (formatPills) {
+    formatPills.querySelectorAll('[data-format]').forEach(btn => {
+      btn.onclick = () => {
+        exportFilterState.format = btn.dataset.format;
+        formatPills.querySelectorAll('[data-format]').forEach(b => b.classList.toggle('active', b === btn));
+        updateExportStudioUI(currentPtsPool);
+      };
+    });
+  }
+
+  // Action: Run custom export
+  const btnRunCustom = $('btnRunCustomExport');
+  if (btnRunCustom) {
+    btnRunCustom.onclick = () => {
+      downloadCustomExport(currentPtsPool);
+    };
+  }
+
+  // Preset Buttons
+  const btnPreEcrf = $('btnPresetEcrf');
+  if (btnPreEcrf) {
+    btnPreEcrf.onclick = () => {
+      const cohort = getExportFilteredCohort(currentPtsPool);
+      downloadPresetEcrf(cohort);
+    };
+  }
+  const btnPreRoster = $('btnPresetRoster');
+  if (btnPreRoster) {
+    btnPreRoster.onclick = () => {
+      const cohort = getExportFilteredCohort(currentPtsPool);
+      downloadPresetRoster(cohort);
+    };
+  }
+  const btnPreLeague = $('btnPresetLeague');
+  if (btnPreLeague) {
+    btnPreLeague.onclick = () => {
+      const cohort = getExportFilteredCohort(currentPtsPool);
+      downloadPresetLeague(cohort);
+    };
+  }
+  const btnPreEvents = $('btnPresetEvents');
+  if (btnPreEvents) {
+    btnPreEvents.onclick = () => {
+      const cohort = getExportFilteredCohort(currentPtsPool);
+      downloadPresetEvents(cohort);
+    };
+  }
+  const btnPreGdmt = $('btnPresetGdmt');
+  if (btnPreGdmt) {
+    btnPreGdmt.onclick = () => {
+      const cohort = getExportFilteredCohort(currentPtsPool);
+      downloadPresetGdmt(cohort);
+    };
+  }
+  const btnPreJson = $('btnPresetJson');
+  if (btnPreJson) {
+    btnPreJson.onclick = () => {
+      const cohort = getExportFilteredCohort(currentPtsPool);
+      downloadPresetJson(cohort);
+    };
+  }
+
+  // Header quick buttons
+  const btnQuickCsv = $('btnQuickExportCsv');
+  if (btnQuickCsv) {
+    btnQuickCsv.onclick = () => {
+      const cohort = getExportFilteredCohort(currentPtsPool);
+      downloadPresetEcrf(cohort);
+    };
+  }
+  const btnExportAllJson = $('btnExportAllJson');
+  if (btnExportAllJson) {
+    btnExportAllJson.onclick = () => {
+      const cohort = getExportFilteredCohort(currentPtsPool);
+      downloadPresetJson(cohort);
+    };
+  }
+
+  const resetExport = () => {
+    exportFilterState = {
+      zone: 'all',
+      site: 'all',
+      inv: 'all',
+      visits: ['b', 'm3', 'm6'],
+      vstat: 'all',
+      gdmt: 'all',
+      pillar: 'all',
+      etio: 'all',
+      period: 'all',
+      deidentify: true,
+      format: 'csv'
+    };
+    renderDashboard();
+    toast('Export filters reset to default.');
+  };
+  const btnResetFilters = $('btnResetExportFilters');
+  if (btnResetFilters) btnResetFilters.onclick = resetExport;
+  const btnResetMini = $('btnResetFiltersMini');
+  if (btnResetMini) btnResetMini.onclick = resetExport;
+
+  const exportDlg = $('exportDlg');
 
   const edClose = $('edClose');
   const edCancel = $('edCancel');
