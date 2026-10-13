@@ -179,8 +179,8 @@
               Showing ${filteredCount} of ${totalCount} Patients
             </span>
             ${isFiltered ? `
-              <button type="button" class="btn" id="btnResetFilters" style="padding:4px 10px;font-size:12px">
-                <i class="ms" style="font-size:14px">restart_alt</i>Reset
+              <button type="button" class="btn btn-sm" id="btnResetFilters">
+                <i class="ms">restart_alt</i>Reset
               </button>
             ` : ''}
           </div>
@@ -231,8 +231,8 @@
             <td class="num"><span class="${overdue ? 'chip Overdue' : 'muted'}">${overdue || '0'}</span></td>
             <td class="num"><b style="${gdmt4Pct >= 70 ? 'color:var(--success)' : ''}">${gdmt4Pct != null ? gdmt4Pct + '%' : '–'}</b></td>
             <td>
-              <button type="button" class="btn" data-export-site="${esc(st.code)}" style="padding:4px 10px;font-size:12px">
-                <i class="ms" style="font-size:15px">download</i>CSV
+              <button type="button" class="btn btn-sm" data-export-site="${esc(st.code)}">
+                <i class="ms">download</i>CSV
               </button>
             </td>
           </tr>
@@ -319,8 +319,8 @@
                   <td><span class="chip Overdue">${o.s} (+${o.daysOver}d)</span></td>
                   <td><code>${esc(o.p.contact || '–')}</code></td>
                   <td>
-                    <a class="btn" href="../records/?patient=${encodeURIComponent(o.p.id)}&tab=${o.k}" style="padding:4px 8px;font-size:12px">
-                      <i class="ms" style="font-size:15px">visibility</i>Inspect
+                    <a class="btn btn-sm" href="../records/?patient=${encodeURIComponent(o.p.id)}&tab=${o.k}">
+                      <i class="ms">visibility</i>Inspect
                     </a>
                   </td>
                 </tr>
@@ -351,8 +351,8 @@
                 <h2>Central Monitoring Directorate</h2>
                 <small>Study leadership &amp; research export authority ("The boss after super admin")</small>
               </div>
-              <a class="btn" href="../admin/#users" style="padding:4px 10px;font-size:12px">
-                <i class="ms" style="font-size:15px">manage_accounts</i>Manage
+              <a class="btn btn-sm" href="../admin/#users">
+                <i class="ms">manage_accounts</i>Manage
               </a>
             </div>
             <div class="table-wrap">
@@ -396,11 +396,11 @@
                 <small>Frontline cardiologists entering patient visits at hospital sites · Click to drill into profile</small>
               </div>
               <div style="display:flex;gap:8px">
-                <button type="button" class="btn" id="btnExportAllInvs" style="padding:4px 10px;font-size:12px">
-                  <i class="ms" style="font-size:15px">download</i>CSV
+                <button type="button" class="btn btn-sm" id="btnExportAllInvs">
+                  <i class="ms">download</i>CSV
                 </button>
-                <a class="btn" href="../admin/#users" style="padding:4px 10px;font-size:12px">
-                  <i class="ms" style="font-size:15px">add</i>Add
+                <a class="btn btn-sm" href="../admin/#users">
+                  <i class="ms">add</i>Add
                 </a>
               </div>
             </div>
@@ -430,8 +430,8 @@
                         <td class="num"><b>${uPts.length}</b></td>
                         <td class="num"><b class="${uSt.ontimeRate >= 80 ? 'good' : uSt.ontimeRate ? 'warn' : ''}">${uSt.ontimeRate != null ? uSt.ontimeRate + '%' : '–'}</b></td>
                         <td>
-                          <button type="button" class="btn" data-admin-profile="${esc(u.username)}" style="padding:4px 10px;font-size:12px">
-                            <i class="ms" style="font-size:15px">account_circle</i>View Profile
+                          <button type="button" class="btn btn-sm" data-admin-profile="${esc(u.username)}">
+                            <i class="ms">account_circle</i>View Profile
                           </button>
                         </td>
                       </tr>
@@ -461,8 +461,8 @@
           <td><span class="chip ${chipCls(vstat(p,'m6'))}">${vstat(p,'m6')}</span></td>
           <td class="num">${(p.audit || []).length}</td>
           <td>
-            <a class="btn" href="../records/?patient=${encodeURIComponent(p.id)}" style="padding:4px 8px;font-size:12px">
-              <i class="ms" style="font-size:15px">open_in_new</i>View
+            <a class="btn btn-sm" href="../records/?patient=${encodeURIComponent(p.id)}">
+              <i class="ms">open_in_new</i>View
             </a>
           </td>
         </tr>
@@ -483,60 +483,60 @@
       });
 
       return `
-        <div class="dash-breadcrumbs">
-          <a href="#" id="btnBreadcrumbDash"><i class="ms" style="font-size:16px">space_dashboard</i>Executive Overview</a>
-          <span class="sep">/</span>
-          <span>Site Investigators</span>
-          <span class="sep">/</span>
-          <b style="color:var(--ink)">${esc(pu.name)}</b>
-        </div>
+        <div class="dash-fade-in">
+          <div class="dash-breadcrumbs-bar">
+            <div class="dash-breadcrumbs">
+              <a href="#" id="btnBreadcrumbDash"><i class="ms" style="font-size:16px">space_dashboard</i>Executive Overview</a>
+              <span class="sep">/</span>
+              <span>Site Investigators</span>
+              <span class="sep">/</span>
+              <b style="color:var(--ink)">${esc(pu.name)}</b>
+            </div>
+            <button type="button" class="btn btn-sm" id="btnAdminProfileBack">
+              <i class="ms">arrow_back</i>Back to Study Overview
+            </button>
+          </div>
 
-        <div style="margin-bottom:16px">
-          <button type="button" class="btn" id="btnAdminProfileBack">
-            <i class="ms">arrow_back</i>Back to Study Overview
-          </button>
-        </div>
-
-        <!-- Investigator Profile Header Card -->
-        <section class="card" style="margin-bottom:16px">
-          <div class="card-head">
-            <div style="display:flex;align-items:center;gap:14px">
-              <span class="avatar" style="width:48px;height:48px;font-size:18px">${initials(pu.name)}</span>
-              <div>
-                <h2 style="font-size:20px;margin:0">${esc(pu.name)}</h2>
-                <div class="muted" style="font-size:13px"><code>${esc(pu.username)}</code> · Assigned: ${pu.sites?.join(', ') || 'No sites'}</div>
+          <!-- Investigator Profile Header Card -->
+          <section class="card">
+            <div class="card-head">
+              <div style="display:flex;align-items:center;gap:14px">
+                <span class="avatar" style="width:48px;height:48px;font-size:18px">${initials(pu.name)}</span>
+                <div>
+                  <h2 style="font-size:20px;margin:0">${esc(pu.name)}</h2>
+                  <div class="muted" style="font-size:13px"><code>${esc(pu.username)}</code> · Assigned: ${pu.sites?.join(', ') || 'No sites'}</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span class="chip ${pu.active ? 'In' : 'Not'}">${pu.active ? 'Active Clinician' : 'Inactive'}</span>
+                <button type="button" class="btn btn-sm" data-export-inv="${esc(pu.username)}">
+                  <i class="ms">download</i>Export CSV
+                </button>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <span class="chip ${pu.active ? 'In' : 'Not'}">${pu.active ? 'Active Clinician' : 'Inactive'}</span>
-              <button type="button" class="btn" data-export-inv="${esc(pu.username)}">
-                <i class="ms">download</i>Export CSV
-              </button>
-            </div>
-          </div>
 
-          <div class="kpis" style="margin-top:16px">
-            <div class="kpi">
-              <div class="top"><span class="ico"><i class="ms">group</i></span></div>
-              <b>${st.n || 0}</b><span>Patients</span><small>Entered by this investigator</small>
+            <div class="kpis">
+              <div class="kpi">
+                <div class="top"><span class="ico"><i class="ms">group</i></span></div>
+                <b>${st.n || 0}</b><span>Patients</span><small>Entered by this investigator</small>
+              </div>
+              <div class="kpi">
+                <div class="top"><span class="ico success"><i class="ms">biotech</i></span><span class="tag ${pct(st.b,st.n)>=80?'good':''}">${pct(st.b,st.n)??0}%</span></div>
+                <b>${st.b || 0}</b><span>Baseline Complete</span><small>${st.b || 0} of ${st.n || 0} verified</small>
+              </div>
+              <div class="kpi">
+                <div class="top"><span class="ico warn"><i class="ms">event_busy</i></span><span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount || 0}</span></div>
+                <b>${st.overdueCount || 0}</b><span>Follow-ups Overdue</span><small>Outside window</small>
+              </div>
+              <div class="kpi">
+                <div class="top"><span class="ico brand"><i class="ms">schedule</i></span><span class="tag ${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</span></div>
+                <b>${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b><span>On-Time Visits</span><small>Protocol adherence</small>
+              </div>
             </div>
-            <div class="kpi">
-              <div class="top"><span class="ico success"><i class="ms">biotech</i></span><span class="tag ${pct(st.b,st.n)>=80?'good':''}">${pct(st.b,st.n)??0}%</span></div>
-              <b>${st.b || 0}</b><span>Baseline Complete</span><small>${st.b || 0} of ${st.n || 0} verified</small>
-            </div>
-            <div class="kpi">
-              <div class="top"><span class="ico warn"><i class="ms">event_busy</i></span><span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount || 0}</span></div>
-              <b>${st.overdueCount || 0}</b><span>Follow-ups Overdue</span><small>Outside window</small>
-            </div>
-            <div class="kpi">
-              <div class="top"><span class="ico brand"><i class="ms">schedule</i></span><span class="tag ${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</span></div>
-              <b>${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b><span>On-Time Visits</span><small>Protocol adherence</small>
-            </div>
-          </div>
-        </section>
+          </section>
 
-        <!-- Investigator Patient List -->
-        <section class="card" style="margin-bottom:16px">
+          <!-- Investigator Patient List -->
+          <section class="card">
           <div class="card-head">
             <h2>Patients Entered (${mine.length})</h2>
             <small>Visit status and record modification count</small>
@@ -554,7 +554,7 @@
         </section>
 
         <!-- Investigator Overdue Follow-ups -->
-        <section class="card" style="margin-bottom:16px">
+        <section class="card">
           <div class="card-head">
             <h2>Overdue Follow-ups (${overdueList.length})</h2>
             <small>3 and 6 month visits past protocol window</small>
@@ -574,8 +574,8 @@
                     <td><span class="chip Overdue">${o.s} (+${o.daysOver}d)</span></td>
                     <td><code>${esc(o.p.contact || '–')}</code></td>
                     <td>
-                      <a class="btn" href="../records/?patient=${encodeURIComponent(o.p.id)}&tab=${o.k}" style="padding:4px 8px;font-size:12px">
-                        <i class="ms" style="font-size:15px">visibility</i>Inspect
+                      <a class="btn btn-sm" href="../records/?patient=${encodeURIComponent(o.p.id)}&tab=${o.k}">
+                        <i class="ms">visibility</i>Inspect
                       </a>
                     </td>
                   </tr>
@@ -609,6 +609,7 @@
             </div>
           ` : '<div class="empty"><i class="ms">history</i>No recent change activity logged yet.</div>'}
         </section>
+        </div>
       `;
     }
   };

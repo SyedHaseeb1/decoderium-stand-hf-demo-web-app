@@ -321,7 +321,7 @@ function renderInvestigatorView(allPts){
   let bodyHtml = '';
   if (currentInvTab === 'patients') {
     bodyHtml = `
-      <section class="row two dash-fade-in" style="margin-top:16px">
+      <section class="row two dash-fade-in">
         <div class="card">
           <div class="card-head"><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
           <div class="plist" id="invPlist">${renderInvestigatorList(upcoming)}</div>
@@ -331,8 +331,8 @@ function renderInvestigatorView(allPts){
     `;
   } else if (currentInvTab === 'upcoming') {
     bodyHtml = `
-      <div class="dash-fade-in" style="margin-top:16px">
-        <div class="card" style="margin-bottom:16px">
+      <div class="dash-fade-in">
+        <div class="card">
           <div class="card-head"><h2>Phase progress</h2><small>Share of your patients with each visit complete</small></div>
           <div class="rings">${DashCharts.phaseDials(mine)}</div>
           <div class="legend"><span><i style="background:var(--success)"></i>Complete</span><span><i style="background:var(--primary)"></i>In progress</span><span><i style="background:var(--warning)"></i>Due</span><span><i style="background:var(--error)"></i>Overdue</span></div>
@@ -345,7 +345,7 @@ function renderInvestigatorView(allPts){
     `;
   } else if (currentInvTab === 'clinical') {
     bodyHtml = `
-      <div class="dash-fade-in" style="margin-top:16px">
+      <div class="dash-fade-in">
         <div class="dash-grid">
           <section class="card">
             <div class="card-head"><h2>Clinical Performance</h2><small>From your verified patient data</small></div>
@@ -365,7 +365,7 @@ function renderInvestigatorView(allPts){
     `;
   } else if (currentInvTab === 'sites') {
     bodyHtml = `
-      <section class="card dash-fade-in" style="margin-top:16px">
+      <section class="card dash-fade-in">
         <div class="card-head"><h2>My Assigned Sites</h2><small>Cardiology centres assigned to you</small></div>
         <div class="table-wrap">
           <table>
@@ -621,14 +621,14 @@ function renderCentralView(allPts){
   ]);
 
   const leagueHtml = `
-    <section class="card" style="margin-top:16px">
+    <section class="card">
       <div class="card-head">
         <div>
           <h2>Site Performance &amp; League Table</h2>
           <small>Longitudinal completion, follow-up timing, and GDMT compliance across sites</small>
         </div>
         <div style="display:flex;gap:10px">
-          <button type="button" class="btn" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
+          <button type="button" class="btn btn-sm" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
         </div>
       </div>
       ${DashUI.siteLeagueTable(zoneSites, filtered, allPts)}
@@ -636,7 +636,7 @@ function renderCentralView(allPts){
   `;
 
   const analyticsHtml = `
-    <div class="dash-grid" style="margin-top:16px">
+    <div class="dash-grid">
       <!-- Recruitment Trajectory by Zone/Site -->
       <section class="card">
         <div class="card-head">
@@ -676,7 +676,7 @@ function renderCentralView(allPts){
   `;
 
   const queueHtml = `
-    <section class="card" style="margin-top:16px">
+    <section class="card">
       <div class="card-head">
         <div>
           <h2>Registry Overdue &amp; At-Risk Follow-up Queue</h2>
@@ -839,7 +839,7 @@ function renderSuperAdminView(allPts){
   });
 
   const analyticsHtml = `
-    <div class="dash-grid" style="margin-top:16px">
+    <div class="dash-grid">
       <!-- 1. Completion by site (Grouped Bars) -->
       <section class="card">
         <div class="card-head">
@@ -879,14 +879,14 @@ function renderSuperAdminView(allPts){
   `;
 
   const leagueHtml = `
-    <section class="card" style="margin-top:16px">
+    <section class="card">
       <div class="card-head">
         <div>
           <h2>Multi-Site Performance League Table</h2>
           <small>Comprehensive performance across all ~100 participating cardiology centres</small>
         </div>
         <div style="display:flex;gap:10px">
-          <button type="button" class="btn" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
+          <button type="button" class="btn btn-sm" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
         </div>
       </div>
       ${DashUI.siteLeagueTable(s.sites, allPts, allPts)}
@@ -894,7 +894,7 @@ function renderSuperAdminView(allPts){
   `;
 
   const queueHtml = `
-    <section class="card" style="margin-top:16px">
+    <section class="card">
       <div class="card-head">
         <div>
           <h2>Study-wide Overdue &amp; At-Risk Follow-up Queue</h2>
