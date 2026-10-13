@@ -158,7 +158,7 @@ $('form').addEventListener('submit',e=>{
   }catch(err){}
   try{sessionStorage.setItem(AUTH_KEY,'1');sessionStorage.setItem(USER_KEY,acc.name);sessionStorage.setItem(ROLE_KEY,acc.role);sessionStorage.setItem('standhf_username',acc.user)}
   catch(err){return fail('Browser storage is blocked, so sign-in cannot be kept. Allow site data and try again.','signin')}
-  location.replace(acc.role==='investigator'?DASH:acc.role==='superadmin'?ADMIN:APP);
+  location.replace(DASH);
 });
 </script>
 <script>

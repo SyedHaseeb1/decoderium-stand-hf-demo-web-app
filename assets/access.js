@@ -16,32 +16,79 @@ const PERMS=[
   ['manage_sites','Manage sites']
 ];
 const ALL_PERMS=Object.fromEntries(PERMS.map(([k])=>[k,true]));
-/* Super Admin oversees the study; patient data entry belongs to site and central staff */
-const SUPER_NO=['add_patient','enter_data','mark_complete'];
+/* Super Admin and Central team oversee the study; clinical patient data entry belongs strictly to assigned site investigators */
+const SUPER_NO=['add_patient','enter_data','mark_complete','load_demo','clear_all'];
 const DEFAULT_ACCESS={
+  zones:['North','Central','South'],
   sites:[
-    {code:'RIC',name:'Riverside Cardiac Centre'},
-    {code:'LHR',name:'Lakeview Heart Clinic'},
-    {code:'KHI',name:'Harbor Heart Institute'},
-    {code:'ISB',name:'Highland Cardiology'}
+    {code:'RIC',name:'Riverside Cardiac Centre',zone:'North',city:'Rawalpindi'},
+    {code:'LHR',name:'Lakeview Heart Clinic',zone:'Central',city:'Lahore'},
+    {code:'KHI',name:'Harbor Heart Institute',zone:'South',city:'Karachi'},
+    {code:'ISB',name:'Highland Cardiology',zone:'North',city:'Islamabad'}
   ],
   users:[
-    {username:'michael.johnson',name:'Michael Johnson',role:'superadmin',sites:[],active:true},
-    {username:'emily.carter',name:'Emily Carter',role:'investigator',sites:['RIC','LHR'],active:true},
-    {username:'robert.wilson',name:'Robert Wilson',role:'central',sites:[],active:true},
-    {username:'adnan.khan',name:'Adnan Khan',role:'investigator',sites:['KHI','ISB'],active:true}
+    {username:'michael.johnson',name:'Michael Johnson',role:'superadmin',sites:[],zones:[],active:true},
+    {username:'emily.carter',name:'Emily Carter',role:'investigator',sites:['RIC','LHR'],zones:['North','Central'],active:true},
+    {username:'robert.wilson',name:'Robert Wilson',role:'central',sites:[],zones:['North','Central','South'],active:true},
+    {username:'adnan.khan',name:'Adnan Khan',role:'investigator',sites:['KHI','ISB'],zones:['South','North'],active:true}
   ],
   perms:{
-    superadmin:ALL_PERMS,
-    investigator:{add_patient:true,enter_data:true,mark_complete:true,load_demo:true,clear_all:true},
-    central:{view_all_sites:true,export_data:true,mark_complete:true,assign_investigators:true}
+    superadmin:{view_all_sites:true,export_data:true,assign_investigators:true,manage_users:true,manage_sites:true},
+    investigator:{add_patient:true,enter_data:true,mark_complete:true,load_demo:true,clear_all:true,export_data:true},
+    central:{view_all_sites:true,export_data:true}
   }
 };
+
+const AUDIT_CENTRAL_KEY='standhf_central_audit_v1';
+function centralAuditLog(){
+  try{return JSON.parse(localStorage.getItem(AUDIT_CENTRAL_KEY)||'[]')}catch(e){return []}
+}
+function logCentralAction(action,details,target){
+  try{
+    const list=centralAuditLog();
+    const s=session();
+    list.unshift({
+      id:'aud-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
+      username:s.username||'unknown',
+      name:s.name||'Central Team User',
+      role:s.role||'central',
+      action:action||'Export',
+      details:details||'',
+      target:target||'All Sites',
+      t:new Date().toLocaleString('en-GB'),
+      timestamp:Date.now()
+    });
+    localStorage.setItem(AUDIT_CENTRAL_KEY,JSON.stringify(list.slice(0,500)));
+  }catch(e){}
+}
 
 function accessStore(){
   try{
     const s=JSON.parse(localStorage.getItem(ACCESS_KEY)||'null');
     if(s&&Array.isArray(s.sites)&&Array.isArray(s.users)&&s.perms){
+      if(!Array.isArray(s.zones))s.zones=['North','Central','South'];
+      const zMap={RIC:'North',ISB:'North',LHR:'Central',KHI:'South'};
+      s.sites.forEach(st=>{if(!st.zone)st.zone=zMap[st.code]||'Central'});
+      /* Ensure central role is strictly read-only monitoring + export */
+      if(s.perms.central){
+        delete s.perms.central.assign_investigators;
+        delete s.perms.central.add_patient;
+        delete s.perms.central.enter_data;
+        delete s.perms.central.mark_complete;
+        delete s.perms.central.load_demo;
+        delete s.perms.central.clear_all;
+        s.perms.central.view_all_sites=true;
+        s.perms.central.export_data=true;
+      }
+      /* Ensure superadmin role has no clinical patient form modification permissions */
+      if(s.perms.superadmin){
+        SUPER_NO.forEach(p=>{delete s.perms.superadmin[p]});
+        s.perms.superadmin.view_all_sites=true;
+        s.perms.superadmin.export_data=true;
+        s.perms.superadmin.assign_investigators=true;
+        s.perms.superadmin.manage_users=true;
+        s.perms.superadmin.manage_sites=true;
+      }
       /* Add permissions introduced later; keep anything an admin has already set */
       Object.entries(DEFAULT_ACCESS.perms).forEach(([r,defs])=>{
         if(r==='superadmin')return;
@@ -61,14 +108,45 @@ const sessionVal=k=>{try{return sessionStorage.getItem(k)||''}catch(e){return ''
 function session(){return{username:sessionVal('standhf_username'),name:sessionVal('standhf_user'),role:sessionVal('standhf_role')}}
 function currentUser(){const u=session().username;return accessStore().users.find(x=>x.username===u)||null}
 
-/* Super Admin can do everything; other roles follow their saved permissions */
+/* Super Admin and Central oversee the study; only allowed Site Investigators can enter or edit clinical forms */
 function can(perm){
   const r=session().role;
   if(!r)return false;
-  if(r==='superadmin')return true;
+  if(r==='superadmin'){
+    if(SUPER_NO.includes(perm))return false;
+    return true;
+  }
+  if(r==='central'){
+    if(perm==='view_all_sites'||perm==='export_data')return true;
+    return false;
+  }
   const perms=accessStore().perms[r]||{};
   return !!perms[perm];
 }
+
+/* Check if the current user is an authorized Site Investigator for adding patients */
+function canAddPatient(siteCode){
+  const r=session().role;
+  if(r!=='investigator')return false;
+  if(!can('add_patient'))return false;
+  const u=currentUser();
+  const allowed=u&&Array.isArray(u.sites)?u.sites:[];
+  if(!siteCode)return allowed.length>0;
+  return allowed.includes(siteCode);
+}
+
+/* Check if the current user is an authorized Site Investigator who can edit this patient's forms */
+function canEditPatient(p){
+  const r=session().role;
+  if(r!=='investigator')return false;
+  if(!can('enter_data'))return false;
+  if(!p)return true;
+  const u=currentUser();
+  const allowed=u&&Array.isArray(u.sites)?u.sites:[];
+  if(p.site&&!allowed.includes(p.site))return false;
+  return true;
+}
+
 /* Sites the signed-in user may see and enter data for */
 function mySites(){
   const s=accessStore();
@@ -76,10 +154,17 @@ function mySites(){
   const u=currentUser();
   return u?u.sites.slice():[];
 }
-/* Which records a user may see: Super Admin all; a Site Investigator only the records they created; others their sites */
+/* Which records a user may see: Super Admin & Central see all (oversight); Site Investigators see their assigned sites */
 function recordVisible(p){
   const r=session().role;
-  if(r==='superadmin')return true;
-  if(r==='investigator')return p.owner?p.owner===session().username:p.inv===session().name;
-  return mySites().includes(p.site)}
+  if(r==='superadmin'||r==='central')return true;
+  if(r==='investigator'){
+    const u=currentUser();
+    const allowed=u&&Array.isArray(u.sites)?u.sites:[];
+    if(p.site&&allowed.includes(p.site))return true;
+    if(p.owner&&p.owner===session().username)return true;
+    return false;
+  }
+  return mySites().includes(p.site);
+}
 const inScope=p=>recordVisible(p);

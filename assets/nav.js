@@ -12,26 +12,37 @@
   const isCentral=ss('standhf_role')==='central';
   const onNew=/[?&]new=1/.test(location.search);
   const page=document.body.dataset.page;
-  /* Which nav item is active: admin sections follow the URL hash */
+  /* Which nav item is active: admin and dashboard sections follow the URL hash */
   const pageKey=()=>{
-    if(page==='admin'){const h=location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:(isCentral?'adm-users':'dashboard')}
-    return page==='dashboard'?'dashboard':(onNew?'add':'records');
+    if(page==='admin'){const h=location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:'adm-users'}
+    if(page==='dashboard'){
+      const h=location.hash.slice(1).toLowerCase();
+      if(['performance','clinical','report','reports','analytics'].includes(h)) return 'performance';
+      if(['sites','league'].includes(h)) return 'sites';
+      if(h==='gdmt') return 'gdmt';
+      if(['export','exports','downloads','download'].includes(h)) return 'export';
+      return 'dashboard';
+    }
+    const isNew=(typeof window.standhfIsNewMode==='function'&&window.standhfIsNewMode())||(/[?&]new=1/.test(location.search));
+    return isNew?'add':'records';
   };
   const current=pageKey();
   const drawerQuery=window.matchMedia('(max-width: 1000px)');
 
   const groups=[
     {label:'General',items:[
-      {key:'dashboard',label:'Dashboard',href:isSuper?ADMIN+'#dash':DASH,icon:'space_dashboard',show:isInv||isSuper},
-      {key:'add',label:'Add patient',href:ECRF+'?new=1',icon:'person_add',show:!isSuper},
-      {key:'records',label:'Patient records',href:ECRF,icon:'edit_note',show:true}
+      {key:'dashboard',label:'Dashboard',href:DASH,icon:'space_dashboard',show:true},
+      {key:'add',label:'Add new patient',href:ECRF+'?new=1',icon:'person_add',show:isInv},
+      {key:'records',label:'Participant records',href:ECRF,icon:'folder_shared',show:true}
     ]},
     {label:'Reports',items:[
-      {key:'performance',label:'Performance',href:DASH+'#performance',icon:'monitoring',show:isInv},
-      {key:'sites',label:'Sites',href:DASH+'#sites',icon:'location_on',show:isInv}
+      {key:'performance',label:'Performance',href:DASH+'#performance',icon:'monitoring',show:true},
+      {key:'sites',label:'Sites & League',href:DASH+'#sites',icon:'leaderboard',show:true},
+      {key:'gdmt',label:'GDMT Coverage',href:DASH+'#gdmt',icon:'medication',show:true},
+      {key:'export',label:'Data Export',href:DASH+'#export',icon:'file_download',show:true}
     ]},
     {label:'Administration',items:[
-      {key:'adm-users',label:'Users',href:ADMIN+'#users',icon:'group',show:isSuper||can('assign_investigators')},
+      {key:'adm-users',label:'Users & Teams',href:ADMIN+'#users',icon:'group',show:isSuper},
       {key:'adm-sites',label:'Sites',href:ADMIN+'#sites',icon:'location_on',show:isSuper},
       {key:'adm-perms',label:'Permissions',href:ADMIN+'#perms',icon:'shield_person',show:isSuper}
     ]}
@@ -71,7 +82,29 @@
   menuBtn.onclick=()=>setDrawer(true);
   scrim.onclick=()=>setDrawer(false);
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&root.classList.contains('open'))setDrawer(false)});
-  root.addEventListener('click',e=>{if(e.target.closest('a.nav'))setDrawer(false)});
+  root.addEventListener('click',e=>{
+    const a=e.target.closest('a.nav');
+    if(!a)return;
+    setDrawer(false);
+    if(page==='records'){
+      if(a.dataset.key==='records'){
+        e.preventDefault();
+        if(typeof window.standhfOpenRecords==='function') window.standhfOpenRecords();
+        else location.href=ECRF;
+      } else if(a.dataset.key==='add'){
+        e.preventDefault();
+        if(typeof window.standhfOpenNew==='function') window.standhfOpenNew();
+        else location.href=ECRF+'?new=1';
+      }
+    } else if(page==='dashboard'){
+      if(['performance','sites','gdmt','export'].includes(a.dataset.key)){
+        if(location.hash === '#'+a.dataset.key){
+          e.preventDefault();
+          if(typeof window.standhfApplyHash==='function') window.standhfApplyHash(a.dataset.key);
+        }
+      }
+    }
+  });
 
   /* Desktop: collapse to icons, remembered per browser */
   const setCollapsed=c=>{
@@ -90,11 +123,18 @@
   /* Leaving drawer mode closes the drawer */
   drawerQuery.addEventListener('change',()=>{if(!drawerQuery.matches)setDrawer(false)});
 
-  /* Admin sections change the hash, so keep the active item in step */
-  window.addEventListener('hashchange',()=>{
+  /* Update active nav button state across all pages and events */
+  window.standhfUpdateNav=()=>{
     const cur=pageKey();
-    root.querySelectorAll('a.nav[data-key]').forEach(a=>{const on=a.dataset.key===cur;a.classList.toggle('active',on);on?a.setAttribute('aria-current','true'):a.removeAttribute('aria-current')});
-  });
+    root.querySelectorAll('a.nav[data-key]').forEach(a=>{
+      const on=a.dataset.key===cur;
+      a.classList.toggle('active',on);
+      if(on)a.setAttribute('aria-current','true');
+      else a.removeAttribute('aria-current');
+    });
+  };
+  window.addEventListener('hashchange',window.standhfUpdateNav);
+  window.addEventListener('popstate',window.standhfUpdateNav);
 
   document.getElementById('navOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.replace(LOGIN)};
 })();

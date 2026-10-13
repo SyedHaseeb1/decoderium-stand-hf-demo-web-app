@@ -107,7 +107,7 @@
     <div id="app-header" data-page="records" data-search="Search patients, sites or users"></div>
 
     <div class="hello">
-      <div><h1>Patient records <span id="syncChip" class="sync-chip" hidden></span></h1><p>Enter visit data, check it, and mark each visit complete.</p></div>
+      <div><h1>Patient records <span id="syncChip" class="sync-chip" hidden></span></h1><p id="pageSubtitle">Enter visit data, check it, and mark each visit complete.</p></div>
       <div class="actions">
         <button type="button" class="pri" id="bNew"><i class="ms">person_add</i>New participant</button>
         <button type="button" id="bCsv"><i class="ms">download</i>Export CSV</button>
@@ -190,11 +190,11 @@ function warns(p,k){const v=p.v[k],b=p.v.b,w=[],x=n=>num(v[n]);
 function missing(p,k){const v=p.v[k],m=[];if(!((p.files&&p.files[k])||[]).length)m.push('prescription');['date','wt','hr','sbp','dbp','nyha','msts'].forEach(f=>{if(v[f]===''||v[f]==null)m.push(f)});
  if(k!=='m3'&&!v.lvef)m.push('lvef');PL.forEach(([q])=>['drug','dose','start','status'].forEach(x=>{const val=G(v,'g.'+q+'.'+x);if(val===undefined||val===null||val==='')m.push(q+' '+x)}));
  if(k==='b'){if(!p.name)m.push('patient name');if(!p.contact)m.push('contact number');if(!p.consent)m.push('consent date');if(!p.age)m.push('age');if(!p.sex)m.push('sex');if(!p.etio)m.push('HF etiology')}return m}
-/* A patient can be removed only while no visit has data: it was created by mistake */
-/* Demo: any user who can enter data may delete a whole record, visit data included */
-function canRemovePatient(p){return can('enter_data')}
+/* Only authorized Site Investigators assigned to the patient's site may delete records */
+function canRemovePatient(p){return canEditPatient(p)&&can('enter_data')}
 async function removePatient(){
   const p=cur();if(!p)return;
+  if(!canEditPatient(p)){toast('Only authorized Site Investigators can delete records.');return}
   if(!canRemovePatient(p)){toast('This patient has visit data. Remove is not allowed.');return}
   const me=session().username;
   const owner=p.owner||((accessStore().users.find(u=>u.name===p.inv))||{}).username||'';
@@ -324,10 +324,17 @@ function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).len
  if(pend){chip.hidden=false;chip.textContent=pend+' to sync'}
  else{chip.hidden=true;if(lastPend)toast('All records synced')}
  lastPend=pend;
- $('tiles').innerHTML=[['Participants',P.length],['Baseline completed',c('b')],['3M done / overdue',c('m3')+' / '+od('m3')],['6M done / overdue',c('m6')+' / '+od('m6')],['4/4 pillars (latest visit)',full],['Mean 1MSTS',mean('b')+' → '+mean('m3')+' → '+mean('m6')]].map(t=>`<div class="kpi"><b>${t[1]}</b><span>${t[0]}</span></div>`).join('');
-   const keepScroll=(document.querySelector('#list .pl-scroll')||{scrollTop:0}).scrollTop;
+  $('tiles').innerHTML=[
+    ['Participants',P.length,'records'],
+    ['Baseline completed',c('b'),'performance'],
+    ['3M done / overdue',c('m3')+' / '+od('m3'),'performance'],
+    ['6M done / overdue',c('m6')+' / '+od('m6'),'performance'],
+    ['4/4 pillars (latest visit)',full,'gdmt'],
+    ['Mean 1MSTS',mean('b')+' → '+mean('m3')+' → '+mean('m6'),'performance']
+  ].map(t=>`<div class="kpi kpi-clickable" style="cursor:pointer" onclick="${t[2]==='records'?'window.standhfOpenRecords()':`location.href='../dashboard/#${t[2]}'`}" title="Click to view ${t[0]} ${t[2]==='records'?'records':'report'}" role="link" tabindex="0"><b>${t[1]}</b><span>${t[0]}</span></div>`).join('');
+    const keepScroll=(document.querySelector('#list .pl-scroll')||{scrollTop:0}).scrollTop;
   $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patients</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?`<button type="button" class="icon-btn list-sort" data-a="sortMenu" aria-label="Sort patients" title="Sort: ${esc(listSort)}"><i class="ms">sort</i></button><div class="sort-menu" hidden>${SORT_LABELS.map(l=>`<button type="button" class="sort-opt${l===listSort?' on':''}" data-sortopt="${esc(l)}">${esc(l)}</button>`).join('')}</div>`:'')+(P.length?'':'<div class="empty"><i class="ms">groups</i>No patients yet. Create one or load the demo data.</div>')+'<div class="pl-scroll">'+sortPts(P).map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.name||'Name missing')}</span><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><span class="pt-updated">Updated ${updatedTxt(p)}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('')+'</div>';
- const scrollBox=document.querySelector('#list .pl-scroll');if(scrollBox)scrollBox.scrollTop=keepScroll;keepSelectedVisible();
+  const scrollBox=document.querySelector('#list .pl-scroll');if(scrollBox)scrollBox.scrollTop=keepScroll;keepSelectedVisible();
   $('list').classList.toggle('collapsed',!listOpen);const p=cur();if(p){const pc=$('pc');if(pc&&tab in p.v)pc.textContent=act(p.v[tab])+' / 4';const st=$('vs');if(st&&tab in p.v)st.textContent=vstat(p,tab)}}
 
 /* Human labels for the names used in "missing" lists */
@@ -358,26 +365,37 @@ function auditLabel(f){
 
 const ORDER=['info','b','m3','m6','sum'],ORDER_LABEL={info:'Participant info',b:'Baseline',m3:'3 Months',m6:'6 Months',sum:'Summary & audit'};
 function navBar(k,acts=''){const i=ORDER.indexOf(k);if(i<0||i>=ORDER.length-1)return'';
- const nx=ORDER[i+1],lk=tabLocked(cur(),nx);
- return `<div class="step-nav">${lk?`<span class="lock-hint"><i class="ms">lock</i>${ORDER_LABEL[nx]} unlocks when ${ORDER_LABEL[LOCK_ORDER[nx]]} is complete</span>`:''}${acts}<button type="button" class="pri" data-a="next" data-k="${k}">Save draft & next: ${ORDER_LABEL[nx]}<span class="ms">arrow_forward</span></button></div>`}
+ const nx=ORDER[i+1],p=cur(),editable=canEditPatient(p),lk=tabLocked(p,nx);
+ const btnTxt=editable?`Save draft & next: ${ORDER_LABEL[nx]}`:`Next: ${ORDER_LABEL[nx]}`;
+ return `<div class="step-nav">${lk?`<span class="lock-hint"><i class="ms">lock</i>${ORDER_LABEL[nx]} unlocks when ${ORDER_LABEL[LOCK_ORDER[nx]]} is complete</span>`:''}${acts}<button type="button" class="pri" data-a="next" data-k="${k}">${btnTxt}<span class="ms">arrow_forward</span></button></div>`}
 function toast(msg){const el=$('snack');el.textContent=msg;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2600)}
 
 /* The open patient, tab and form are kept for this browser tab, so a refresh returns to the same place */
-function saveView(){try{sessionStorage.setItem('standhf_view',JSON.stringify({sel,tab,newMode,listSort}))}catch(e){}}
+function saveView(){try{sessionStorage.setItem('standhf_view',JSON.stringify({sel,tab,newMode:false,listSort}))}catch(e){}}
 function loadView(){try{const v=JSON.parse(sessionStorage.getItem('standhf_view')||'null');return v&&['info','b','m3','m6','sum'].includes(v.tab)?v:null}catch(e){return null}}
-function pane(){saveView();if(newMode){paneNew();return}const p=cur(),el=$('pane');if(p&&!p.inv&&signedIn()){p.inv=signedIn();p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:'inv',o:'',n:p.inv});persist()}
+function pane(){saveView();
+ if(newMode){
+   if(!canAddPatient()){newMode=false;toast('Only authorized Site Investigators can create new participants.');pane();return}
+   paneNew();return;
+ }
+ const helloH1=document.querySelector('.hello h1');
+ if(helloH1&&helloH1.childNodes[0]) helloH1.childNodes[0].textContent='Patient records ';
+ const p=cur(),el=$('pane');
+ const editable=canEditPatient(p);
+ if(p&&!p.inv&&signedIn()&&editable){p.inv=signedIn();p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:'inv',o:'',n:p.inv});persist()}
  if(!p){el.innerHTML='<p class="mut">Select a participant or create a new one to get started.</p>';return}
  if(tabLocked(p,tab))tab='b';
  const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info">Participant info</button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':''}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}${n}</button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum">Summary & audit</button></div>`;
- let h=`<div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs;
- if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${!p.name||!p.contact?banner('Patient name and contact number are required. Add them below.'):''}<div class="sec">Participant</div><div class="g tint"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
+ const readOnlyNotice=!editable?`<div class="lock-banner" style="background:var(--primary-soft);color:var(--primary);border-color:rgba(26,95,180,0.2);margin-bottom:14px"><i class="ms">visibility</i><span><b>Read-Only Mode:</b> You are viewing this record with oversight permissions. Clinical data entry and edits are restricted to authorized Site Investigators.</span></div>`:'';
+ let h=`<div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs+readOnlyNotice;
+ if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${editable&&(!p.name||!p.contact)?banner('Patient name and contact number are required. Add them below.'):''}<div class="sec">Participant</div><div class="g tint"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
  else if(tab==='sum')h+=summary(p);
  else{const k=tab,v=p.v[k],name=VK.find(a=>a[0]===k)[1],b=p.v.b.date;
   let win='';if(k!=='b'){const t=k==='m3'?90:180,w=k==='m3'?14:21;win=b?`Target day ${t} ±${w}: ${fmt(addD(b,t-w))} to ${fmt(addD(b,t+w))}`:'Enter baseline date first'}
-  h+=`${v.done?okBanner(name+' is complete and locked. Reopen the visit to make changes.'):''}<div class="visit-info">
+  h+=`${v.done?okBanner(name+' is complete and locked.'+(editable?' Reopen the visit to make changes.':'')):''}<div class="visit-info">
     <strong>${name} visit</strong> — Status: <strong>${vstat(p,k)}</strong>${win?'<br>'+win:''}
   </div>
-  <div class="sec"><span>A. Prescription<span class="req" aria-hidden="true">*</span></span></div><div class="tint rx-wrap"><div class="rx-grid"><div class="rx-up">${v.done?banner('Visit is locked. Reopen the visit to add files.'):`<button type="button" class="rx-drop" data-a="upload"><i class="ms">upload_file</i><span><b>Upload prescription</b><small>Drag and drop, or browse. PDF, JPG or PNG, up to 10 MB each, 5 files max</small></span></button>`}</div><div class="rx-files"><div class="filelist rx-list rx-row">${filesHtml(p,k)}</div></div></div></div>
+  <div class="sec"><span>A. Prescription<span class="req" aria-hidden="true">*</span></span></div><div class="tint rx-wrap"><div class="rx-grid"><div class="rx-up">${v.done?banner('Visit is locked. Reopen the visit to add files.'):!editable?`<div class="lock-banner" style="background:transparent;border:1px dashed var(--line);color:var(--ink-2);margin:0;padding:12px 14px"><i class="ms">lock</i><span>Uploads restricted to authorized Site Investigators.</span></div>`:`<button type="button" class="rx-drop" data-a="upload"><i class="ms">upload_file</i><span><b>Upload prescription</b><small>Drag and drop, or browse. PDF, JPG or PNG, up to 10 MB each, 5 files max</small></span></button>`}</div><div class="rx-files"><div class="filelist rx-list rx-row">${filesHtml(p,k)}</div></div></div></div>
     <div class="sec">B. Clinical & Functional Assessment</div>
   <div class="g tint">${inp(p,'v.'+k+'.date','Visit date','date')}${inp(p,'v.'+k+'.wt','Weight (kg)','number','step=0.1')}${inp(p,'v.'+k+'.hr','Heart rate (bpm)','number')}${inp(p,'v.'+k+'.sbp','Systolic BP (mmHg)','number')}${inp(p,'v.'+k+'.dbp','Diastolic BP (mmHg)','number')}${sel_(p,'v.'+k+'.nyha','NYHA class',['','I','II','III','IV'])}${inp(p,'v.'+k+'.msts','1MSTS: repetitions in 60 sec','number','min=0')}${sel_(p,'v.'+k+'.stop','1MSTS stopped early? reason',STOP)}</div>
   <div class="g tint" style="margin-bottom:12px">${ck(p,'v.'+k+'.rep','1MSTS repeated (non-clinical reason)')}${k==='m3'?'<label>LVEF (%)<input value="N/A at 3 months" disabled></label>':inp(p,'v.'+k+'.lvef','LVEF (%)','number','min=5 max=80')}${k==='m3'?'':inp(p,'v.'+k+'.echoDate','Echo date','date')}</div>
@@ -387,10 +405,16 @@ function pane(){saveView();if(newMode){paneNew();return}const p=cur(),el=$('pane
   <div class="sec">D. Clinical Events ${k==='b'?'(prior history)':'(since previous visit)'}</div>
   <div class="g tint">${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div>
   <div class="g tint" style="margin-top:12px">${inp(p,`v.${k}.ev.int`,'Major intervention / event')}${inp(p,`v.${k}.ini`,'Investigator initials')}</div>
-  ${navBar(k,!can('mark_complete')?'':v.done?`<span class="lock-hint"><i class="ms">lock</i>Visit locked as complete</span><button data-a="reopen"><i class="ms">undo</i>Reopen visit</button>`:`<button data-a="done"><i class="ms">task_alt</i>Mark complete</button><span id="miss" class="e"></span>`)}`}
- el.innerHTML=h;el.classList.remove('form-in');void el.offsetWidth;el.classList.add('form-in');if(tab!=='info'&&tab!=='sum'&&p.v[tab].done)el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true);
- if(tab==='info'&&p.v.b.done)el.querySelectorAll('[data-p="consent"],[data-p="age"],[data-p="sex"],[data-p="etio"],[data-p="etioO"]').forEach(i=>i.disabled=true);
- if(!can('enter_data'))el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true);
+  ${navBar(k,!can('mark_complete')||!editable?'':v.done?`<span class="lock-hint"><i class="ms">lock</i>Visit locked as complete</span><button data-a="reopen"><i class="ms">undo</i>Reopen visit</button>`:`<button data-a="done"><i class="ms">task_alt</i>Mark complete</button><span id="miss" class="e"></span>`)}`}
+ el.innerHTML=h;el.classList.remove('form-in');void el.offsetWidth;el.classList.add('form-in');
+ if(!editable||!can('enter_data')){
+   el.querySelectorAll('[data-p],input,select,textarea').forEach(i=>{i.disabled=true;if(i.hasAttribute('data-cb-input'))i.setAttribute('readonly','true')});
+   el.querySelectorAll('.check-row').forEach(l=>l.style.pointerEvents='none');
+   el.querySelectorAll('.cb').forEach(cb=>cb.style.pointerEvents='none');
+ } else {
+   if(tab!=='info'&&tab!=='sum'&&p.v[tab].done)el.querySelectorAll('[data-p]').forEach(i=>i.disabled=true);
+   if(tab==='info'&&p.v.b.done)el.querySelectorAll('[data-p="consent"],[data-p="age"],[data-p="sex"],[data-p="etio"],[data-p="etioO"]').forEach(i=>i.disabled=true);
+ }
  paintFields();
  fillThumbs()}
 
@@ -411,28 +435,46 @@ function summary(p){const r=(f)=>VK.map(([k])=>`<td>${f(p.v[k],k)||'–'}</td>`)
 
 document.addEventListener('change',e=>{const el=e.target;if(el.id==='off'){DB.off=el.checked;persist();if(!DB.off)DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash();return}
  if(el.id==='fu'){handleUpload(el);return}
- if(!el.dataset.p)return;const p=cur();if(!p)return;const old=G(p,el.dataset.p),nv=el.type==='checkbox'?el.checked:el.value;if(old===nv)return;
+ if(!el.dataset.p)return;const p=cur();if(!p)return;
+ if(!canEditPatient(p)){toast('You are in read-only mode. Only authorized Site Investigators can edit patient data.');paintFields();return}
+ const old=G(p,el.dataset.p),nv=el.type==='checkbox'?el.checked:el.value;if(old===nv)return;
  S(p,el.dataset.p,nv);p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:el.dataset.p,o:old??'',n:nv});save(p);paintFields();dash()});
 
-document.addEventListener('dragover',e=>{if(e.target.closest&&e.target.closest('.rx-drop'))e.preventDefault()});
-document.addEventListener('drop',e=>{if(e.target.closest&&e.target.closest('.rx-drop')){e.preventDefault();handleUpload({files:e.dataTransfer.files,value:''})}});
+document.addEventListener('dragover',e=>{if(e.target.closest&&e.target.closest('.rx-drop')){const p=cur();if(!canEditPatient(p))return;e.preventDefault()}});
+document.addEventListener('drop',e=>{if(e.target.closest&&e.target.closest('.rx-drop')){e.preventDefault();const p=cur();if(!canEditPatient(p)){toast('Only authorized Site Investigators can upload prescriptions.');return}handleUpload({files:e.dataTransfer.files,value:''})}});
 document.addEventListener('click',e=>{const o=e.target.closest&&e.target.closest('[data-sortopt]');if(o){listSort=o.dataset.sortopt;saveView();dash();return}
  if(!(e.target.closest&&e.target.closest('.list-sort,.sort-menu')))document.querySelectorAll('#list .sort-menu').forEach(m=>m.hidden=true)});
 document.addEventListener('click',e=>{const t=e.target.closest('[data-id],[data-t],[data-a],[data-jump]');if(!t)return;
  if(t.dataset.jump){jumpTo(t.dataset.jump);return}
  if(t.dataset.id){sel=t.dataset.id;newMode=false;if(window.matchMedia('(max-width: 1000px)').matches)listOpen=false;pane();document.querySelectorAll('#list .pt').forEach(el=>el.classList.toggle('on',el.dataset.id===sel));keepSelectedVisible()}
  else if(t.dataset.t){tab=t.dataset.t;newMode=false;pane();dash()}
- else if(t.dataset.a==='next'){const p=cur(),k=t.dataset.k,i=ORDER.indexOf(k);if(!p)return;const iss=k==='info'?infoIssues(p):visitIssues(p,k);
+ else if(t.dataset.a==='next'){const p=cur(),k=t.dataset.k,i=ORDER.indexOf(k);if(!p)return;
+   if(!canEditPatient(p)){tab=ORDER[i+1];pane();dash();$('pane').scrollIntoView({behavior:'smooth',block:'start'});return}
+   const iss=k==='info'?infoIssues(p):visitIssues(p,k);
    if(iss.m.length||iss.er.length){TRIED.add((p.uid||p.id)+'|'+(k==='info'?'b':k));showIssues(p,k,iss.m,iss.er,'Cannot continue');toast('Fix the highlighted fields before continuing');return}
    save(p);if(tabLocked(p,ORDER[i+1])){toast('Draft saved · '+ORDER_LABEL[ORDER[i+1]]+' unlocks when '+ORDER_LABEL[LOCK_ORDER[ORDER[i+1]]]+' is complete');return}tab=ORDER[i+1];pane();dash();$('pane').scrollIntoView({behavior:'smooth',block:'start'});toast('Draft saved · '+ORDER_LABEL[tab]+' is next')}
- else if(t.dataset.a==='upload'){$('fu').click()}
+ else if(t.dataset.a==='upload'){const p=cur();if(!canEditPatient(p)){toast('Only authorized Site Investigators can upload prescriptions.');return}$('fu').click()}
  else if(t.dataset.a==='sortMenu'){const m=document.querySelector('#list .sort-menu');if(m)m.hidden=!m.hidden}
  else if(t.dataset.a==='remove'){removeFile(t.dataset.fid)}
  else if(t.dataset.a==='removePatient'){removePatient()}
  else if(t.dataset.a==='view'){openFile(t.dataset.fid,t.dataset.ct,t.dataset.name)}
- else{const p=cur(),v=p.v[tab];if(t.dataset.a==='done'){const m=missing(p,tab),er=warns(p,tab).filter(x=>x[0]==='e').map(x=>({msg:x[1]})).concat(fieldErrs(p,tab));TRIED.add((p.uid||p.id)+'|'+tab);if(m.length||er.length){showIssues(p,tab,m,er);return}v.done=true;p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'open',n:'completed'});toast(VN_NAME(tab)+' marked complete and locked')}else{const later=VK.slice(VK.findIndex(([x])=>x===tab)+1).find(([x])=>p.v[x].done);if(later){toast('Reopen '+later[1]+' first');return}v.done=false;p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'completed',n:'reopened'})}const navOld=document.querySelector('#pane .step-nav'),oldTop=navOld?navOld.getBoundingClientRect().top:null;save(p);pane();dash();const navNew=document.querySelector('#pane .step-nav');if(oldTop!==null&&navNew)window.scrollBy(0,navNew.getBoundingClientRect().top-oldTop)}});
+ else{const p=cur(),v=p.v[tab];
+  if(t.dataset.a==='done'){
+    if(!canEditPatient(p)||!can('mark_complete')){toast('Only authorized Site Investigators can mark visits complete.');return}
+    const m=missing(p,tab),er=warns(p,tab).filter(x=>x[0]==='e').map(x=>({msg:x[1]})).concat(fieldErrs(p,tab));
+    TRIED.add((p.uid||p.id)+'|'+tab);
+    if(m.length||er.length){showIssues(p,tab,m,er);return}
+    v.done=true;p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'open',n:'completed'});
+    toast(VN_NAME(tab)+' marked complete and locked')
+  }else{
+    if(!canEditPatient(p)||!can('mark_complete')){toast('Only authorized Site Investigators can reopen visits.');return}
+    const later=VK.slice(VK.findIndex(([x])=>x===tab)+1).find(([x])=>p.v[x].done);
+    if(later){toast('Reopen '+later[1]+' first');return}
+    v.done=false;p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'completed',n:'reopened'})
+  }
+  const navOld=document.querySelector('#pane .step-nav'),oldTop=navOld?navOld.getBoundingClientRect().top:null;save(p);pane();dash();const navNew=document.querySelector('#pane .step-nav');if(oldTop!==null&&navNew)window.scrollBy(0,navNew.getBoundingClientRect().top-oldTop)}});
 
-$('bClr').onclick=async()=>{if(await appDialog.confirm({tone:'danger',icon:'delete_sweep',title:'Delete all participants?',message:'Every patient in this browser will be removed.',confirmText:'Delete all'})){DB.pts=[];sel=null;persist();pane();dash()}};
+$('bClr').onclick=async()=>{if(!can('clear_all')){toast('Permission denied.');return}if(await appDialog.confirm({tone:'danger',icon:'delete_sweep',title:'Delete all participants?',message:'Every patient in this browser will be removed.',confirmText:'Delete all'})){DB.pts=[];sel=null;persist();pane();dash()}};
 $('bCsv').onclick=()=>{const H=['study_id','site','investigator','consent','age','sex','etiology'];VK.forEach(([k])=>['status','date','wt','hr','sbp','dbp','nyha','msts','lvef','pillars','hf_hosp','all_hosp','death'].forEach(f=>H.push(k+'_'+f)));
  const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"',rows=DB.pts.map(p=>{const a=[p.id,p.site,p.inv,p.consent,p.age,p.sex,p.etio];VK.forEach(([k])=>{const v=p.v[k];a.push(vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act(v),G(v,'ev.hf')?1:0,G(v,'ev.all')?1:0,G(v,'ev.death')?1:0)});return a.map(q).join(',')});
  const b=new Blob([[H.join(','),...rows].join('\n')],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='stand_hf_export.csv';a.click()};
@@ -478,7 +520,7 @@ const loadDemo=async()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(
  }
  persist();if(DB.pts.length){sel=DB.pts[DB.pts.length-1].id}tab='sum';pane();dash();
  toast('Demo data loaded: '+created.length+' visits with prescriptions')};
-$('bDemo').onclick=()=>window.withLoader(1000,loadDemo);
+$('bDemo').onclick=()=>{if(!can('load_demo')){toast('Permission denied.');return}window.withLoader(1000,loadDemo)};
 
 $('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.href='#'};
 
@@ -490,9 +532,10 @@ async function getFile(id){const d=await fileDb();return new Promise((res,rej)=>
 async function delFile(id){const d=await fileDb();return new Promise((res,rej)=>{const t=d.transaction('files','readwrite');t.objectStore('files').delete(id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
 const sizeTxt=b=>b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB';
 function filesHtml(p,k,readOnly){const fs=(p.files&&p.files[k])||[];if(!fs.length)return '<span class="mut">No files attached</span>';
-  const canEdit=!readOnly&&can('enter_data')&&!(p.v[k]&&p.v[k].done);
+  const canEdit=!readOnly&&canEditPatient(p)&&!(p.v[k]&&p.v[k].done);
   return FileCard.list(fs,{size:'sm',onRemove:canEdit})}
 async function handleUpload(el){const f=el.files&&el.files[0];el.value='';if(!f)return;const p=cur();if(!p)return;
+  if(!canEditPatient(p)){toast('Only authorized Site Investigators can upload prescriptions.');return}
   if(!UPLOAD_TYPES.includes(f.type)){toast('Only PDF, JPG or PNG files can be uploaded');return}
   if(f.size>UPLOAD_MAX){toast('File is over 10 MB. Choose a smaller file.');return}
   if(p.v[tab].done){toast('Visit is locked. Reopen it to add files.');return}
@@ -509,7 +552,9 @@ async function fillThumbs(){
     try{const b=await getFile(el.dataset.thumb);if(!b)return;el.innerHTML=`<img alt="" src="${URL.createObjectURL(b)}">`}catch(e){}
   })}
 /* Remove a file from a visit that is not locked */
-async function removeFile(fid){const p=cur();if(!p)return;let k=null,f=null;
+async function removeFile(fid){const p=cur();if(!p)return;
+  if(!canEditPatient(p)){toast('Only authorized Site Investigators can remove prescription files.');return}
+  let k=null,f=null;
   VK.forEach(([x])=>{const hit=((p.files&&p.files[x])||[]).find(y=>y.id===fid);if(hit){k=x;f=hit}});
   if(!f)return;
   if(p.v[k].done){toast('Visit is locked. Reopen it to remove files.');return}
@@ -550,7 +595,9 @@ function combo(path,key,label,value,ph){
 function cbItems(key,q){const all=OPTS[key](),t=q.trim(),lo=t.toLowerCase();
   const L=all.filter(o=>!lo||o.toLowerCase().includes(lo)).map(o=>({v:o}));
   if(t&&!all.some(o=>o.toLowerCase()===lo))L.push({v:t,add:1});return L}
-function cbOpen(wrap,q){const ul=wrap.querySelector('.cb-list'),inp=wrap.querySelector('[data-cb-input]');
+function cbOpen(wrap,q){const inp=wrap.querySelector('[data-cb-input]');
+  if(!inp||inp.disabled||inp.hasAttribute('disabled')||(wrap.closest('#pane')&&!canEditPatient(cur())&&inp.dataset.p))return;
+  const ul=wrap.querySelector('.cb-list');
   const items=cbItems(wrap.dataset.cb,q||'');wrap._items=items;wrap._act=-1;
   ul.innerHTML=items.length?items.map((it,i)=>`<li role="option" data-i="${i}" class="${it.add?'new':''}">${it.add?'<span class="ms">add</span>Use "'+esc(it.v)+'"':esc(it.v)}</li>`).join(''):'<li class="none">No matches. Keep typing to add a new name.</li>';
   ul.hidden=false;inp.setAttribute('aria-expanded','true')}
@@ -561,8 +608,8 @@ function cbChoose(wrap,i){const it=wrap._items&&wrap._items[i];if(!it)return;con
 function cbMove(wrap,d){const lis=[...wrap.querySelectorAll('.cb-list li[data-i]')];if(!lis.length)return;
   wrap._act=(((wrap._act??-1)+d)+lis.length)%lis.length;lis.forEach((li,i)=>li.classList.toggle('act',i===wrap._act));lis[wrap._act].scrollIntoView({block:'nearest'})}
 
-document.addEventListener('focusin',e=>{const i=e.target.closest&&e.target.closest('[data-cb-input]');if(i)cbOpen(i.closest('[data-cb]'),'')});
-document.addEventListener('click',e=>{const i=e.target.closest&&e.target.closest('[data-cb-input]');if(i&&!cbOpenNow(i.closest('[data-cb]')))cbOpen(i.closest('[data-cb]'),i.hasAttribute('readonly')?'':i.value)},true);
+document.addEventListener('focusin',e=>{const i=e.target.closest&&e.target.closest('[data-cb-input]');if(i&&!i.disabled&&!i.hasAttribute('disabled'))cbOpen(i.closest('[data-cb]'),'')});
+document.addEventListener('click',e=>{const i=e.target.closest&&e.target.closest('[data-cb-input]');if(i&&!i.disabled&&!i.hasAttribute('disabled')&&!cbOpenNow(i.closest('[data-cb]')))cbOpen(i.closest('[data-cb]'),i.hasAttribute('readonly')?'':i.value)},true);
 document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('[data-cb-input]'))cbOpen(e.target.closest('[data-cb]'),e.target.value)});
 document.addEventListener('mousedown',e=>{const li=e.target.closest&&e.target.closest('.cb-list li[data-i]');if(li){e.preventDefault();cbChoose(li.closest('[data-cb]'),+li.dataset.i)}});
 document.addEventListener('focusout',e=>{const i=e.target.closest&&e.target.closest('[data-cb-input]');if(i)cbClose(i.closest('[data-cb]'))});
@@ -604,20 +651,32 @@ function jumpTo(sel){const el=document.querySelector(sel);
   el.classList.add('fld-flash');setTimeout(()=>el.classList.remove('fld-flash'),1400)}
 
 /* New participant: every field checked before the record is created */
+function updatePageSubtitle(){
+  const el=$('pageSubtitle');
+  if(!el)return;
+  const r=signedRole();
+  if(r==='superadmin') el.textContent='Super Admin Executive Oversight (Read-Only) · All Participating Centres';
+  else if(r==='central') el.textContent='Central Monitoring & Governance (Read-Only) · All Participating Centres';
+  else el.textContent='Patient Electronic Case Report Forms (e-CRF) · ' + (mySites().join(', ') || 'Assigned Sites');
+}
+
+/* New participant: every field checked before the record is created */
 function newErrors(site,nm,ct,inv){
   const out=[];
-  if(!site)out.push({f:'site',msg:'Enter a site code.'});
-  else if(!SITE_RE.test(site))out.push({f:'site',msg:'Site code: 2 to 5 capital letters, for example RIC.'});
-  else if(!mySites().includes(site))out.push({f:'site',msg:'You are not assigned to site '+site+'.'});
-  if(!nm)out.push({f:'name',msg:'Enter the patient name.'});
-  else if(nm.length<2)out.push({f:'name',msg:'Patient name: at least 2 characters.'});
-  else if(!NAME_RE.test(nm))out.push({f:'name',msg:"Patient name: letters, spaces, . ' - only."});
-  if(!ct)out.push({f:'contact',msg:'Enter the contact number.'});
-  else if(!contactOk(ct))out.push({f:'contact',msg:'Enter a valid phone number (7 to 15 digits).'});
-  if(!inv)out.push({f:'inv',msg:'Enter the investigator name.'});
-  else if(inv.length<2)out.push({f:'inv',msg:'Investigator name: at least 2 characters.'});
-  else if(!NAME_RE.test(inv))out.push({f:'inv',msg:"Investigator name: letters, spaces, . ' - only."});
-  return out}
+  if(!canAddPatient()) out.push({f:'site',msg:'Only authorized Site Investigators can enroll new patients.'});
+  else if(!site) out.push({f:'site',msg:'Enter a site code.'});
+  else if(!SITE_RE.test(site)) out.push({f:'site',msg:'Site code: 2 to 5 capital letters, for example RIC.'});
+  else if(!canAddPatient(site)) out.push({f:'site',msg:'You are not authorized to enroll patients at site '+site+'.'});
+  if(!nm) out.push({f:'name',msg:'Enter the patient name.'});
+  else if(nm.length<2) out.push({f:'name',msg:'Patient name: at least 2 characters.'});
+  else if(!NAME_RE.test(nm)) out.push({f:'name',msg:"Patient name: letters, spaces, . ' - only."});
+  if(!ct) out.push({f:'contact',msg:'Enter the contact number.'});
+  else if(!contactOk(ct)) out.push({f:'contact',msg:'Enter a valid phone number (7 to 15 digits).'});
+  if(!inv) out.push({f:'inv',msg:'Enter the investigator name.'});
+  else if(inv.length<2) out.push({f:'inv',msg:'Investigator name: at least 2 characters.'});
+  else if(!NAME_RE.test(inv)) out.push({f:'inv',msg:"Investigator name: letters, spaces, . ' - only."});
+  return out;
+}
 const NEW_FIELD={site:'[data-cb="site"] input',name:'#nName',contact:'#nContact',inv:'[data-cb="inv"] input',consent:'#nConsent',age:'#nAge',sex:'#nSex',etio:'#nEtio',etioO:'#nEtioO'};
 /* Personal information checks, run when the patient is created */
 function personalErrors(v){
@@ -643,42 +702,120 @@ function showNewErrors(errs){
   box.innerHTML=errorBox(`Fix ${errs.length} issue${errs.length>1?'s':''} before creating the participant`,errs.map(e=>({msg:e.msg,sel:NEW_FIELD[e.f]})));
   if(errs[0])document.querySelector(NEW_FIELD[errs[0].f])?.focus();
 }
+
 /* New participant: opens inline in the main pane */
-function paneNew(){saveView();
+function paneNew(){
+  if(!canAddPatient()){
+    newMode=false;
+    toast('Access Denied: Only authorized Site Investigators can enroll new patients.');
+    pane();dash();
+    return;
+  }
+  newMode=true;
+  saveView();
+  if(typeof window.standhfUpdateNav==='function') window.standhfUpdateNav();
+  const helloH1=document.querySelector('.hello h1');
+  if(helloH1&&helloH1.childNodes[0]) helloH1.childNodes[0].textContent='New Participant Enrollment ';
+  const sub=$('pageSubtitle');
+  if(sub) sub.textContent='Register and enroll a newly consented heart failure patient into the STAND-HF registry.';
+
   $('pane').innerHTML=`<form id="fNew" class="np" novalidate>
-    <div class="pane-title"><span>New participant</span></div>
+    <div class="np-header-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <button type="button" id="btnBackToRecords" class="btn" style="display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:7px 14px;border:1px solid var(--border);background:var(--card);border-radius:6px;cursor:pointer">
+        <i class="ms" style="font-size:18px">arrow_back</i> Back to Participant Records
+      </button>
+      <span class="chip-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--primary-soft);color:var(--primary);font-weight:600;border-radius:12px;font-size:12px">
+        <i class="ms" style="font-size:16px">person_add</i> Intake &amp; Enrollment Mode
+      </span>
+    </div>
+    <div class="pane-title"><span>New Participant Registration</span></div>
     <p class="np-lead">The Study ID is generated from the site code. Patient name and contact number are required.</p>
     <div class="dlg-err" id="newErr" hidden></div>
-    <div class="sec">Investigator</div>
+    <div class="sec">Investigator &amp; Site</div>
     <div class="g tint">${combo(null,'site','Site code','','Select site')}${combo(null,'inv','Investigator name',signedIn())}</div>
-    <div class="sec">Patient information</div>
+    <div class="sec">Patient Information</div>
     <div class="g tint">
-      <label>Study ID<input value="Assigned on save" disabled></label>
-      <label>Patient name<span class="req" aria-hidden="true">*</span><input id="nName" autocomplete="off" maxlength="100" required></label>
+      <label>Study ID<input value="Assigned on save (e.g. RIC-001)" disabled></label>
+      <label>Patient name<span class="req" aria-hidden="true">*</span><input id="nName" autocomplete="off" maxlength="100" placeholder="Full legal name" required></label>
       <label>Contact number<span class="req" aria-hidden="true">*</span><input id="nContact" type="tel" maxlength="20" autocomplete="off" placeholder="e.g. 0300 5550100" required></label>
       <label>Consent date<span class="req" aria-hidden="true">*</span><input id="nConsent" type="date" value="${new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}"></label>
-      <label>Age (years)<span class="req" aria-hidden="true">*</span><input id="nAge" type="number" min="18" max="150"></label>
+      <label>Age (years)<span class="req" aria-hidden="true">*</span><input id="nAge" type="number" min="18" max="150" placeholder="18 - 150"></label>
       ${ddHtml('id="nSex"','dd:nSex','Sex<span class="req" aria-hidden="true">*</span>',lookup('patient.sex'),'','','',{req:'',msg:''})}
       ${ddHtml('id="nEtio"','dd:nEtio','HF etiology<span class="req" aria-hidden="true">*</span>',lookup('patient.etiology'),'','','',{req:'',msg:''})}
-      <label>If other, specify<input id="nEtioO" maxlength="100" autocomplete="off"></label>
+      <label>If other, specify<input id="nEtioO" maxlength="100" autocomplete="off" placeholder="Specify other etiology"></label>
     </div>
-    <div class="dlg-actions"><button type="button" id="cNew">Cancel</button><button type="submit" class="pri">Create patient</button></div>
+    <div class="foot-actions">
+      <button type="button" id="cNew" class="btn"><i class="ms">close</i> Cancel</button>
+      <button type="submit" class="pri"><i class="ms">check</i> Create patient</button>
+    </div>
   </form>`;
   const siteBox=$('fNew').querySelector('[data-cb="site"]');
-  siteBox.querySelector('input').focus();
+  if(siteBox) siteBox.querySelector('input')?.focus();
 }
-$('bNew').onclick=()=>{newMode=true;paneNew()};
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#cNew')){newMode=false;pane();dash()}});
-document.addEventListener('submit',e=>{if(e.target.id!=='fNew')return;e.preventDefault();const f=e.target;
+
+window.standhfIsNewMode=()=>!!newMode;
+
+window.standhfOpenRecords=(targetPid)=>{
+  newMode=false;
+  try{
+    const u=new URL(location.href);
+    u.searchParams.delete('new');
+    history.pushState(null,'',u.pathname+u.search);
+  }catch(e){}
+  if(targetPid) sel=targetPid;
+  saveView();
+  pane();
+  dash();
+  if(typeof window.standhfUpdateNav==='function') window.standhfUpdateNav();
+};
+
+window.standhfOpenNew=()=>{
+  if(!canAddPatient()){
+    toast('Access Denied: Only authorized Site Investigators can enroll new patients.');
+    return;
+  }
+  newMode=true;
+  try{
+    const u=new URL(location.href);
+    u.searchParams.set('new','1');
+    history.pushState(null,'',u.pathname+u.search);
+  }catch(e){}
+  paneNew();
+  dash();
+  if(typeof window.standhfUpdateNav==='function') window.standhfUpdateNav();
+};
+
+$('bNew').onclick=()=>window.standhfOpenNew();
+document.addEventListener('click',e=>{
+  if(e.target.closest&&e.target.closest('#cNew, #btnBackToRecords')){
+    window.standhfOpenRecords();
+  }
+});
+
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='fNew')return;
+  e.preventDefault();
+  const f=e.target;
   const site=f.querySelector('[data-cb="site"] input').value.toUpperCase().trim(),inv=f.querySelector('[data-cb="inv"] input').value.trim();
   const nm=f.querySelector('#nName').value.trim(),ct=f.querySelector('#nContact').value.trim();
   const errs=newErrors(site,nm,ct,inv);if(errs.length){showNewErrors(errs);return}
   const v={consent:f.querySelector('#nConsent').value,age:f.querySelector('#nAge').value.trim(),sex:f.querySelector('#nSex').value,etio:f.querySelector('#nEtio').value,etioO:f.querySelector('#nEtioO').value.trim()};
   const pe=personalErrors(v);if(pe.length){showNewErrors(pe);return}
   const p=mk(site,inv,v.consent,v.age,v.sex,v.etio);p.name=nm;p.contact=ct;p.etioO=v.etio==='Other'?v.etioO:'';
-  DB.pts.push(p);sel=p.id;tab='b';newMode=false;save(p);pane();dash()});
+  DB.pts.push(p);sel=p.id;tab='b';newMode=false;save(p);
+  toast(`Participant ${p.id} created successfully.`);
+  window.standhfOpenRecords(p.id);
+});
 
-applyPerms();{const mine=DB.pts.filter(inScope);const v=loadView();if(v&&v.listSort)listSort=v.listSort;if(v&&!v.newMode&&mine.some(x=>x.id===v.sel)){sel=v.sel;tab=v.tab}else if(v&&v.newMode){newMode=true}else if(mine.length)sel=mine[0].id;}
+applyPerms();
+{
+  const mine=DB.pts.filter(inScope);
+  const v=loadView();
+  if(v&&v.listSort) listSort=v.listSort;
+  if(v&&mine.some(x=>x.id===v.sel)){sel=v.sel;tab=v.tab}
+  else if(mine.length) sel=mine[0].id;
+}
+
 /* Connection comes from the shared header: it announces each change; saves stay Pending while offline */
 function setConnection(on,quiet){
   const wasOff=!!DB.off;
@@ -694,25 +831,37 @@ function setConnection(on,quiet){
 }
 window.addEventListener('standhf:connection',e=>setConnection(e.detail.online,e.detail.quiet));
 if(typeof window.isStandhfOnline==='function') DB.off=!window.isStandhfOnline();
+
 /* Deep links from the investigator dashboard: ?new=1 or ?patient=ID&tab=b|m3|m6 */
-{const qp=new URLSearchParams(location.search);const pid=qp.get('patient');
- if(signedRole()==='investigator'&&signedIn()&&DB.pts.some(x=>x.inv==='Demo investigator')){DB.pts.forEach(x=>{if(x.inv==='Demo investigator')x.inv=signedIn()});persist()}
- if(pid&&DB.pts.some(x=>x.id===pid&&inScope(x)))sel=pid;
- else if(pid)setTimeout(()=>toast('Patient '+pid+' is not in your records.'),400);
- if(['info','b','m3','m6','sum'].includes(qp.get('tab')))tab=qp.get('tab');
- if(qp.get('new')==='1')newMode=true}
+{
+  const qp=new URLSearchParams(location.search);
+  const pid=qp.get('patient');
+  if(signedRole()==='investigator'&&signedIn()&&DB.pts.some(x=>x.inv==='Demo investigator')){
+    DB.pts.forEach(x=>{if(x.inv==='Demo investigator')x.inv=signedIn()});
+    persist();
+  }
+  if(pid) newMode=false;
+  if(pid&&DB.pts.some(x=>x.id===pid&&inScope(x))) sel=pid;
+  else if(pid) setTimeout(()=>toast('Patient '+pid+' is not in your records.'),400);
+  if(['info','b','m3','m6','sum'].includes(qp.get('tab'))) tab=qp.get('tab');
+  if(qp.get('new')==='1'){
+    if(canAddPatient()) newMode=true;
+    else setTimeout(()=>toast('Admin Oversight: Patient enrollment is restricted to authorized Site Investigators.'), 400);
+  } else {
+    newMode=false;
+  }
+}
 pane();dash();
 
 /* User chip: show who is signed in */
 {const u=signedIn();$('userName').textContent=u||'Signed in';$('userRole').textContent=ROLE_LABEL[signedRole()]||'Study user';
  $('avatar').textContent=u.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?'}
 
-
-
 /* Buttons and actions follow the signed-in role's permissions */
 function applyPerms(){
   const gate={bNew:'add_patient',bCsv:'export_data',bDemo:'load_demo',bClr:'clear_all'};
   Object.entries(gate).forEach(([id,perm])=>{const el=$(id);if(el)el.hidden=!can(perm)});
+  updatePageSubtitle();
 }
 
 /* Patient list: rail on desktop and tablet, folded bar on phones */
