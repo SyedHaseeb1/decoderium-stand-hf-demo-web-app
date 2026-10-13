@@ -16,8 +16,8 @@ const PERMS=[
   ['manage_sites','Manage sites']
 ];
 const ALL_PERMS=Object.fromEntries(PERMS.map(([k])=>[k,true]));
-/* Super Admin oversees the study; patient data entry belongs to site and central staff */
-const SUPER_NO=['add_patient','enter_data','mark_complete'];
+/* Super Admin and Central team oversee the study; clinical patient data entry belongs strictly to assigned site investigators */
+const SUPER_NO=['add_patient','enter_data','mark_complete','load_demo','clear_all'];
 const DEFAULT_ACCESS={
   zones:['North','Central','South'],
   sites:[
@@ -33,7 +33,7 @@ const DEFAULT_ACCESS={
     {username:'adnan.khan',name:'Adnan Khan',role:'investigator',sites:['KHI','ISB'],zones:['South','North'],active:true}
   ],
   perms:{
-    superadmin:ALL_PERMS,
+    superadmin:{view_all_sites:true,export_data:true,assign_investigators:true,manage_users:true,manage_sites:true},
     investigator:{add_patient:true,enter_data:true,mark_complete:true,load_demo:true,clear_all:true},
     central:{view_all_sites:true,export_data:true}
   }
@@ -75,8 +75,19 @@ function accessStore(){
         delete s.perms.central.add_patient;
         delete s.perms.central.enter_data;
         delete s.perms.central.mark_complete;
+        delete s.perms.central.load_demo;
+        delete s.perms.central.clear_all;
         s.perms.central.view_all_sites=true;
         s.perms.central.export_data=true;
+      }
+      /* Ensure superadmin role has no clinical patient form modification permissions */
+      if(s.perms.superadmin){
+        SUPER_NO.forEach(p=>{delete s.perms.superadmin[p]});
+        s.perms.superadmin.view_all_sites=true;
+        s.perms.superadmin.export_data=true;
+        s.perms.superadmin.assign_investigators=true;
+        s.perms.superadmin.manage_users=true;
+        s.perms.superadmin.manage_sites=true;
       }
       /* Add permissions introduced later; keep anything an admin has already set */
       Object.entries(DEFAULT_ACCESS.perms).forEach(([r,defs])=>{
@@ -97,14 +108,45 @@ const sessionVal=k=>{try{return sessionStorage.getItem(k)||''}catch(e){return ''
 function session(){return{username:sessionVal('standhf_username'),name:sessionVal('standhf_user'),role:sessionVal('standhf_role')}}
 function currentUser(){const u=session().username;return accessStore().users.find(x=>x.username===u)||null}
 
-/* Super Admin can do everything; other roles follow their saved permissions */
+/* Super Admin and Central oversee the study; only allowed Site Investigators can enter or edit clinical forms */
 function can(perm){
   const r=session().role;
   if(!r)return false;
-  if(r==='superadmin')return true;
+  if(r==='superadmin'){
+    if(SUPER_NO.includes(perm))return false;
+    return true;
+  }
+  if(r==='central'){
+    if(perm==='view_all_sites'||perm==='export_data')return true;
+    return false;
+  }
   const perms=accessStore().perms[r]||{};
   return !!perms[perm];
 }
+
+/* Check if the current user is an authorized Site Investigator for adding patients */
+function canAddPatient(siteCode){
+  const r=session().role;
+  if(r!=='investigator')return false;
+  if(!can('add_patient'))return false;
+  const u=currentUser();
+  const allowed=u&&Array.isArray(u.sites)?u.sites:[];
+  if(!siteCode)return allowed.length>0;
+  return allowed.includes(siteCode);
+}
+
+/* Check if the current user is an authorized Site Investigator who can edit this patient's forms */
+function canEditPatient(p){
+  const r=session().role;
+  if(r!=='investigator')return false;
+  if(!can('enter_data'))return false;
+  if(!p)return true;
+  const u=currentUser();
+  const allowed=u&&Array.isArray(u.sites)?u.sites:[];
+  if(p.site&&!allowed.includes(p.site))return false;
+  return true;
+}
+
 /* Sites the signed-in user may see and enter data for */
 function mySites(){
   const s=accessStore();
@@ -112,10 +154,17 @@ function mySites(){
   const u=currentUser();
   return u?u.sites.slice():[];
 }
-/* Which records a user may see: Super Admin all; a Site Investigator only the records they created; others their sites */
+/* Which records a user may see: Super Admin & Central see all (oversight); Site Investigators see their assigned sites */
 function recordVisible(p){
   const r=session().role;
-  if(r==='superadmin')return true;
-  if(r==='investigator')return p.owner?p.owner===session().username:p.inv===session().name;
-  return mySites().includes(p.site)}
+  if(r==='superadmin'||r==='central')return true;
+  if(r==='investigator'){
+    const u=currentUser();
+    const allowed=u&&Array.isArray(u.sites)?u.sites:[];
+    if(p.site&&allowed.includes(p.site))return true;
+    if(p.owner&&p.owner===session().username)return true;
+    return false;
+  }
+  return mySites().includes(p.site);
+}
 const inScope=p=>recordVisible(p);

@@ -278,6 +278,77 @@ let currentInvTab = 'all';
 let currentCentralTab = 'all';
 let currentSuperTab = 'all';
 
+function applyHash(h){
+  const clean = (h || location.hash || '').replace(/^#/, '').toLowerCase();
+  if (!clean) return false;
+  let changed = false;
+
+  if (ROLE === 'investigator') {
+    if (['performance', 'clinical', 'gdmt', 'report', 'reports', 'analytics'].includes(clean)) {
+      if (currentInvTab !== 'clinical') { currentInvTab = 'clinical'; changed = true; }
+    } else if (['sites', 'league'].includes(clean)) {
+      if (currentInvTab !== 'sites') { currentInvTab = 'sites'; changed = true; }
+    } else if (['patients', 'patient'].includes(clean)) {
+      if (currentInvTab !== 'patients') { currentInvTab = 'patients'; changed = true; }
+    } else if (['upcoming', 'queue', 'visits'].includes(clean)) {
+      if (currentInvTab !== 'upcoming') { currentInvTab = 'upcoming'; changed = true; }
+    } else if (clean === 'all' || clean === 'overview') {
+      if (currentInvTab !== 'all') { currentInvTab = 'all'; changed = true; }
+    }
+  } else if (ROLE === 'superadmin') {
+    if (['performance', 'analytics', 'gdmt', 'report', 'reports'].includes(clean)) {
+      if (currentSuperTab !== 'analytics') { currentSuperTab = 'analytics'; changed = true; }
+    } else if (['sites', 'league'].includes(clean)) {
+      if (currentSuperTab !== 'league') { currentSuperTab = 'league'; changed = true; }
+    } else if (['teams', 'team', 'oversight', 'users'].includes(clean)) {
+      if (currentSuperTab !== 'teams') { currentSuperTab = 'teams'; changed = true; }
+    } else if (['queue', 'overdue', 'alerts'].includes(clean)) {
+      if (currentSuperTab !== 'queue') { currentSuperTab = 'queue'; changed = true; }
+    } else if (clean === 'all' || clean === 'overview') {
+      if (currentSuperTab !== 'all') { currentSuperTab = 'all'; changed = true; }
+    }
+  } else {
+    // central
+    if (['performance', 'analytics', 'gdmt', 'report', 'reports'].includes(clean)) {
+      if (currentCentralTab !== 'analytics') { currentCentralTab = 'analytics'; changed = true; }
+    } else if (['sites', 'league'].includes(clean)) {
+      if (currentCentralTab !== 'league') { currentCentralTab = 'league'; changed = true; }
+    } else if (['queue', 'overdue', 'alerts'].includes(clean)) {
+      if (currentCentralTab !== 'queue') { currentCentralTab = 'queue'; changed = true; }
+    } else if (clean === 'all' || clean === 'overview') {
+      if (currentCentralTab !== 'all') { currentCentralTab = 'all'; changed = true; }
+    }
+  }
+
+  // Smooth scroll and flash highlight to target report card if present
+  if (['gdmt', 'performance', 'sites', 'league'].includes(clean)) {
+    setTimeout(() => {
+      const targetId = clean === 'gdmt' ? 'cardGdmtReport' : (clean === 'sites' || clean === 'league') ? 'cardSitesReport' : 'cardPerfReport';
+      const el = document.getElementById(targetId) || document.getElementById(clean);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add('fld-flash');
+        setTimeout(() => el.classList.remove('fld-flash'), 1500);
+      }
+    }, 120);
+  }
+
+  return changed;
+}
+
+window.standhfSelectTab = (tabId) => {
+  if (ROLE === 'investigator') currentInvTab = tabId;
+  else if (ROLE === 'superadmin') currentSuperTab = tabId;
+  else currentCentralTab = tabId;
+  renderDashboard();
+  if (typeof window.standhfUpdateNav === 'function') window.standhfUpdateNav();
+};
+window.standhfApplyHash = (h) => {
+  applyHash(h);
+  renderDashboard();
+  if (typeof window.standhfUpdateNav === 'function') window.standhfUpdateNav();
+};
+
 /* ==========================================================================
    VIEW 1: SITE INVESTIGATOR DASHBOARD
    ========================================================================== */
@@ -287,14 +358,8 @@ function renderInvestigatorView(allPts){
   const newCount = mine.filter(matchesPeriod).length;
   const sites = [...new Set(mine.map(p => p.site).filter(Boolean))].sort();
 
-  // Upcoming visits needing attention
-  const upcoming = mine.map(p => {
-    const k = nextVisit(p);
-    if (!k) return null;
-    return { p, k, s: vstat(p, k), win: window_(p, k) };
-  }).filter(Boolean);
-  const rank = { Missed: 0, Overdue: 0, Due: 1, 'In Progress': 2, 'Not Started': 3, Completed: 4 };
-  upcoming.sort((a,b) => (rank[a.s] - rank[b.s]) || ((a.win ? a.win[0] : 0) - (b.win ? b.win[0] : 0)));
+  // Upcoming visits needing attention (all patients; completed ones sort last)
+  const upcoming = invPatientRows(allPts);
 
   const tabs = [
     { id: 'all', label: 'Overview', icon: 'dashboard' },
@@ -326,7 +391,7 @@ function renderInvestigatorView(allPts){
           <div class="card-head"><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
           <div class="plist" id="invPlist">${renderInvestigatorList(upcoming)}</div>
         </div>
-        <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming[0])}</div>
+        <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming.find(u => u.p.id === invSelectedId) || upcoming[0])}</div>
       </section>
     `;
   } else if (currentInvTab === 'upcoming') {
@@ -347,7 +412,7 @@ function renderInvestigatorView(allPts){
     bodyHtml = `
       <div class="dash-fade-in">
         <div class="dash-grid">
-          <section class="card">
+          <section class="card" id="cardPerfReport">
             <div class="card-head"><h2>Clinical Performance</h2><small>From your verified patient data</small></div>
             <div id="perfMetrics">
               <div class="metric"><span>Follow-up visits within protocol window</span><b class="${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b></div>
@@ -360,12 +425,23 @@ function renderInvestigatorView(allPts){
             <div class="card-head"><h2>Recruitment Trajectory</h2><small>New patients per month, last 6 months</small></div>
             <svg class="chart" id="enrolSvg" viewBox="0 0 600 200" role="img" aria-label="New patients per month">${renderEnrolmentSvg(mine)}</svg>
           </section>
+          <!-- GDMT Foundational Pillars Breakdown -->
+          <section class="card" id="cardGdmtReport" style="grid-column: 1 / -1;">
+            <div class="card-head">
+              <div>
+                <h2>GDMT Foundational Pillars Coverage Report</h2>
+                <small>Quadruple therapy optimization across your patients (ARNI, Beta Blocker, MRA, SGLT2i)</small>
+              </div>
+              <span class="badge" style="background:var(--primary-soft);color:var(--primary);padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600">Protocol Target: &ge;70%</span>
+            </div>
+            ${DashCharts.gdmtBreakdown(mine)}
+          </section>
         </div>
       </div>
     `;
   } else if (currentInvTab === 'sites') {
     bodyHtml = `
-      <section class="card dash-fade-in">
+      <section class="card dash-fade-in" id="cardSitesReport">
         <div class="card-head"><h2>My Assigned Sites</h2><small>Cardiology centres assigned to you</small></div>
         <div class="table-wrap">
           <table>
@@ -390,10 +466,10 @@ function renderInvestigatorView(allPts){
     bodyHtml = `
       <div class="dash-fade-in">
         ${DashUI.kpiGrid([
-          { icon: 'group', value: st.n, label: 'My patients', sub: 'All patients you entered', iconBg: 'brand' },
-          { icon: 'person_add', value: newCount, label: 'New patients', sub: 'Consented in selected period', tag: 'New', tagType: 'info' },
-          { icon: 'biotech', value: st.b, label: 'Baseline complete', sub: `${st.b} of ${st.n} enrolled`, tag: `${pct(st.b, st.n) ?? 0}%`, tagType: pct(st.b, st.n) >= 80 ? 'good' : '', iconBg: 'success' },
-          { icon: 'event_upcoming', value: st.overdueCount + st.dueCount, label: 'Follow-ups due', sub: `${st.overdueCount} overdue/missed`, tag: st.overdueCount ? 'Action' : 'Clear', tagType: st.overdueCount ? 'warn' : 'good', alert: !!st.overdueCount, iconBg: st.overdueCount ? 'error' : 'warn' },
+          { icon: 'group', value: st.n, label: 'My patients', sub: 'All patients you entered', iconBg: 'brand', href: '../records/' },
+          { icon: 'person_add', value: newCount, label: 'New patients', sub: 'Consented in selected period', tag: 'New', tagType: 'info', href: '../records/?new=1' },
+          { icon: 'biotech', value: st.b, label: 'Baseline complete', sub: `${st.b} of ${st.n} enrolled`, tag: `${pct(st.b, st.n) ?? 0}%`, tagType: pct(st.b, st.n) >= 80 ? 'good' : '', iconBg: 'success', clickHash: 'performance' },
+          { icon: 'event_upcoming', value: st.overdueCount + st.dueCount, label: 'Follow-ups due', sub: `${st.overdueCount} overdue/missed`, tag: st.overdueCount ? 'Action' : 'Clear', tagType: st.overdueCount ? 'warn' : 'good', alert: !!st.overdueCount, iconBg: st.overdueCount ? 'error' : 'warn', dashtab: 'upcoming' },
           { icon: 'cloud_sync', value: st.pendingSync, label: 'Pending sync', sub: st.pendingSync ? 'Saved on this device' : 'All synced', tag: st.pendingSync ? 'Pending' : 'Synced', tagType: st.pendingSync ? 'warn' : 'good' }
         ])}
 
@@ -414,7 +490,7 @@ function renderInvestigatorView(allPts){
             <div class="card-head"><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
             <div class="plist" id="invPlist">${renderInvestigatorList(upcoming)}</div>
           </div>
-          <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming[0])}</div>
+          <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming.find(u => u.p.id === invSelectedId) || upcoming[0])}</div>
           <div class="card">
             <div class="card-head"><h2>Upcoming visits</h2><small>Next visit window per patient</small></div>
             <div class="upc" id="invUpcoming">${renderInvestigatorUpcoming(upcoming)}</div>
@@ -482,6 +558,18 @@ function renderEnrolmentSvg(pts){
 }
 
 let invSelectedId = null;
+// Shared row builder for the investigator patient list, detail pane and click handler
+function invPatientRows(allPts){
+  const mine = allPts.filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME);
+  const rows = mine.map(p => {
+    const k = nextVisit(p);
+    if (!k) return { p, k: null, s: 'Completed', win: null };
+    return { p, k, s: vstat(p, k), win: window_(p, k) };
+  });
+  const rank = { Missed: 0, Overdue: 0, Due: 1, 'In Progress': 2, 'Not Started': 3, Completed: 4 };
+  return rows.sort((a,b) => (rank[a.s] - rank[b.s]) || ((a.win ? a.win[0] : 0) - (b.win ? b.win[0] : 0)));
+}
+
 function renderInvestigatorList(upcoming){
   if (!upcoming.length) return '<div class="empty"><i class="ms">groups</i>No patients yet. Add one to start.</div>';
   const q = searchQuery.toLowerCase();
@@ -525,8 +613,8 @@ function renderInvestigatorUpcoming(upcoming){
   if (!items.length) return '<div class="empty"><i class="ms">task_alt</i>All visits are complete.</div>';
   return items.map(u => {
     const w = u.win ? fmtShortD(u.win[0]) + ' – ' + fmtShortD(u.win[1]) : 'Baseline visit';
-    return `<button type="button" class="upc-item ${u.s.split(' ')[0]}" data-invid="${esc(u.p.id)}" style="border:0;text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%">
-      <i></i><span><b>${esc(u.p.id)} · ${visitName(u.k)}</b><small>${w}</small></span><span class="chip ${chipCls(u.s)}">${u.s}</span></button>`;
+    return `<a class="upc-item ${u.s.split(' ')[0]}" href="${ECRF}?patient=${encodeURIComponent(u.p.id)}&tab=${u.k}" style="text-decoration:none;color:inherit;font:inherit">
+      <i></i><span><b>${esc(u.p.id)} · ${visitName(u.k)}</b><small>${w}</small></span><span class="chip ${chipCls(u.s)}">${u.s}</span></a>`;
   }).join('');
 }
 
@@ -615,22 +703,23 @@ function renderCentralView(allPts){
   `;
 
   const kpisHtml = DashUI.kpiGrid([
-    { icon: 'groups', value: st.n, label: 'Enrolled Patients', sub: `Registry total: ${totalAll.n}`, tag: 'Live', tagType: 'good', iconBg: 'brand' },
+    { icon: 'groups', value: st.n, label: 'Enrolled Patients', sub: `Registry total: ${totalAll.n}`, tag: 'Live', tagType: 'good', iconBg: 'brand', href: '../records/' },
     {
       icon: 'domain',
       value: `${reportingSitesCount} / ${totalSitesInScope}`,
       label: 'Reporting Centres',
       sub: `${reportingSitesCount} of ${totalSitesInScope} centres with enrolled patients`,
       tag: `${pct(reportingSitesCount, totalSitesInScope) ?? 0}% Active`,
-      tagType: reportingSitesCount === totalSitesInScope ? 'good' : 'info'
+      tagType: reportingSitesCount === totalSitesInScope ? 'good' : 'info',
+      clickHash: 'sites'
     },
-    { icon: 'biotech', value: st.b, label: 'Baseline Complete', sub: `${st.b} verified complete`, tag: `${pct(st.b,st.n)??0}%`, tagType: st.n && pct(st.b,st.n)>=80 ? 'good' : '', iconBg: 'success' },
-    { icon: 'event_available', value: st.ontimeRate != null ? `${st.ontimeRate}%` : '–', label: 'Follow-up Adherence', sub: `${st.overdueCount} overdue/missed visits`, tag: st.ontimeRate >= 80 ? 'Good' : 'Review', tagType: st.ontimeRate >= 80 ? 'good' : 'warn', iconBg: 'warn' },
-    { icon: 'medication', value: st.fourPillars, label: '4-Pillar GDMT (4/4)', sub: `${st.gdmtRate??0}% optimized therapy`, tag: `${st.gdmtRate??0}%`, tagType: st.gdmtRate >= 70 ? 'good' : '', valueColor: 'var(--brand-magenta)' }
+    { icon: 'biotech', value: st.b, label: 'Baseline Complete', sub: `${st.b} verified complete`, tag: `${pct(st.b,st.n)??0}%`, tagType: st.n && pct(st.b,st.n)>=80 ? 'good' : '', iconBg: 'success', clickHash: 'performance' },
+    { icon: 'event_available', value: st.ontimeRate != null ? `${st.ontimeRate}%` : '–', label: 'Follow-up Adherence', sub: `${st.overdueCount} overdue/missed visits`, tag: st.ontimeRate >= 80 ? 'Good' : 'Review', tagType: st.ontimeRate >= 80 ? 'good' : 'warn', iconBg: 'warn', clickHash: 'performance' },
+    { icon: 'medication', value: st.fourPillars, label: '4-Pillar GDMT (4/4)', sub: `${st.gdmtRate??0}% optimized therapy`, tag: `${st.gdmtRate??0}%`, tagType: st.gdmtRate >= 70 ? 'good' : '', valueColor: 'var(--brand-magenta)', clickHash: 'gdmt' }
   ]);
 
   const leagueHtml = `
-    <section class="card">
+    <section class="card" id="cardSitesReport">
       <div class="card-head">
         <div>
           <h2>Site Performance &amp; League Table</h2>
@@ -665,7 +754,7 @@ function renderCentralView(allPts){
       </section>
 
       <!-- GDMT 4 Foundational Pillars Breakdown -->
-      <section class="card" id="gdmt">
+      <section class="card" id="cardGdmtReport">
         <div class="card-head">
           <h2>GDMT 4 Foundational Pillars (DSH-03)</h2>
           <small>First pillar is ARNI (Sacubitril + Valsartan), not ACE-I/ARB</small>
@@ -674,7 +763,7 @@ function renderCentralView(allPts){
       </section>
 
       <!-- Clinical Trajectories & Functional Outcomes (DSH-04) -->
-      <section class="card" id="performance">
+      <section class="card" id="cardPerfReport">
         <div class="card-head">
           <h2>Clinical Outcomes &amp; Trajectories (DSH-04)</h2>
           <small>Longitudinal NYHA class, 1MSTS functional capacity &amp; LVEF recovery</small>
@@ -834,19 +923,21 @@ function renderSuperAdminView(allPts){
   const totalSites = s.sites.length;
 
   const kpisHtml = DashUI.kpiGrid([
-    { icon: 'group', value: st.n, label: 'Total Registry Patients', sub: 'All hospital sites', iconBg: 'brand' },
+    { icon: 'group', value: st.n, label: 'Total Registry Patients', sub: 'All hospital sites', iconBg: 'brand', href: '../records/' },
     {
       icon: 'domain',
       value: `${activeSites} / ${totalSites}`,
       label: 'Active / Registered Sites',
       sub: `${activeSites} of ${totalSites} centres actively enrolling`,
       tag: `${pct(activeSites, totalSites) ?? 0}% Active`,
-      tagType: activeSites === totalSites ? 'good' : 'info'
+      tagType: activeSites === totalSites ? 'good' : 'info',
+      clickHash: 'sites'
     },
-    { icon: 'clinical_notes', value: invUsers.length, label: 'Site Investigators', sub: `${invActive} active clinicians`, tag: `${invActive} Active`, tagType: 'good', iconBg: 'success' },
-    { icon: 'supervisor_account', value: centralUsers.length, label: 'Central Monitors', sub: 'Read-only governance', tag: 'Directorate', tagType: 'info' },
-    { icon: 'schedule', value: st.ontimeRate != null ? `${st.ontimeRate}%` : '–', label: 'Follow-up Adherence', sub: 'Protocol adherence', tag: st.ontimeRate >= 80 ? 'Good' : 'Review', tagType: st.ontimeRate >= 80 ? 'good' : 'warn' },
-    { icon: 'event_busy', value: st.overdueCount, label: 'Overdue Follow-ups', sub: 'Study-wide alerts', tag: `${st.overdueCount}`, tagType: st.overdueCount ? 'warn' : 'good', alert: !!st.overdueCount, iconBg: st.overdueCount ? 'error' : 'warn' }
+    { icon: 'clinical_notes', value: invUsers.length, label: 'Site Investigators', sub: `${invActive} active clinicians`, tag: `${invActive} Active`, tagType: 'good', iconBg: 'success', dashtab: 'teams' },
+    { icon: 'supervisor_account', value: centralUsers.length, label: 'Central Monitors', sub: 'Read-only governance', tag: 'Directorate', tagType: 'info', dashtab: 'teams' },
+    { icon: 'schedule', value: st.ontimeRate != null ? `${st.ontimeRate}%` : '–', label: 'Follow-up Adherence', sub: 'Protocol adherence', tag: st.ontimeRate >= 80 ? 'Good' : 'Review', tagType: st.ontimeRate >= 80 ? 'good' : 'warn', clickHash: 'performance' },
+    { icon: 'medication', value: st.fourPillars, label: '4-Pillar GDMT (4/4)', sub: `${st.gdmtRate??0}% quad therapy`, tag: `${st.gdmtRate??0}%`, tagType: st.gdmtRate >= 70 ? 'good' : '', valueColor: 'var(--brand-magenta)', clickHash: 'gdmt' },
+    { icon: 'event_busy', value: st.overdueCount, label: 'Overdue Follow-ups', sub: 'Study-wide alerts', tag: `${st.overdueCount}`, tagType: st.overdueCount ? 'warn' : 'good', alert: !!st.overdueCount, iconBg: st.overdueCount ? 'error' : 'warn', dashtab: 'queue' }
   ]);
 
   const teamsHtml = DashUI.twoTeamsGrid({
@@ -860,7 +951,7 @@ function renderSuperAdminView(allPts){
   const analyticsHtml = `
     <div class="dash-grid">
       <!-- 1. Completion by site (Grouped Bars) -->
-      <section class="card">
+      <section class="card" id="cardPerfReport">
         <div class="card-head">
           <h2>Completion by Site</h2>
           <small>Share of patients with each visit complete (Baseline, 3M, 6M)</small>
@@ -894,11 +985,23 @@ function renderSuperAdminView(allPts){
         </div>
         ${DashCharts.hbars(teamBars)}
       </section>
+
+      <!-- 5. GDMT 4 Foundational Pillars Coverage Report -->
+      <section class="card" id="cardGdmtReport" style="grid-column: 1 / -1;">
+        <div class="card-head">
+          <div>
+            <h2>GDMT 4 Foundational Pillars Coverage Report</h2>
+            <small>Quadruple therapy optimization across all participating cardiology centres</small>
+          </div>
+          <span class="badge" style="background:var(--primary-soft);color:var(--primary);padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600">Protocol Target: &ge;70%</span>
+        </div>
+        ${DashCharts.gdmtBreakdown(allPts)}
+      </section>
     </div>
   `;
 
   const leagueHtml = `
-    <section class="card">
+    <section class="card" id="cardSitesReport">
       <div class="card-head">
         <div>
           <h2>Multi-Site Performance League Table</h2>
@@ -1115,20 +1218,22 @@ function attachEvents(){
     };
   }
 
-  // Investigator patient selection
-  document.querySelectorAll('[data-invid]').forEach(btn => {
-    btn.onclick = () => {
+  // Investigator patient selection (delegated on the persistent #dashRoot, since
+  // the list rows are re-rendered on every selection and lose direct handlers)
+  const dashRootEl = $('dashRoot');
+  if (dashRootEl) {
+    dashRootEl.onclick = e => {
+      const btn = e.target.closest('[data-invid]');
+      if (!btn || !dashRootEl.contains(btn)) return;
       invSelectedId = btn.dataset.invid;
-      const allPts = loadData();
-      const mine = allPts.filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME);
-      const upcoming = mine.map(p => ({ p, k: nextVisit(p), s: vstat(p, nextVisit(p)||'b'), win: window_(p, nextVisit(p)||'b') })).filter(Boolean);
+      const upcoming = invPatientRows(loadData());
       const selU = upcoming.find(x => x.p.id === invSelectedId) || upcoming[0];
       const plistEl = $('invPlist');
       const detailEl = $('invDetail');
       if (plistEl) plistEl.innerHTML = renderInvestigatorList(upcoming);
       if (detailEl) detailEl.innerHTML = renderInvestigatorDetail(selU);
     };
-  });
+  }
 
   // Central Team Hierarchy Filters
   const selZone = $('selZone');
@@ -1274,8 +1379,16 @@ function attachEvents(){
   }
 }
 
-// Initial Render
+// Initial Render with Hash Routing
+applyHash();
 renderDashboard();
+
+// Listen to hash changes (from sidebar or links anywhere)
+window.addEventListener('hashchange', () => {
+  applyHash();
+  renderDashboard();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 })();
 </script>

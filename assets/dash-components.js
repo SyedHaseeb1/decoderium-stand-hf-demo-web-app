@@ -77,9 +77,17 @@
       const tag = item.tag ? `<span class="tag ${item.tagType || ''}">${item.tag}</span>` : '';
       const icoCls = item.iconBg ? `ico ${item.iconBg}` : 'ico';
       const valStyle = item.alert ? 'color:var(--error)' : item.valueColor ? `color:${item.valueColor}` : '';
+      const href = item.href || (item.clickHash ? `#${item.clickHash}` : null);
+      const dashtab = item.dashtab;
+      let clickAttr = '';
+      if(href){
+        clickAttr = `role="link" tabindex="0" onclick="location.href='${href}'" style="cursor:pointer;" title="Click to view ${esc(label)} report"`;
+      } else if(dashtab){
+        clickAttr = `role="button" tabindex="0" onclick="if(window.standhfSelectTab)window.standhfSelectTab('${dashtab}');else location.hash='#${dashtab}'" style="cursor:pointer;" title="Click to view ${esc(label)}"`;
+      }
 
       return `
-        <div class="kpi">
+        <div class="kpi${clickAttr ? ' kpi-clickable' : ''}" ${clickAttr}>
           <div class="top">
             <span class="${icoCls}"><i class="ms">${icon}</i></span>
             ${tag}
