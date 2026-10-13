@@ -1018,14 +1018,256 @@ function renderCentralOverdueQueue(pts){
 
 
 /* ==========================================================================
-   VIEW 3: SUPER ADMIN DASHBOARD
+   SUPER ADMIN OVERVIEW & PROFILE DRILL-DOWN HELPERS
+   ========================================================================== */
+let adminProfileUsername = null;
+
+/* Grouped bars: rows = [{label: siteCode, values: [b%, m3%, m6%]}] */
+function groupedBars(rows){
+  if (!rows.length) return '<div class="empty"><i class="ms">bar_chart</i>No sites yet.</div>';
+  const W = 620, H = 240, pad = 36, top = 16, gw = (W - pad - 10) / rows.length, bw = Math.min(22, gw / 4);
+  const cols = ['var(--primary)', 'var(--success)', 'var(--warning)'];
+  let g = '';
+  [0, 25, 50, 75, 100].forEach(v => {
+    const y = H - pad - (H - pad - top) * v / 100;
+    g += `<line x1="${pad}" x2="${W - 10}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pad - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${v}%</text>`;
+  });
+  rows.forEach((r, i) => {
+    const x0 = pad + i * gw + (gw - 3 * bw - 8) / 2;
+    r.values.forEach((v, j) => {
+      const h = (H - pad - top) * (v || 0) / 100;
+      g += `<rect x="${x0 + j * (bw + 4)}" y="${H - pad - h}" width="${bw}" height="${h}" rx="5" fill="${cols[j]}"><title>${esc(r.label)}: ${v == null ? '–' : v + '%'}</title></rect>`;
+    });
+    g += `<text x="${pad + i * gw + gw / 2}" y="${H - pad + 18}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${esc(r.label)}</text>`;
+  });
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Completion by site">${g}</svg>
+    <div class="legend-row"><span><i style="background:var(--primary)"></i>Baseline</span><span><i style="background:var(--success)"></i>3 months</span><span><i style="background:var(--warning)"></i>6 months</span></div>`;
+}
+
+/* Horizontal bars: items = [{label, sub, value, color}] */
+function hbars(items){
+  if (!items.length) return '<div class="empty"><i class="ms">groups</i>No investigators yet.</div>';
+  const max = Math.max(1, ...items.map(i => i.value));
+  return `<div class="hbars">${items.map(i => `<div class="hbar-row">
+    <div class="hbar-label"><b>${esc(i.label)}</b><small>${esc(i.sub || '')}</small></div>
+    <div class="hbar-track" role="img" aria-label="${esc(i.label)}: ${i.value} patients"><i style="width:${100 * i.value / max}%;background:${i.color}"></i></div>
+    <span class="hbar-val">${i.value}</span></div>`).join('')}</div>`;
+}
+
+/* Super Admin: Single Investigator Profile Dashboard Drill-Down */
+function renderInvestigatorProfileView(pu, allPts){
+  const mine = allPts.filter(p => p.inv === pu.name || p.owner === pu.username);
+  const st = aggregateStats(mine);
+  const rows = mine.map(p => `<tr>
+    <td><b>${esc(p.id)}</b><div class="muted" style="font-size:12px">${esc(p.name || 'Patient')}</div></td>
+    <td><b>${esc(p.site)}</b></td>
+    <td><span class="chip ${chipCls(vstat(p,'b'))}">${vstat(p,'b')}</span></td>
+    <td><span class="chip ${chipCls(vstat(p,'m3'))}">${vstat(p,'m3')}</span></td>
+    <td><span class="chip ${chipCls(vstat(p,'m6'))}">${vstat(p,'m6')}</span></td>
+    <td class="num">${(p.audit || []).length}</td>
+    <td><a class="btn" href="${ECRF}?patient=${encodeURIComponent(p.id)}" style="padding:4px 8px;font-size:12px"><i class="ms" style="font-size:15px">open_in_new</i>View</a></td>
+  </tr>`).join('');
+
+  const activity = mine.flatMap(p => (p.audit || []).map(a => ({ ...a, pid: p.id }))).sort((a,b) => (b.at || 0) - (a.at || 0)).slice(0, 10);
+
+  const overdueList = [];
+  mine.forEach(p => {
+    ['m3','m6'].forEach(k => {
+      const s = vstat(p, k);
+      if (s === 'Overdue' || s === 'Missed') {
+        const win = window_(p, k);
+        const daysOver = win ? Math.round((new Date() - win[1]) / DAY) : 0;
+        overdueList.push({ p, k, s, win, daysOver });
+      }
+    });
+  });
+
+  return `
+    <div style="margin-bottom:16px">
+      <button type="button" class="btn" id="btnAdminProfileBack"><i class="ms">arrow_back</i>Back to Study Overview</button>
+    </div>
+
+    <!-- Investigator Profile Header Card -->
+    <section class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="avatar" style="width:48px;height:48px;font-size:18px">${initials(pu.name)}</span>
+          <div>
+            <h2 style="font-size:20px;margin:0">${esc(pu.name)}</h2>
+            <div class="muted" style="font-size:13px"><code>${esc(pu.username)}</code> · Assigned: ${pu.sites?.join(', ') || 'No sites'}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="chip ${pu.active?'In':'Not'}">${pu.active?'Active Clinician':'Inactive'}</span>
+          <button type="button" class="btn" data-export-inv="${esc(pu.username)}"><i class="ms">download</i>Export CSV</button>
+        </div>
+      </div>
+
+      <div class="kpis" style="margin-top:16px">
+        <div class="kpi">
+          <div class="top"><span class="ico"><i class="ms">group</i></span></div>
+          <b>${st.n}</b><span>Patients</span><small>Entered by this investigator</small>
+        </div>
+        <div class="kpi">
+          <div class="top"><span class="ico"><i class="ms">biotech</i></span><span class="tag ${pct(st.b,st.n)>=80?'good':''}">${pct(st.b,st.n)??0}%</span></div>
+          <b>${st.b}</b><span>Baseline Complete</span><small>${st.b} of ${st.n} verified</small>
+        </div>
+        <div class="kpi">
+          <div class="top"><span class="ico"><i class="ms">event_busy</i></span><span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount}</span></div>
+          <b>${st.overdueCount}</b><span>Follow-ups Overdue</span><small>Outside window</small>
+        </div>
+        <div class="kpi">
+          <div class="top"><span class="ico"><i class="ms">schedule</i></span><span class="tag ${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</span></div>
+          <b>${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b><span>On-Time Visits</span><small>Protocol adherence</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- Investigator Patient List -->
+    <section class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <h2>Patients Entered (${mine.length})</h2>
+        <small>Visit status and record modification count</small>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Patient</th><th>Site</th><th>Baseline</th><th>3 Months</th><th>6 Months</th><th class="num">Audit Changes</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="7" class="muted">No patients entered yet by this investigator.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Investigator Overdue Follow-ups -->
+    <section class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <h2>Overdue Follow-ups (${overdueList.length})</h2>
+        <small>3 and 6 month visits past protocol window</small>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Study ID</th><th>Site</th><th>Visit</th><th>Expected Window</th><th>Status</th><th>Contact</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            ${overdueList.map(o => `<tr>
+              <td><b>${esc(o.p.id)}</b></td>
+              <td><b>${esc(o.p.site)}</b></td>
+              <td><b>${o.k === 'm3' ? 'Month 3' : 'Month 6'}</b></td>
+              <td><small>${o.win ? fmtShortD(o.win[0]) + ' – ' + fmtShortD(o.win[1]) : '–'}</small></td>
+              <td><span class="chip Overdue">${o.s} (+${o.daysOver}d)</span></td>
+              <td><code>${esc(o.p.contact || '–')}</code></td>
+              <td><a class="btn" href="${ECRF}?patient=${encodeURIComponent(o.p.id)}&tab=${o.k}" style="padding:4px 8px;font-size:12px"><i class="ms" style="font-size:15px">visibility</i>Inspect</a></td>
+            </tr>`).join('') || '<tr><td colspan="7" class="muted" style="text-align:center;padding:20px"><i class="ms" style="font-size:22px;vertical-align:-4px;color:var(--success)">task_alt</i> No overdue follow-ups for this investigator.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Recent Change Activity Audit -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Recent Clinical Activity Audit</h2>
+        <small>Last 10 field modifications recorded for this investigator's patients</small>
+      </div>
+      ${activity.length ? `<div class="table-wrap"><table>
+        <thead><tr><th>Timestamp</th><th>Patient</th><th>Field Modified</th><th>Modification</th></tr></thead>
+        <tbody>
+          ${activity.map(a => `<tr>
+            <td style="font-size:12px;white-space:nowrap">${esc(a.t || '')}</td>
+            <td><b>${esc(a.pid)}</b></td>
+            <td><code>${esc(a.f || '')}</code></td>
+            <td>${a.o ? esc(a.o) + ' ➔ ' : ''}<b>${esc(a.n || '')}</b></td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>` : '<div class="empty"><i class="ms">history</i>No recent change activity logged yet.</div>'}
+    </section>
+  `;
+}
+
+function exportSingleInvestigator(username){
+  const s = accessStore();
+  const u = s.users.find(x => x.username === username);
+  if (!u) return;
+  const allPts = loadData();
+  const mine = allPts.filter(p => p.inv === u.name || p.owner === u.username);
+  const header = ['Study_ID','Site','Investigator','Patient_Name','Contact','Consent_Date','Age','Sex','Visit','Visit_Status','Visit_Date','NYHA','1MSTS','LVEF','GDMT_Pillars'];
+  const rows = [header];
+  const visitLabels = { b: 'Baseline', m3: 'Month 3', m6: 'Month 6' };
+  mine.forEach(p => {
+    ['b','m3','m6'].forEach(k => {
+      const v = p.v?.[k] || {};
+      rows.push([
+        p.id, p.site, u.name, p.name || '', p.contact || '', p.consent || '', p.age || '', p.sex || '',
+        visitLabels[k], vstat(p, k), v.date || '', v.nyha || '', v.msts != null ? v.msts : '', v.lvef != null ? v.lvef : '', act(v)
+      ]);
+    });
+  });
+  downloadCsv(rows, `stand-hf-inv-${u.username}`, `Investigator ${u.name}`);
+}
+
+function exportAllInvestigatorsSummary(){
+  const s = accessStore();
+  const allPts = loadData();
+  const header = ['Investigator','Username','Sites','Status','Total_Patients','Baseline_Complete','3M_Complete','6M_Complete','OnTime_Adherence_Pct','Overdue_Count'];
+  const rows = [header];
+  s.users.filter(u => u.role === 'investigator').forEach(u => {
+    const uPts = allPts.filter(p => p.inv === u.name || p.owner === u.username);
+    const uSt = aggregateStats(uPts);
+    rows.push([
+      u.name, u.username, u.sites?.join('; ') || '', u.active ? 'Active' : 'Inactive',
+      uSt.n, uSt.b, uSt.m3, uSt.m6, uSt.ontimeRate != null ? uSt.ontimeRate : '', uSt.overdueCount
+    ]);
+  });
+  downloadCsv(rows, 'stand-hf-all-investigators-summary', 'All Site Investigators Summary');
+}
+
+
+/* ==========================================================================
+   VIEW 3: SUPER ADMIN DASHBOARD (MERGED EXECUTIVE OVERVIEW)
    ========================================================================== */
 function renderSuperAdminView(allPts){
   const s = accessStore();
+  if (adminProfileUsername) {
+    const pu = s.users.find(u => u.username === adminProfileUsername);
+    if (pu) return renderInvestigatorProfileView(pu, allPts);
+    adminProfileUsername = null;
+  }
+
   const st = aggregateStats(allPts);
   const centralUsers = s.users.filter(u => u.role === 'central');
   const invUsers = s.users.filter(u => u.role === 'investigator');
+  const invActive = invUsers.filter(u => u.active).length;
   const auditLogs = centralAuditLog();
+
+  // Completion by site (grouped bars: Baseline, 3M, 6M)
+  const siteBars = s.sites.map(x => {
+    const sPts = allPts.filter(p => p.site === x.code);
+    const n = sPts.length;
+    return {
+      label: x.code,
+      values: [
+        pct(sPts.filter(p => p.v?.b?.done).length, n) || 0,
+        pct(sPts.filter(p => p.v?.m3?.done).length, n) || 0,
+        pct(sPts.filter(p => p.v?.m6?.done).length, n) || 0
+      ]
+    };
+  });
+
+  // Patients by investigator (horizontal ranking bars)
+  const teamBars = invUsers.map((u, i) => {
+    const uPts = allPts.filter(p => p.inv === u.name || p.owner === u.username);
+    const uSt = aggregateStats(uPts);
+    return {
+      label: u.name,
+      sub: `${u.sites?.join(', ') || 'No sites'} · ${uSt.ontimeRate != null ? uSt.ontimeRate + '% on-time' : 'No visits'}`,
+      value: uPts.length,
+      color: ['#1a5fb4','#1e7a4c','#9a5b00','#b3261e','#6b4fbb','#0f7c8c','#7a5c3e'][i % 7]
+    };
+  });
 
   return `
     <div class="hello">
@@ -1034,7 +1276,7 @@ function renderSuperAdminView(allPts){
           <h1 id="welcome">Super Admin Study Executive Dashboard</h1>
           <span class="tag" style="background:#1b1d22;color:#fff;font-size:12px;padding:3px 10px"><i class="ms" style="font-size:14px;vertical-align:-2px">shield</i> Super Admin</span>
         </div>
-        <p id="meta">System administrator oversight across ~100 Cardiology Sites, Central Monitoring Team &amp; Site Investigators</p>
+        <p id="meta">Unified executive oversight across ~100 Cardiology Sites, Central Monitoring Team &amp; Site Investigators</p>
       </div>
       <div class="actions">
         <a class="btn primary" href="${ADMIN}#users"><i class="ms">manage_accounts</i>Manage Teams</a>
@@ -1051,19 +1293,23 @@ function renderSuperAdminView(allPts){
       </div>
       <div class="kpi">
         <div class="top"><span class="ico"><i class="ms">domain</i></span></div>
-        <b>${s.sites.length}</b><span>Participating Sites</span><small>Target: ~100 sites</small>
+        <b>${s.sites.length} <small style="font-size:14px;color:var(--ink-3)">/ ~100</small></b><span>Participating Sites</span><small>National network</small>
       </div>
       <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">clinical_notes</i></span></div>
-        <b>${invUsers.filter(u=>u.active).length}</b><span>Site Investigators</span><small>${invUsers.length} total registered</small>
+        <div class="top"><span class="ico"><i class="ms">clinical_notes</i></span><span class="tag good">${invActive} Active</span></div>
+        <b>${invUsers.length}</b><span>Site Investigators</span><small>${invActive} active clinicians</small>
       </div>
       <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">supervisor_account</i></span></div>
-        <b>${centralUsers.filter(u=>u.active).length}</b><span>Central Team Monitors</span><small>${centralUsers.length} total registered</small>
+        <div class="top"><span class="ico"><i class="ms">supervisor_account</i></span><span class="tag info">Directorate</span></div>
+        <b>${centralUsers.length}</b><span>Central Monitors</span><small>Read-only governance</small>
+      </div>
+      <div class="kpi">
+        <div class="top"><span class="ico"><i class="ms">schedule</i></span><span class="tag ${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</span></div>
+        <b>${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b><span>Follow-up Adherence</span><small>Protocol adherence</small>
       </div>
       <div class="kpi">
         <div class="top"><span class="ico"><i class="ms">event_busy</i></span><span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount}</span></div>
-        <b>${st.overdueCount}</b><span>Overdue Follow-ups</span><small>Study-wide alerts</small>
+        <b style="${st.overdueCount?'color:var(--error)':''}">${st.overdueCount}</b><span>Overdue Follow-ups</span><small>Study-wide alerts</small>
       </div>
     </section>
 
@@ -1074,9 +1320,9 @@ function renderSuperAdminView(allPts){
         <div class="card-head">
           <div>
             <h2>Central Monitoring Directorate</h2>
-            <small>Study oversight, data quality monitors &amp; research export authority</small>
+            <small>Study leadership &amp; data monitors ("The boss after super admin") · Read-only with full export authority</small>
           </div>
-          <a class="btn" href="${ADMIN}#users" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">add</i>Add Central User</a>
+          <a class="btn" href="${ADMIN}#users" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">manage_accounts</i>Manage</a>
         </div>
         <div class="table-wrap">
           <table>
@@ -1097,12 +1343,14 @@ function renderSuperAdminView(allPts){
         </div>
 
         <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
-          <div style="font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:8px"><i class="ms" style="font-size:14px;vertical-align:-2px">receipt_long</i> Central Team Monitoring Audit Log (Latest 5 Events):</div>
+          <div style="font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:8px">
+            <i class="ms" style="font-size:14px;vertical-align:-2px">receipt_long</i> Central Team Monitoring &amp; Export Audit Log (Latest 5 Events):
+          </div>
           <div style="font-size:12px;color:var(--ink-2)">
             ${auditLogs.slice(0, 5).map(a => `
-              <div style="padding:6px 0;border-bottom:1px dashed var(--line);display:flex;justify-content:space-between">
-                <span><b>${esc(a.name)}:</b> ${esc(a.action)} — <span class="muted">${esc(a.details)}</span></span>
-                <span class="muted">${esc(a.t)}</span>
+              <div style="padding:6px 0;border-bottom:1px dashed var(--line);display:flex;justify-content:space-between;align-items:center">
+                <span><b>${esc(a.name)}:</b> <span class="tag info" style="font-size:10px;padding:1px 6px">${esc(a.action)}</span> ${esc(a.details)}</span>
+                <span class="muted" style="font-size:11px;white-space:nowrap">${esc(a.t)}</span>
               </div>
             `).join('') || '<div class="muted">No central export or audit actions recorded yet.</div>'}
           </div>
@@ -1114,29 +1362,42 @@ function renderSuperAdminView(allPts){
         <div class="card-head">
           <div>
             <h2>Site Investigators Team</h2>
-            <small>Frontline clinicians entering patient data at cardiology centres</small>
+            <small>Frontline cardiologists entering patient visits at hospital sites · Click to drill into profile</small>
           </div>
-          <a class="btn" href="${ADMIN}#users" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">add</i>Add Investigator</a>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn" id="btnExportAllInvs" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">download</i>CSV</button>
+            <a class="btn" href="${ADMIN}#users" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">add</i>Add</a>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;margin-bottom:12px;padding:0 4px">
+          <div><b style="font-size:18px;line-height:1">${invUsers.length}</b><div class="muted" style="font-size:11px">Total</div></div>
+          <div><b style="font-size:18px;line-height:1;color:var(--success)">${invActive}</b><div class="muted" style="font-size:11px">Active</div></div>
+          <div><b style="font-size:18px;line-height:1;color:var(--ink-3)">${invUsers.length - invActive}</b><div class="muted" style="font-size:11px">Inactive</div></div>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="rows-rounded">
             <thead>
-              <tr><th>Investigator</th><th>Assigned Sites</th><th class="num">Patients</th><th class="num">On-Time %</th><th>Drill-Down</th></tr>
+              <tr><th>Investigator</th><th>Assigned Sites</th><th class="num">Patients</th><th class="num">On-Time %</th><th>Drill-Down Profile</th></tr>
             </thead>
             <tbody>
               ${invUsers.map(u => {
                 const uPts = allPts.filter(p => p.inv === u.name || p.owner === u.username);
                 const uSt = aggregateStats(uPts);
                 return `
-                  <tr>
-                    <td><b>${esc(u.name)}</b><div class="muted" style="font-size:11px">${esc(u.username)}</div></td>
-                    <td>${u.sites?.join(', ') || 'No Sites'}</td>
-                    <td class="num"><b>${uPts.length}</b></td>
-                    <td class="num">${uSt.ontimeRate!=null?uSt.ontimeRate+'%':'–'}</td>
+                  <tr class="row-link" data-admin-profile="${esc(u.username)}" title="Open ${esc(u.name)} profile dashboard">
                     <td>
-                      <a class="btn" href="${ADMIN}#dash" style="padding:4px 8px;font-size:12px" title="View ${esc(u.name)} Profile">
-                        <i class="ms" style="font-size:15px">account_circle</i>Profile
-                      </a>
+                      <button type="button" class="name-link" data-admin-profile="${esc(u.username)}">
+                        <b>${esc(u.name)}</b><i class="ms">chevron_right</i>
+                      </button>
+                      <div class="muted" style="font-size:11px">${esc(u.username)}</div>
+                    </td>
+                    <td>${u.sites?.join(', ') || '<span class="muted">No Sites</span>'}</td>
+                    <td class="num"><b>${uPts.length}</b></td>
+                    <td class="num"><b class="${uSt.ontimeRate>=80?'good':uSt.ontimeRate?'warn':''}">${uSt.ontimeRate!=null?uSt.ontimeRate+'%':'–'}</b></td>
+                    <td>
+                      <button type="button" class="btn" data-admin-profile="${esc(u.username)}" style="padding:4px 10px;font-size:12px">
+                        <i class="ms" style="font-size:15px">account_circle</i>View Profile
+                      </button>
                     </td>
                   </tr>
                 `;
@@ -1147,17 +1408,110 @@ function renderSuperAdminView(allPts){
       </div>
     </section>
 
-    <!-- Global Study Progress & Enrolment -->
+    <!-- Visual Analytics Dash Grid: Completion, Milestone, Trajectory, Ranking -->
     <div class="dash-grid" style="margin-top:16px">
+      <!-- 1. Completion by site (Grouped Bars) -->
       <section class="card">
-        <div class="card-head"><h2>Registry Enrolment by Centre</h2><small>Monthly volume by site</small></div>
-        ${renderCentralEnrolmentBars(allPts, s.sites)}
+        <div class="card-head">
+          <h2>Completion by Site</h2>
+          <small>Share of patients with each visit complete (Baseline, 3M, 6M)</small>
+        </div>
+        ${groupedBars(siteBars)}
       </section>
+
+      <!-- 2. Visit status breakdown (Donut) -->
       <section class="card">
-        <div class="card-head"><h2>Global Milestone Breakdown</h2><small>Status of all patient visits</small></div>
+        <div class="card-head">
+          <h2>Visit Status Distribution</h2>
+          <small>Status across all scheduled patient visits</small>
+        </div>
         ${renderCentralMilestoneDonut(allPts)}
       </section>
+
+      <!-- 3. Registry enrolment trajectory (SVG stacked bars) -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Registry Enrolment by Centre</h2>
+          <small>Monthly patient intake by centre (last 6 months)</small>
+        </div>
+        ${renderCentralEnrolmentBars(allPts, s.sites)}
+      </section>
+
+      <!-- 4. Patients by investigator (Horizontal ranking bars) -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Patients by Investigator</h2>
+          <small>Volume and on-time compliance across team members</small>
+        </div>
+        ${hbars(teamBars)}
+      </section>
     </div>
+
+    <!-- Multi-Site Performance League Table -->
+    <section class="card" style="margin-top:16px">
+      <div class="card-head">
+        <div>
+          <h2>Multi-Site Performance League Table</h2>
+          <small>Comprehensive performance across all ~100 participating cardiology centres</small>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button type="button" class="btn" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="rows-rounded">
+          <thead>
+            <tr>
+              <th>Site &amp; Centre Name</th>
+              <th>Zone</th>
+              <th>Lead Investigator</th>
+              <th class="num">Enrolled</th>
+              <th>Baseline %</th>
+              <th>3 Months %</th>
+              <th>6 Months %</th>
+              <th class="num">On-Time %</th>
+              <th class="num">Overdue</th>
+              <th class="num">GDMT 4/4 %</th>
+              <th>Quick Export</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${renderCentralSiteTableRows(s.sites, allPts, allPts)}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Study-wide Overdue & At-Risk Follow-up Queue -->
+    <section class="card" style="margin-top:16px">
+      <div class="card-head">
+        <div>
+          <h2>Study-wide Overdue &amp; At-Risk Follow-up Queue</h2>
+          <small>Patients across all sites currently outside their visit window</small>
+        </div>
+        <span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount} Alerts</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Study ID</th>
+              <th>Site</th>
+              <th>Zone</th>
+              <th>Investigator</th>
+              <th>Visit Due</th>
+              <th>Expected Window</th>
+              <th>Status</th>
+              <th>Contact Number</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${renderCentralOverdueQueue(allPts)}
+          </tbody>
+        </table>
+      </div>
+    </section>
   `;
 }
 
@@ -1420,6 +1774,42 @@ function attachEvents(){
       }
       exportDlg.close();
       generateAndDownloadExport(scope, visits, only4, format);
+    };
+  }
+
+  // Super Admin: Investigator profile drill-down
+  document.querySelectorAll('[data-admin-profile]').forEach(el => {
+    el.onclick = e => {
+      e.stopPropagation();
+      adminProfileUsername = el.dataset.adminProfile;
+      renderDashboard();
+      window.scrollTo(0, 0);
+    };
+  });
+
+  // Super Admin: Back to overview button from investigator profile
+  const btnBack = $('btnAdminProfileBack');
+  if (btnBack) {
+    btnBack.onclick = () => {
+      adminProfileUsername = null;
+      renderDashboard();
+      window.scrollTo(0, 0);
+    };
+  }
+
+  // Super Admin: Export single investigator
+  document.querySelectorAll('[data-export-inv]').forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      exportSingleInvestigator(btn.dataset.exportInv);
+    };
+  });
+
+  // Super Admin: Export all investigators summary
+  const btnExportAllInvs = $('btnExportAllInvs');
+  if (btnExportAllInvs) {
+    btnExportAllInvs.onclick = () => {
+      exportAllInvestigatorsSummary();
     };
   }
 }

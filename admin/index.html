@@ -29,12 +29,12 @@
 
     <div class="hello">
       <div>
-        <h1 id="welcome">Super Admin dashboard</h1>
-        <p>Performance across all sites and teams, plus sites, users and permissions.</p>
+        <h1 id="welcome">System Administration</h1>
+        <p>Manage cardiology sites, user accounts, roles and system permissions.</p>
       </div>
       <div class="actions">
+        <a class="btn primary" href="../dashboard/"><i class="ms">space_dashboard</i>View Live Dashboard</a>
         <a class="btn" href="../records/"><i class="ms">edit_note</i>Patient records</a>
-        <button type="button" class="btn" id="exportAll" data-export="all" hidden><i class="ms">download</i>Export all patients</button>
       </div>
     </div>
 
@@ -43,22 +43,26 @@
   </div>
 </div>
 
-<script src="../assets/access.js?v=20261015a"></script>
-<script src="../assets/notifications-data.js?v=20261015a"></script>
-<script src="../assets/dialog.js?v=20261015a"></script>
-<script src="../assets/header.js?v=20261015a" data-root="../"></script>
-<script src="../assets/nav.js?v=20261015a"></script>
+<script src="../assets/access.js?v=20261015b"></script>
+<script src="../assets/notifications-data.js?v=20261015b"></script>
+<script src="../assets/dialog.js?v=20261015b"></script>
+<script src="../assets/header.js?v=20261015b" data-root="../"></script>
+<script src="../assets/nav.js?v=20261015b"></script>
 <script>
 const LOGIN='../login/', ECRF='../records/', SUPER='superadmin';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const initials=s=>String(s||'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';
-const TABS=['dash','users','sites','perms'];
+const TABS=['users','sites','perms'];
 const isCentral=()=>session().role==='central';
 const CENTRAL_MSG='Central team can only manage site investigators';
 /* Central team can only manage site investigators */
 const centralMay=(user,newRole)=>!isCentral()||(user.role==='investigator'&&newRole==='investigator');
-const tabFromHash=()=>{if(isCentral())return 'users';const h=location.hash.slice(1);return TABS.includes(h)?h:'dash'};
+const tabFromHash=()=>{
+  const h=location.hash.slice(1);
+  if(h==='dash'){location.replace('../dashboard/');return 'users'}
+  return TABS.includes(h)?h:'users'
+};
 let tab=tabFromHash();
 
 /* Only Super Admins may open this page */
@@ -258,273 +262,6 @@ function permsView(){
   </section>`;
 }
 
-/* ---------- Statistics ---------- */
-const PL=['arni','bb','mra','sg'], DAY=864e5;
-const day=s=>new Date(s+'T00:00:00');
-const addD=(s,n)=>{const d=day(s);d.setDate(d.getDate()+n);return d};
-const G=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o);
-function has(v){return Object.keys(v).some(k=>k!=='done'&&v[k]!==''&&v[k]!=null&&typeof v[k]!=='object')||(v.g&&Object.values(v.g).some(x=>x.status))}
-function act(v){return PL.filter(q=>G(v,'g.'+q+'.status')==='Active').length}
-function vstat(p,k){
-  const v=p.v[k];if(v.done)return'Completed';
-  const b=p.v.b.done?p.v.b.date:null;let late=false,due=false,missed=false;
-  if(k!=='b'&&b){const t=k==='m3'?90:180,w=k==='m3'?14:21,T=new Date();late=T>addD(b,t+w);due=T>=addD(b,t-w);missed=T>addD(b,t+w+30)&&!has(v)}
-  return missed?'Missed':late?'Overdue':has(v)?'In Progress':due?'Due':'Not Started';
-}
-/* true/false when a follow-up visit has a date and a baseline; null otherwise */
-function onTime(p,k){
-  if(k==='b'||!p.v.b.date||!p.v[k].done||!p.v[k].date)return null;
-  const t=k==='m3'?90:180,w=k==='m3'?14:21;
-  const d=Math.round((day(p.v[k].date)-day(p.v.b.date))/DAY);
-  return Math.abs(d-t)<=w;
-}
-const meanOf=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
-const pctOf=(a,b)=>b?Math.round(100*a/b):null;
-const fmtPct=x=>x==null?'–':x+'%';
-const fmtDelta=x=>x==null?'–':(x>0?'+':'')+x.toFixed(1);
-const bar=x=>`<span class="mini"><i style="width:${x||0}%"></i></span>${fmtPct(x)}`;
-function stats(list){
-  const fu=list.flatMap(p=>['m3','m6'].map(k=>onTime(p,k))).filter(x=>x!==null);
-  const d=list.filter(p=>p.v.b.msts!==''&&p.v.b.msts!=null&&p.v.m6.msts!==''&&p.v.m6.msts!=null).map(p=>+p.v.m6.msts-+p.v.b.msts);
-  return {
-    n:list.length,
-    b:list.filter(p=>p.v.b.done).length,
-    m3:list.filter(p=>p.v.m3.done).length,
-    m6:list.filter(p=>p.v.m6.done).length,
-    overdue:list.reduce((c,p)=>c+['m3','m6'].filter(k=>['Overdue','Missed'].includes(vstat(p,k))).length,0),
-    ontime:pctOf(fu.filter(Boolean).length,fu.length),
-    msts:meanOf(d),
-    pending:list.filter(p=>p.sync==='Pending').length
-  };
-}
-const PALETTE=['#1a5fb4','#1e7a4c','#9a5b00','#b3261e','#6b4fbb','#0f7c8c','#7a5c3e','#5b616d'];
-const colourOf=i=>PALETTE[i%PALETTE.length];
-
-/* Donut: parts = [{label,value,color}] */
-function donut(parts){
-  const total=parts.reduce((x,p)=>x+p.value,0),R=54,C=2*Math.PI*R;
-  let off=0;
-  const segs=parts.filter(p=>p.value>0).map(p=>{
-    const len=total?C*p.value/total:0;
-    const s=`<circle cx="70" cy="70" r="${R}" fill="none" stroke="${p.color}" stroke-width="18" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${p.label}: ${p.value}</title></circle>`;
-    off+=len;return s;
-  }).join('');
-  return `<div class="donut-wrap">
-    <svg viewBox="0 0 140 140" role="img" aria-label="Visit status breakdown">
-      <circle cx="70" cy="70" r="${R}" fill="none" stroke="var(--soft-2)" stroke-width="18"/>${segs}
-      <text x="70" y="68" text-anchor="middle" font-size="22" font-weight="600" fill="var(--ink)">${total}</text>
-      <text x="70" y="86" text-anchor="middle" font-size="11" fill="var(--ink-3)">visits</text>
-    </svg>
-    <ul class="legend-list">${parts.map(p=>`<li><i style="background:${p.color}"></i><span>${p.label}</span><b>${p.value}</b></li>`).join('')}</ul>
-  </div>`;
-}
-
-/* Grouped bars: rows = [{label, values:[baseline%, 3m%, 6m%]}] */
-function groupedBars(rows){
-  if(!rows.length)return '<div class="empty"><i class="ms">bar_chart</i>No sites yet.</div>';
-  const W=620,H=250,pad=36,top=16,gw=(W-pad-10)/rows.length,bw=Math.min(22,gw/4),cols=['var(--primary)','var(--success)','var(--warning)'];
-  let g='';
-  [0,25,50,75,100].forEach(v=>{const y=H-pad-(H-pad-top)*v/100;g+=`<line x1="${pad}" x2="${W-10}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pad-6}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${v}%</text>`});
-  rows.forEach((r,i)=>{
-    const x0=pad+i*gw+(gw-3*bw-8)/2;
-    r.values.forEach((v,j)=>{const h=(H-pad-top)*(v||0)/100;g+=`<rect x="${x0+j*(bw+4)}" y="${H-pad-h}" width="${bw}" height="${h}" rx="5" fill="${cols[j]}"><title>${esc(r.label)}: ${v==null?'–':v+'%'}</title></rect>`});
-    g+=`<text x="${pad+i*gw+gw/2}" y="${H-pad+18}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${esc(r.label)}</text>`;
-  });
-  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Completion by site">${g}</svg>
-    <div class="legend-row"><span><i style="background:var(--primary)"></i>Baseline</span><span><i style="background:var(--success)"></i>3 months</span><span><i style="background:var(--warning)"></i>6 months</span></div>`;
-}
-
-/* Stacked bars: new patients per month, coloured by site */
-function enrolChart(pts,sites){
-  const now=new Date(),months=[];
-  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({y:d.getFullYear(),m:d.getMonth(),lbl:d.toLocaleDateString('en-GB',{month:'short'}),counts:{}})}
-  pts.forEach(p=>{if(!p.consent)return;const d=day(p.consent);const h=months.find(x=>x.y===d.getFullYear()&&x.m===d.getMonth());if(h)h.counts[p.site]=(h.counts[p.site]||0)+1});
-  const codes=sites.map(s=>s.code);
-  const totals=months.map(m=>Object.values(m.counts).reduce((x,y)=>x+y,0));
-  const max=Math.max(1,...totals);
-  const W=620,H=250,pad=36,top=16,gw=(W-pad-10)/6,bw=Math.min(40,gw*0.55);
-  let g='';
-  [0,0.5,1].forEach(f=>{const y=H-pad-(H-pad-top)*f;g+=`<line x1="${pad}" x2="${W-10}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pad-6}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${Math.round(max*f)}</text>`});
-  months.forEach((m,i)=>{
-    const x=pad+i*gw+(gw-bw)/2;let base=H-pad;
-    codes.forEach((c,ci)=>{const v=m.counts[c]||0;if(!v)return;const h=(H-pad-top)*v/max;base-=h;g+=`<rect x="${x}" y="${base}" width="${bw}" height="${h}" fill="${colourOf(ci)}"><title>${esc(c)} · ${m.lbl}: ${v}</title></rect>`});
-    g+=`<text x="${x+bw/2}" y="${H-pad+18}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${m.lbl}</text>`;
-    if(totals[i])g+=`<text x="${x+bw/2}" y="${base-6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${totals[i]}</text>`;
-  });
-  const legend=codes.map((c,ci)=>`<span><i style="background:${colourOf(ci)}"></i>${esc(c)}</span>`).join('');
-  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="New patients per month by site">${g}</svg><div class="legend-row">${legend}</div>`;
-}
-
-/* Horizontal bars: items = [{label,sub,value,color}] */
-function hbars(items){
-  if(!items.length)return '<div class="empty"><i class="ms">groups</i>No investigators yet.</div>';
-  const max=Math.max(1,...items.map(i=>i.value));
-  return `<div class="hbars">${items.map(i=>`<div class="hbar-row">
-    <div class="hbar-label"><b>${esc(i.label)}</b><small>${esc(i.sub||'')}</small></div>
-    <div class="hbar-track" role="img" aria-label="${esc(i.label)}: ${i.value} patients"><i style="width:${100*i.value/max}%;background:${i.color}"></i></div>
-    <span class="hbar-val">${i.value}</span></div>`).join('')}</div>`;
-}
-
-function overdueTable(pts){
-  const rows=[];
-  pts.forEach(p=>['m3','m6'].forEach(k=>{const s=vstat(p,k);if(s==='Overdue'||s==='Missed')rows.push({p,k,s})}));
-  if(!rows.length)return '<div class="empty"><i class="ms">task_alt</i>No overdue follow-ups.</div>';
-  rows.sort((a,b)=>a.p.site.localeCompare(b.p.site)||a.p.id.localeCompare(b.p.id));
-  return `<div class="table-wrap"><table><tr><th>Patient</th><th>Site</th><th>Investigator</th><th>Visit</th><th>Status</th></tr>
-    ${rows.slice(0,10).map(r=>`<tr><td><b>${esc(r.p.id)}</b></td><td>${esc(r.p.site)}</td><td>${esc(r.p.inv||'–')}</td><td>${r.k==='m3'?'3 months':'6 months'}</td><td><span class="chip Overdue">${r.s}</span></td></tr>`).join('')}
-    </table></div>${rows.length>10?`<p class="muted" style="margin:10px 0 0">Showing 10 of ${rows.length}</p>`:''}`;
-}
-
-/* Super Admin: one investigator's profile dashboard. Opened from the team table. */
-let profileOf=null;
-/* Super Admin only: CSV downloads. Shared helper writes the file. */
-function csvDownload(rows,name,msg){
-  const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-  const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
-  const a=document.createElement('a');a.href=url;a.download=`${name}-${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  toast(msg);
-}
-function exportTeam(){
-  if(session().role!==SUPER){toast('Only Super Admin can export data');return}
-  const pts=patients();
-  const rows=[['Investigator','Username','Sites','Access','Patients','Baseline complete','3 months complete','6 months complete','On-time %','Overdue','1MSTS change','Pending sync']];
-  accessStore().users.filter(u=>u.role==='investigator').forEach(u=>{
-    const st=stats(pts.filter(p=>p.inv===u.name));
-    rows.push([u.name,u.username,u.sites.join(', '),u.active?'Active':'Inactive',st.n,st.b,st.m3,st.m6,st.ontime==null?'':st.ontime,st.overdue,st.msts==null?'':st.msts.toFixed(1),st.pending]);
-  });
-  csvDownload(rows,'stand-hf-investigators','Investigator data exported');
-}
-/* Super Admin only: every patient visit across all sites, one row per visit */
-function exportAll(){
-  if(session().role!==SUPER){toast('Only Super Admin can export data');return}
-  const label={b:'Baseline',m3:'3 months',m6:'6 months'};
-  const rows=[['Study ID','Site','Investigator','Investigator username','Patient name','Contact number','Consent date','Age','Sex','HF etiology','Visit','Visit status','Visit date','Weight (kg)','Heart rate','Systolic BP','Diastolic BP','NYHA class','1MSTS repetitions','LVEF (%)','Active GDMT pillars','ARNI drug','ARNI dose','ARNI status','Beta-blocker drug','Beta-blocker dose','Beta-blocker status','MRA drug','MRA dose','MRA status','SGLT2 drug','SGLT2 dose','SGLT2 status','Prescription files']];
-  const users=accessStore().users;
-  patients().forEach(p=>{
-    const owner=users.find(u=>u.name===p.inv);
-    ['b','m3','m6'].forEach(k=>{
-      const v=p.v[k];
-      const g=q=>(v.g&&v.g[q])||{};
-      const act=PL.filter(q=>g(q).status==='Active').length;
-      rows.push([p.id,p.site,p.inv,owner?owner.username:'',p.name,p.contact,p.consent,p.age,p.sex,p.etio,label[k],vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act,
-        g('arni').drug,g('arni').dose,g('arni').status,g('bb').drug,g('bb').dose,g('bb').status,g('mra').drug,g('mra').dose,g('mra').status,g('sg').drug,g('sg').dose,g('sg').status,
-        ((p.files&&p.files[k])||[]).map(f=>f.name).join('; ')]);
-    });
-  });
-  csvDownload(rows,'stand-hf-all-patients','All patient visits exported');
-}
-/* One investigator: one row per patient-visit */
-function exportUser(username){
-  if(session().role!==SUPER){toast('Only Super Admin can export data');return}
-  const u=accessStore().users.find(x=>x.username===username);if(!u)return;
-  const label={b:'Baseline',m3:'3 months',m6:'6 months'};
-  const rows=[['Study ID','Site','Investigator','Visit','Visit status','Visit date','Weight (kg)','Heart rate','Systolic BP','Diastolic BP','NYHA class','1MSTS repetitions','LVEF (%)','Active GDMT pillars']];
-  patients().filter(p=>p.inv===u.name).forEach(p=>['b','m3','m6'].forEach(k=>{
-    const v=p.v[k];
-    rows.push([p.id,p.site,p.inv,label[k],vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act(v)]);
-  }));
-  csvDownload(rows,'stand-hf-'+u.username,`${u.name} data exported`);
-}
-
-function profileView(u,kpi){
-  const mine=patients().filter(p=>p.inv===u.name),st=stats(mine);
-  const cls={'In Progress':'In','Not Started':'Not'};
-  const rows=mine.map(p=>`<tr><td><b>${esc(p.id)}</b></td><td>${esc(p.site)}</td>${['b','m3','m6'].map(k=>{const v=vstat(p,k);return `<td><span class="chip ${cls[v]||v}">${v}</span></td>`}).join('')}<td class="num">${(p.audit||[]).length}</td></tr>`).join('');
-  const activity=mine.flatMap(p=>(p.audit||[]).map(a=>({...a,pid:p.id}))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,10);
-  return `<div style="margin-bottom:12px"><button type="button" class="btn" data-profile-back><i class="ms">arrow_back</i>All investigators</button></div>
-    <section class="card">
-      <div class="card-head"><h2>${esc(u.name)}</h2><div style="display:flex;gap:12px;align-items:center"><small>${esc(u.username)} · ${u.sites.map(esc).join(', ')||'No sites'} · ${u.active?'Active':'Inactive'}</small>${session().role===SUPER?`<button type="button" class="btn" data-export="user" data-user="${esc(u.username)}"><i class="ms">download</i>Export CSV</button>`:''}</div></div>
-      <div class="kpis auto">
-        ${kpi('group','Patients',st.n,'Entered by this investigator')}
-        ${kpi('biotech','Baseline complete',fmtPct(pctOf(st.b,st.n)),st.b+' of '+st.n)}
-        ${kpi('event_upcoming','Follow-ups overdue',st.overdue,'3 and 6 month visits')}
-        ${kpi('schedule','On-time visits',fmtPct(st.ontime),'Within visit window')}
-      </div>
-    </section>
-    <section class="card">
-      <div class="card-head"><h2>Patients</h2><small>Visit status by patient</small></div>
-      <div class="table-wrap"><table><tr><th>Patient</th><th>Site</th><th>Baseline</th><th>3 months</th><th>6 months</th><th class="num">Changes</th></tr>${rows||'<tr><td colspan="6" class="muted">No patients entered yet.</td></tr>'}</table></div>
-    </section>
-    <section class="card">
-      <div class="card-head"><h2>Overdue follow-ups</h2><small>3 and 6 month visits past their window</small></div>
-      ${overdueTable(mine)}
-    </section>
-    <section class="card">
-      <div class="card-head"><h2>Recent activity</h2><small>Last 10 changes</small></div>
-      ${activity.length?`<div class="table-wrap"><table><tr><th>When</th><th>Patient</th><th>Field</th><th>Change</th></tr>${activity.map(a=>`<tr><td>${esc(a.t)}</td><td>${esc(a.pid)}</td><td>${esc(a.f)}</td><td>${a.o?esc(a.o)+' → ':''}${esc(a.n)}</td></tr>`).join('')}</table></div>`:'<div class="empty"><i class="ms">history</i>No activity yet.</div>'}
-    </section>`;
-}
-
-function dashView(){
-  const s=accessStore(),pts=patients(),all=stats(pts);
-  const kpi=(ico,l,v,sub)=>`<div class="kpi"><div class="top"><span class="ico"><i class="ms">${ico}</i></span></div><b>${v}</b><span>${l}</span><small>${sub||''}</small></div>`;
-  if(profileOf){const pu=s.users.find(x=>x.username===profileOf);if(pu)return profileView(pu,kpi);profileOf=null}
-  /* extra: an optional last cell, only for the investigator table */
-  const rowFor=(label,st,extra)=>`<tr><td>${label}</td><td class="num">${st.n}</td>
-    <td>${bar(pctOf(st.b,st.n))}</td><td>${bar(pctOf(st.m3,st.n))}</td><td>${bar(pctOf(st.m6,st.n))}</td>
-    <td class="num">${fmtPct(st.ontime)}</td><td class="num">${st.overdue}</td><td class="num">${fmtDelta(st.msts)}</td><td class="num">${st.pending}</td>${extra===undefined?'':`<td>${extra}</td>`}</tr>`;
-  const head=(label,extra='')=>`<tr><th>${label}</th><th class="num">Patients</th><th>Baseline</th><th>3 months</th><th>6 months</th><th class="num">On time</th><th class="num">Overdue</th><th class="num">1MSTS change</th><th class="num">Pending</th>${extra}</tr>`;
-
-  /* Sites */
-  const siteStats=s.sites.map(x=>({code:x.code,name:x.name,st:stats(pts.filter(p=>p.site===x.code))}));
-  const siteRows=siteStats.map(x=>rowFor(`<b>${esc(x.code)}</b><div class="muted">${esc(x.name)}</div>`,x.st)).join('');
-  const bars=siteStats.map(x=>({label:x.code,values:[pctOf(x.st.b,x.st.n),pctOf(x.st.m3,x.st.n),pctOf(x.st.m6,x.st.n)]}));
-
-  /* Site investigator counts and rows */
-  const invAll=s.users.filter(u=>u.role==='investigator');
-  const invActive=invAll.filter(u=>u.active).length;
-
-  /* Team */
-  const team=s.users.filter(u=>u.role==='investigator');
-  const teamRows=team.map(u=>rowFor(`<button type="button" class="name-link" data-profile="${esc(u.username)}"><b>${esc(u.name)}</b><i class="ms">chevron_right</i></button><div class="muted">${u.sites.map(esc).join(', ')||'No sites'}</div>`,stats(pts.filter(p=>p.inv===u.name)),`<span class="chip ${u.active?'In':'Not'}">${u.active?'Active':'Inactive'}</span>`).replace('<tr>',`<tr class="row-link" data-profile="${esc(u.username)}" title="Open ${esc(u.name)}'s dashboard">`)).join('');
-  const names=new Set(team.map(u=>u.name));
-  const other=pts.filter(p=>!names.has(p.inv));
-  const otherRow=other.length?rowFor('<b>Not on team list</b><div class="muted">Investigator name not in Users</div>',stats(other),''):'';
-  const teamBars=team.map((u,i)=>{const n=pts.filter(p=>p.inv===u.name).length;const st=stats(pts.filter(p=>p.inv===u.name));
-    return {label:u.name,sub:`${u.sites.join(', ')||'No sites'} · on time ${fmtPct(st.ontime)}`,value:n,color:colourOf(i)}});
-  if(other.length)teamBars.push({label:'Not on team list',sub:'Investigator not in Users',value:other.length,color:'var(--ink-3)'});
-
-  /* Visit status across all baseline, 3 and 6 month visits */
-  const counts={Completed:0,'In progress':0,Due:0,Overdue:0,'Not started':0};
-  pts.forEach(p=>['b','m3','m6'].forEach(k=>{const v=vstat(p,k);const key=v==='Missed'?'Overdue':v==='In Progress'?'In progress':v==='Not Started'?'Not started':v;counts[key]=(counts[key]||0)+1}));
-  const statusParts=[
-    {label:'Completed',value:counts.Completed,color:'var(--success)'},
-    {label:'In progress',value:counts['In progress'],color:'var(--primary)'},
-    {label:'Due',value:counts.Due,color:'var(--warning)'},
-    {label:'Overdue',value:counts.Overdue,color:'var(--error)'},
-    {label:'Not started',value:counts['Not started'],color:'var(--ink-3)'}
-  ];
-
-  return `<div class="kpis auto">
-      ${kpi('group','Patients',all.n,'All sites')}
-      ${kpi('biotech','Baseline complete',fmtPct(pctOf(all.b,all.n)),all.b+' of '+all.n)}
-      ${kpi('event_upcoming','Follow-ups overdue',all.overdue,'3 and 6 month visits')}
-      ${kpi('schedule','On-time visits',fmtPct(all.ontime),'Within visit window')}
-    </div>
-    <section class="card">
-      <div class="card-head"><h2>Performance by team</h2><div style="display:flex;gap:12px;align-items:center"><small>Patients entered by each investigator</small>${session().role===SUPER?'<button type="button" class="btn" data-export="team"><i class="ms">download</i>Export CSV</button>':''}</div></div>
-      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-        ${[['Total',invAll.length],['Active',invActive],['Inactive',invAll.length-invActive]].map(([l,n])=>`<div><b style="display:block;font-size:22px;font-weight:600;line-height:1.1">${n}</b><span class="muted" style="font-size:13px">${l}</span></div>`).join('')}
-      </div>
-      <div class="table-wrap"><table class="rows-rounded">${head('Investigator','<th>Access</th>')}${teamRows||'<tr><td colspan="10" class="muted">No investigators yet.</td></tr>'}${otherRow}</table></div>
-    </section>
-    <div class="dash-grid">
-      <section class="card"><div class="card-head"><h2>Completion by site</h2><small>Share of patients with each visit complete</small></div>${groupedBars(bars)}</section>
-      <section class="card"><div class="card-head"><h2>Visit status</h2><small>Baseline, 3 and 6 month visits</small></div>${donut(statusParts)}</section>
-      <section class="card"><div class="card-head"><h2>Enrolment</h2><small>New patients per month, by site</small></div>${enrolChart(pts,s.sites)}</section>
-      <section class="card"><div class="card-head"><h2>Patients by investigator</h2><small>Patients entered by each team member</small></div>${hbars(teamBars)}</section>
-    </div>
-    <section class="card">
-      <div class="card-head"><h2>Overdue follow-ups</h2><small>3 and 6 month visits past their window</small></div>
-      ${overdueTable(pts)}
-    </section>
-    <section class="card">
-      <div class="card-head"><h2>Performance by site</h2><small>Completion, timing and follow-up status</small></div>
-      <div class="table-wrap"><table>${head('Site')}${siteRows||'<tr><td colspan="9" class="muted">No sites yet.</td></tr>'}</table></div>
-    </section>`;
-}
-
 let query='';
 function applySearch(){
   const q=query.trim().toLowerCase();
@@ -534,12 +271,10 @@ function applySearch(){
   });
 }
 function render(){
-  $('view').innerHTML=tab==='dash'?dashView():tab==='users'?usersView():tab==='sites'?sitesView():permsView();
+  $('view').innerHTML=tab==='users'?usersView():tab==='sites'?sitesView():permsView();
   $('view').classList.remove('form-in');void $('view').offsetWidth;$('view').classList.add('form-in');
   applySearch();
   userPreview();sitePreview();
-  const od=stats(patients()).overdue;
-  
 }
 $('search').addEventListener('input',()=>{query=$('search').value;applySearch()});
 
@@ -619,9 +354,6 @@ $('view').addEventListener('input',e=>{
 
 /* Select all / clear all sites in the new-user form */
 $('view').addEventListener('click',e=>{
-  if(e.target.closest('[data-export="team"]')){exportTeam();return}
-  const ex=e.target.closest('[data-export="user"]');if(ex){exportUser(ex.dataset.user);return}
-  const pr=e.target.closest('[data-profile],[data-profile-back]');if(pr){profileOf=pr.dataset.profile||null;render();window.scrollTo(0,0);return}
   const btn=e.target.closest('#allSites');if(!btn)return;
   const boxes=[...document.querySelectorAll('#fUser input[name="site"]')];
   const all=boxes.some(x=>!x.checked);
@@ -663,9 +395,7 @@ document.addEventListener('submit',e=>{
 const name=session().name;
 $('userName').textContent=name||'Signed in';
 $('userRole').textContent=ROLE_NAMES[session().role]||'';
-if(session().role===SUPER)$('exportAll').hidden=false;
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-export="all"]'))exportAll()});
-$('welcome').textContent=name?'Welcome, '+name.split(/\s+/)[0]:'Super Admin dashboard';
+$('welcome').textContent='System Administration';
 $('avatar').textContent=initials(name);
 $('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.replace(LOGIN)};
 

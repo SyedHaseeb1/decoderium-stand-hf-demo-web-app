@@ -14,7 +14,7 @@
   const page=document.body.dataset.page;
   /* Which nav item is active: admin sections follow the URL hash */
   const pageKey=()=>{
-    if(page==='admin'){const h=location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:(isCentral?'adm-users':'dashboard')}
+    if(page==='admin'){const h=location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:'adm-users'}
     return page==='dashboard'?'dashboard':(onNew?'add':'records');
   };
   const current=pageKey();
@@ -32,8 +32,7 @@
       {key:'gdmt',label:'GDMT Coverage',href:DASH+'#gdmt',icon:'pill',show:isCentral}
     ]},
     {label:'Administration',items:[
-      {key:'adm-dash',label:'Admin Overview',href:ADMIN+'#dash',icon:'admin_panel_settings',show:isSuper},
-      {key:'adm-users',label:'Users',href:ADMIN+'#users',icon:'group',show:isSuper},
+      {key:'adm-users',label:'Users & Teams',href:ADMIN+'#users',icon:'group',show:isSuper},
       {key:'adm-sites',label:'Sites',href:ADMIN+'#sites',icon:'location_on',show:isSuper},
       {key:'adm-perms',label:'Permissions',href:ADMIN+'#perms',icon:'shield_person',show:isSuper}
     ]}
