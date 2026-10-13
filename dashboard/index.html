@@ -111,6 +111,8 @@
 <script src="../assets/dialog.js?v=20261015b"></script>
 <script src="../assets/header.js?v=20261015b" data-root="../"></script>
 <script src="../assets/nav.js?v=20261015b"></script>
+<script src="../assets/dash-charts.js?v=20261015c"></script>
+<script src="../assets/dash-components.js?v=20261015c"></script>
 
 <script>
 (function(){
@@ -271,6 +273,11 @@ function getSiteZone(code){
   return found?.zone || 'Central';
 }
 
+/* Active dashboard view tabs */
+let currentInvTab = 'all';
+let currentCentralTab = 'all';
+let currentSuperTab = 'all';
+
 /* ==========================================================================
    VIEW 1: SITE INVESTIGATOR DASHBOARD
    ========================================================================== */
@@ -289,7 +296,15 @@ function renderInvestigatorView(allPts){
   const rank = { Missed: 0, Overdue: 0, Due: 1, 'In Progress': 2, 'Not Started': 3, Completed: 4 };
   upcoming.sort((a,b) => (rank[a.s] - rank[b.s]) || ((a.win ? a.win[0] : 0) - (b.win ? b.win[0] : 0)));
 
-  return `
+  const tabs = [
+    { id: 'all', label: 'Overview', icon: 'dashboard' },
+    { id: 'patients', label: 'My Patients', icon: 'group', badge: mine.length },
+    { id: 'upcoming', label: 'Upcoming Visits', icon: 'event_upcoming', badge: upcoming.length },
+    { id: 'clinical', label: 'Clinical Performance', icon: 'monitoring' },
+    { id: 'sites', label: 'Assigned Sites', icon: 'local_hospital', badge: sites.length }
+  ];
+
+  const headerHtml = `
     <div class="hello">
       <div>
         <h1 id="welcome">Welcome, Dr. ${esc(USER_NAME.split(/\s+/)[0])}</h1>
@@ -300,69 +315,57 @@ function renderInvestigatorView(allPts){
         <a class="btn primary" href="${ECRF}?new=1"><i class="ms">person_add</i>Add patient</a>
       </div>
     </div>
+    ${DashUI.viewTabs(tabs, currentInvTab)}
+  `;
 
-    <!-- KPIs -->
-    <section class="kpis">
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">group</i></span></div>
-        <b>${st.n}</b><span>My patients</span><small>All patients you entered</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">person_add</i></span><span class="tag info">New</span></div>
-        <b>${newCount}</b><span>New patients</span><small>Consented in selected period</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">biotech</i></span><span class="tag ${pct(st.b, st.n)>=80?'good':''}">${pct(st.b, st.n)??'0'}%</span></div>
-        <b>${st.b}</b><span>Baseline complete</span><small>${st.b} of ${st.n} enrolled</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">event_upcoming</i></span>${st.overdueCount?'<span class="tag warn">Action</span>':'<span class="tag good">Clear</span>'}</div>
-        <b style="${st.overdueCount?'color:var(--error)':''}">${st.overdueCount + st.dueCount}</b><span>Follow-ups due</span><small>${st.overdueCount} overdue/missed</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">cloud_sync</i></span>${st.pendingSync?'<span class="tag warn">Pending</span>':'<span class="tag good">Synced</span>'}</div>
-        <b>${st.pendingSync}</b><span>Pending sync</span><small>${st.pendingSync?'Saved on this device':'All synced'}</small>
-      </div>
-    </section>
-
-    <!-- Phase progress and enrolment -->
-    <section class="row two">
-      <div class="card">
-        <div class="card-head"><h2>Phase progress</h2><small>Share of your patients with each visit complete</small></div>
-        <div class="rings">${renderInvestigatorRings(mine)}</div>
-        <div class="legend"><span><i style="background:var(--success)"></i>Complete</span><span><i style="background:var(--primary)"></i>In progress</span><span><i style="background:var(--warning)"></i>Due</span><span><i style="background:var(--error)"></i>Overdue</span></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h2>Enrolment</h2><small>New patients per month, last 6 months</small></div>
-        <svg class="chart" id="enrolSvg" viewBox="0 0 600 200" role="img" aria-label="New patients per month">${renderEnrolmentSvg(mine)}</svg>
-      </div>
-    </section>
-
-    <!-- Patients, Selected patient detail, Upcoming visits -->
-    <section class="row three">
-      <div class="card">
-        <div class="card-head"><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
-        <div class="plist" id="invPlist">${renderInvestigatorList(upcoming)}</div>
-      </div>
-      <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming[0])}</div>
-      <div class="card">
-        <div class="card-head"><h2>Upcoming visits</h2><small>Next visit window per patient</small></div>
-        <div class="upc" id="invUpcoming">${renderInvestigatorUpcoming(upcoming)}</div>
-      </div>
-    </section>
-
-    <!-- Clinical Performance & Sites -->
-    <section class="row two-even">
-      <div class="card">
-        <div class="card-head"><h2>Clinical Performance</h2><small>From your verified patient data</small></div>
-        <div id="perfMetrics">
-          <div class="metric"><span>Follow-up visits within protocol window</span><b class="${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b></div>
-          <div class="metric"><span>Mean 1MSTS change (Baseline to 6 Months)</span><b class="${mean(st.dMsts)>0?'good':''}">${signed(mean(st.dMsts))} reps</b></div>
-          <div class="metric"><span>Mean LVEF change (Baseline to 6 Months)</span><b class="${mean(st.dEf)>0?'good':''}">${signed(mean(st.dEf))}%</b></div>
-          <div class="metric"><span>Patients at 4 of 4 GDMT pillars (latest visit)</span><b class="${st.gdmtRate>=70?'good':''}">${st.fourPillars} / ${st.n} (${st.gdmtRate??0}%)</b></div>
+  let bodyHtml = '';
+  if (currentInvTab === 'patients') {
+    bodyHtml = `
+      <section class="row two dash-fade-in" style="margin-top:16px">
+        <div class="card">
+          <div class="card-head"><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
+          <div class="plist" id="invPlist">${renderInvestigatorList(upcoming)}</div>
+        </div>
+        <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming[0])}</div>
+      </section>
+    `;
+  } else if (currentInvTab === 'upcoming') {
+    bodyHtml = `
+      <div class="dash-fade-in" style="margin-top:16px">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-head"><h2>Phase progress</h2><small>Share of your patients with each visit complete</small></div>
+          <div class="rings">${DashCharts.phaseDials(mine)}</div>
+          <div class="legend"><span><i style="background:var(--success)"></i>Complete</span><span><i style="background:var(--primary)"></i>In progress</span><span><i style="background:var(--warning)"></i>Due</span><span><i style="background:var(--error)"></i>Overdue</span></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Upcoming Visits Schedule</h2><small>Next visit window per patient</small></div>
+          <div class="upc" id="invUpcoming">${renderInvestigatorUpcoming(upcoming)}</div>
         </div>
       </div>
-      <div class="card">
+    `;
+  } else if (currentInvTab === 'clinical') {
+    bodyHtml = `
+      <div class="dash-fade-in" style="margin-top:16px">
+        <div class="dash-grid">
+          <section class="card">
+            <div class="card-head"><h2>Clinical Performance</h2><small>From your verified patient data</small></div>
+            <div id="perfMetrics">
+              <div class="metric"><span>Follow-up visits within protocol window</span><b class="${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b></div>
+              <div class="metric"><span>Mean 1MSTS change (Baseline to 6 Months)</span><b class="${mean(st.dMsts)>0?'good':''}">${signed(mean(st.dMsts))} reps</b></div>
+              <div class="metric"><span>Mean LVEF change (Baseline to 6 Months)</span><b class="${mean(st.dEf)>0?'good':''}">${signed(mean(st.dEf))}%</b></div>
+              <div class="metric"><span>Patients at 4 of 4 GDMT pillars (latest visit)</span><b class="${st.gdmtRate>=70?'good':''}">${st.fourPillars} / ${st.n} (${st.gdmtRate??0}%)</b></div>
+            </div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>Recruitment Trajectory</h2><small>New patients per month, last 6 months</small></div>
+            <svg class="chart" id="enrolSvg" viewBox="0 0 600 200" role="img" aria-label="New patients per month">${renderEnrolmentSvg(mine)}</svg>
+          </section>
+        </div>
+      </div>
+    `;
+  } else if (currentInvTab === 'sites') {
+    bodyHtml = `
+      <section class="card dash-fade-in" style="margin-top:16px">
         <div class="card-head"><h2>My Assigned Sites</h2><small>Cardiology centres assigned to you</small></div>
         <div class="table-wrap">
           <table>
@@ -380,27 +383,79 @@ function renderInvestigatorView(allPts){
             }).join('') || '<tr><td colspan="6" class="muted">No sites assigned yet.</td></tr>'}
           </table>
         </div>
-      </div>
-    </section>
-  `;
-}
+      </section>
+    `;
+  } else {
+    // 'all'
+    bodyHtml = `
+      <div class="dash-fade-in">
+        ${DashUI.kpiGrid([
+          { icon: 'group', value: st.n, label: 'My patients', sub: 'All patients you entered', iconBg: 'brand' },
+          { icon: 'person_add', value: newCount, label: 'New patients', sub: 'Consented in selected period', tag: 'New', tagType: 'info' },
+          { icon: 'biotech', value: st.b, label: 'Baseline complete', sub: `${st.b} of ${st.n} enrolled`, tag: `${pct(st.b, st.n) ?? 0}%`, tagType: pct(st.b, st.n) >= 80 ? 'good' : '', iconBg: 'success' },
+          { icon: 'event_upcoming', value: st.overdueCount + st.dueCount, label: 'Follow-ups due', sub: `${st.overdueCount} overdue/missed`, tag: st.overdueCount ? 'Action' : 'Clear', tagType: st.overdueCount ? 'warn' : 'good', alert: !!st.overdueCount, iconBg: st.overdueCount ? 'error' : 'warn' },
+          { icon: 'cloud_sync', value: st.pendingSync, label: 'Pending sync', sub: st.pendingSync ? 'Saved on this device' : 'All synced', tag: st.pendingSync ? 'Pending' : 'Synced', tagType: st.pendingSync ? 'warn' : 'good' }
+        ])}
 
-function renderInvestigatorRings(pts){
-  const n = pts.length;
-  if (!n) return '<div class="empty"><i class="ms">donut_large</i>No patients enrolled yet.</div>';
-  const R = 46, C = 2 * Math.PI * R;
-  return VK.map(([k, lbl]) => {
-    const done = pts.filter(p => p.v?.[k]?.done).length, p = pct(done, n) || 0;
-    const inprog = pts.filter(p => !p.v?.[k]?.done && vstat(p, k) === 'In Progress').length;
-    const over = pts.filter(p => ['Overdue','Missed'].includes(vstat(p, k))).length;
-    const colour = over ? 'var(--error)' : p >= 100 ? 'var(--success)' : 'var(--primary)';
-    return `<div class="ring-wrap"><div class="dial"><svg viewBox="0 0 120 120" role="img" aria-label="${lbl}: ${p}% complete">
-      <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--soft)" stroke-width="12"/>
-      <circle cx="60" cy="60" r="${R}" fill="none" stroke="${colour}" stroke-width="12" stroke-linecap="round"
-        stroke-dasharray="${C * p / 100} ${C}" transform="rotate(-90 60 60)"/></svg></div>
-      <div class="pct">${p}%</div><div class="lbl">${lbl}</div>
-      <div class="cnt">${done} of ${n} complete${inprog ? ' · ' + inprog + ' in progress' : ''}${over ? ' · ' + over + ' overdue' : ''}</div></div>`;
-  }).join('');
+        <section class="row two">
+          <div class="card">
+            <div class="card-head"><h2>Phase progress</h2><small>Share of your patients with each visit complete</small></div>
+            <div class="rings">${DashCharts.phaseDials(mine)}</div>
+            <div class="legend"><span><i style="background:var(--success)"></i>Complete</span><span><i style="background:var(--primary)"></i>In progress</span><span><i style="background:var(--warning)"></i>Due</span><span><i style="background:var(--error)"></i>Overdue</span></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Enrolment</h2><small>New patients per month, last 6 months</small></div>
+            <svg class="chart" id="enrolSvg" viewBox="0 0 600 200" role="img" aria-label="New patients per month">${renderEnrolmentSvg(mine)}</svg>
+          </div>
+        </section>
+
+        <section class="row three">
+          <div class="card">
+            <div class="card-head"><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
+            <div class="plist" id="invPlist">${renderInvestigatorList(upcoming)}</div>
+          </div>
+          <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming[0])}</div>
+          <div class="card">
+            <div class="card-head"><h2>Upcoming visits</h2><small>Next visit window per patient</small></div>
+            <div class="upc" id="invUpcoming">${renderInvestigatorUpcoming(upcoming)}</div>
+          </div>
+        </section>
+
+        <section class="row two-even">
+          <div class="card">
+            <div class="card-head"><h2>Clinical Performance</h2><small>From your verified patient data</small></div>
+            <div id="perfMetrics">
+              <div class="metric"><span>Follow-up visits within protocol window</span><b class="${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b></div>
+              <div class="metric"><span>Mean 1MSTS change (Baseline to 6 Months)</span><b class="${mean(st.dMsts)>0?'good':''}">${signed(mean(st.dMsts))} reps</b></div>
+              <div class="metric"><span>Mean LVEF change (Baseline to 6 Months)</span><b class="${mean(st.dEf)>0?'good':''}">${signed(mean(st.dEf))}%</b></div>
+              <div class="metric"><span>Patients at 4 of 4 GDMT pillars (latest visit)</span><b class="${st.gdmtRate>=70?'good':''}">${st.fourPillars} / ${st.n} (${st.gdmtRate??0}%)</b></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>My Assigned Sites</h2><small>Cardiology centres assigned to you</small></div>
+            <div class="table-wrap">
+              <table>
+                <tr><th>Site</th><th class="num">Patients</th><th class="num">Baseline</th><th class="num">3M</th><th class="num">6M</th><th class="num">All Complete</th></tr>
+                ${sites.map(s => {
+                  const ps = mine.filter(p => p.site === s);
+                  return `<tr>
+                    <td><b>${esc(s)}</b><div class="muted">${esc(getSiteZone(s))} Zone</div></td>
+                    <td class="num">${ps.length}</td>
+                    <td class="num">${ps.filter(p=>p.v?.b?.done).length}</td>
+                    <td class="num">${ps.filter(p=>p.v?.m3?.done).length}</td>
+                    <td class="num">${ps.filter(p=>p.v?.m6?.done).length}</td>
+                    <td class="num">${ps.filter(p=>p.v?.b?.done && p.v?.m3?.done && p.v?.m6?.done).length}</td>
+                  </tr>`;
+                }).join('') || '<tr><td colspan="6" class="muted">No sites assigned yet.</td></tr>'}
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  return headerHtml + bodyHtml;
 }
 
 function renderEnrolmentSvg(pts){
@@ -515,13 +570,17 @@ function renderCentralView(allPts){
 
   const st = aggregateStats(filtered);
   const totalAll = aggregateStats(allPts);
-
-  // Available sites in the chosen zone
   const zoneSites = filterZone === 'all' ? allSites : allSites.filter(x => x.zone === filterZone);
-  // Available investigators in the chosen site/zone
   const relevantInvs = [...new Set(filtered.map(p => p.inv).filter(Boolean))].sort();
 
-  return `
+  const tabs = [
+    { id: 'all', label: 'Full Oversight', icon: 'dashboard' },
+    { id: 'league', label: 'Site League Table', icon: 'leaderboard', badge: zoneSites.length },
+    { id: 'analytics', label: 'Trajectories & GDMT', icon: 'monitoring' },
+    { id: 'queue', label: 'Overdue Follow-up Queue', icon: 'warning', badge: st.overdueCount }
+  ];
+
+  const headerHtml = `
     <div class="hello">
       <div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
@@ -536,79 +595,33 @@ function renderCentralView(allPts){
       </div>
     </div>
 
-    <!-- Hierarchy & Filtering Toolbar (Zone -> Site -> Investigator) -->
-    <div class="hierarchy-bar">
-      <div class="hierarchy-filters">
-        <div class="filter-group">
-          <i class="ms">travel_explore</i>
-          <label for="selZone" style="font-weight:600">Zone:</label>
-          <select id="selZone" class="filter-select">
-            <option value="all" ${filterZone==='all'?'selected':''}>All Zones (National)</option>
-            ${zones.map(z => `<option value="${z}" ${filterZone===z?'selected':''}>Zone ${z}</option>`).join('')}
-          </select>
-        </div>
+    <!-- Reusable View Tabs -->
+    ${DashUI.viewTabs(tabs, currentCentralTab)}
 
-        <div class="filter-group">
-          <i class="ms">local_hospital</i>
-          <label for="selSite" style="font-weight:600">Site:</label>
-          <select id="selSite" class="filter-select">
-            <option value="all" ${filterSite==='all'?'selected':''}>All Sites (${zoneSites.length})</option>
-            ${zoneSites.map(st => `<option value="${st.code}" ${filterSite===st.code?'selected':''}>${st.code} — ${esc(st.name)}</option>`).join('')}
-          </select>
-        </div>
+    <!-- Reusable Hierarchy & Filtering Toolbar (Zone -> Site -> Investigator -> GDMT) -->
+    ${DashUI.hierarchyToolbar({
+      zones,
+      sites: zoneSites,
+      investigators: relevantInvs,
+      filterZone,
+      filterSite,
+      filterInv,
+      filterGdmt,
+      totalCount: allPts.length,
+      filteredCount: filtered.length
+    })}
+  `;
 
-        <div class="filter-group">
-          <i class="ms">person</i>
-          <label for="selInv" style="font-weight:600">Investigator:</label>
-          <select id="selInv" class="filter-select">
-            <option value="all" ${filterInv==='all'?'selected':''}>All Investigators</option>
-            ${relevantInvs.map(iv => `<option value="${esc(iv)}" ${filterInv===iv?'selected':''}>${esc(iv)}</option>`).join('')}
-          </select>
-        </div>
+  const kpisHtml = DashUI.kpiGrid([
+    { icon: 'groups', value: st.n, label: 'Enrolled Patients', sub: `Registry total: ${totalAll.n}`, tag: 'Live', tagType: 'good', iconBg: 'brand' },
+    { icon: 'domain', value: `${[...new Set(filtered.map(p=>p.site))].length} / ~100`, label: 'Reporting Centres', sub: 'Target: 100 cardiology sites', tag: 'Sites', tagType: 'info' },
+    { icon: 'biotech', value: st.b, label: 'Baseline Complete', sub: `${st.b} verified complete`, tag: `${pct(st.b,st.n)??0}%`, tagType: st.n && pct(st.b,st.n)>=80 ? 'good' : '', iconBg: 'success' },
+    { icon: 'event_available', value: st.ontimeRate != null ? `${st.ontimeRate}%` : '–', label: 'Follow-up Adherence', sub: `${st.overdueCount} overdue/missed visits`, tag: st.ontimeRate >= 80 ? 'Good' : 'Review', tagType: st.ontimeRate >= 80 ? 'good' : 'warn', iconBg: 'warn' },
+    { icon: 'medication', value: st.fourPillars, label: '4-Pillar GDMT (4/4)', sub: `${st.gdmtRate??0}% optimized therapy`, tag: `${st.gdmtRate??0}%`, tagType: st.gdmtRate >= 70 ? 'good' : '', valueColor: 'var(--brand-magenta)' }
+  ]);
 
-        <div class="filter-group">
-          <i class="ms">pill</i>
-          <label for="selGdmt" style="font-weight:600">GDMT:</label>
-          <select id="selGdmt" class="filter-select">
-            <option value="all" ${filterGdmt==='all'?'selected':''}>All Therapies</option>
-            <option value="4" ${filterGdmt==='4'?'selected':''}>4 of 4 Pillars Only</option>
-            <option value="incomplete" ${filterGdmt==='incomplete'?'selected':''}>Incomplete (&lt;4 Pillars)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="hierarchy-meta">
-        <span class="filter-badge"><i class="ms" style="font-size:14px">filter_list</i>Showing ${filtered.length} of ${allPts.length} Patients</span>
-        ${(filterZone!=='all'||filterSite!=='all'||filterInv!=='all'||filterGdmt!=='all') ? `<button type="button" class="btn" id="btnResetFilters" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:14px">restart_alt</i>Reset</button>` : ''}
-      </div>
-    </div>
-
-    <!-- Live Registry KPIs -->
-    <section class="kpis">
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">groups</i></span><span class="tag good">Live</span></div>
-        <b>${st.n}</b><span>Enrolled Patients</span><small>Registry total: ${totalAll.n}</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">domain</i></span><span class="tag info">Sites</span></div>
-        <b>${[...new Set(filtered.map(p=>p.site))].length} <small style="font-size:14px;color:var(--ink-3)">/ ~100</small></b><span>Reporting Centres</span><small>Target: 100 cardiology sites</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">biotech</i></span><span class="tag ${st.n&&pct(st.b,st.n)>=80?'good':''}">${pct(st.b,st.n)??0}%</span></div>
-        <b>${st.b}</b><span>Baseline Complete</span><small>${st.b} verified complete</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">event_available</i></span><span class="tag ${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</span></div>
-        <b>${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b><span>Follow-up Adherence</span><small>${st.overdueCount} overdue/missed visits</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">medication</i></span><span class="tag ${st.gdmtRate>=70?'good':''}">${st.gdmtRate??0}%</span></div>
-        <b style="color:var(--brand-magenta)">${st.fourPillars}</b><span>4-Pillar GDMT (4/4)</span><small>${st.gdmtRate??0}% optimized therapy</small>
-      </div>
-    </section>
-
-    <!-- Multi-Site League Table / Performance Grid -->
-    <section class="card">
+  const leagueHtml = `
+    <section class="card" style="margin-top:16px">
       <div class="card-head">
         <div>
           <h2>Site Performance &amp; League Table</h2>
@@ -618,39 +631,19 @@ function renderCentralView(allPts){
           <button type="button" class="btn" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
         </div>
       </div>
-      <div class="table-wrap">
-        <table class="rows-rounded">
-          <thead>
-            <tr>
-              <th>Site &amp; Centre Name</th>
-              <th>Zone</th>
-              <th>Lead Investigator</th>
-              <th class="num">Enrolled</th>
-              <th>Baseline %</th>
-              <th>3 Months %</th>
-              <th>6 Months %</th>
-              <th class="num">On-Time %</th>
-              <th class="num">Overdue</th>
-              <th class="num">GDMT 4/4 %</th>
-              <th>Quick Export</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${renderCentralSiteTableRows(zoneSites, filtered, allPts)}
-          </tbody>
-        </table>
-      </div>
+      ${DashUI.siteLeagueTable(zoneSites, filtered, allPts)}
     </section>
+  `;
 
-    <!-- Visual Analytics: Recruitment Trajectory & GDMT Coverage -->
-    <div class="dash-grid">
+  const analyticsHtml = `
+    <div class="dash-grid" style="margin-top:16px">
       <!-- Recruitment Trajectory by Zone/Site -->
       <section class="card">
         <div class="card-head">
           <h2>Recruitment Trajectory</h2>
           <small>Monthly patient intake by centre (last 6 months)</small>
         </div>
-        ${renderCentralEnrolmentBars(filtered, zoneSites)}
+        ${DashCharts.enrolmentBars(filtered, zoneSites)}
       </section>
 
       <!-- Visit Milestone Distribution -->
@@ -659,7 +652,7 @@ function renderCentralView(allPts){
           <h2>Visit Milestone Status</h2>
           <small>Status of all scheduled visits across registry</small>
         </div>
-        ${renderCentralMilestoneDonut(filtered)}
+        ${DashCharts.milestoneDonut(filtered)}
       </section>
 
       <!-- GDMT 4 Foundational Pillars Breakdown -->
@@ -668,7 +661,7 @@ function renderCentralView(allPts){
           <h2>GDMT 4 Foundational Pillars (DSH-03)</h2>
           <small>First pillar is ARNI (Sacubitril + Valsartan), not ACE-I/ARB</small>
         </div>
-        ${renderCentralGdmtPanel(filtered)}
+        ${DashCharts.gdmtBreakdown(filtered)}
       </section>
 
       <!-- Clinical Trajectories & Functional Outcomes (DSH-04) -->
@@ -677,12 +670,13 @@ function renderCentralView(allPts){
           <h2>Clinical Outcomes &amp; Trajectories (DSH-04)</h2>
           <small>Longitudinal NYHA class, 1MSTS functional capacity &amp; LVEF recovery</small>
         </div>
-        ${renderCentralTrajectoriesPanel(filtered, st)}
+        ${DashCharts.trajectories(filtered, st)}
       </section>
     </div>
+  `;
 
-    <!-- Critical Overdue & At-Risk Follow-up Queue (Central Monitor Outreach) -->
-    <section class="card">
+  const queueHtml = `
+    <section class="card" style="margin-top:16px">
       <div class="card-head">
         <div>
           <h2>Registry Overdue &amp; At-Risk Follow-up Queue</h2>
@@ -690,330 +684,30 @@ function renderCentralView(allPts){
         </div>
         <span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount} Action Required</span>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Study ID</th>
-              <th>Site</th>
-              <th>Zone</th>
-              <th>Investigator</th>
-              <th>Visit Due</th>
-              <th>Expected Window</th>
-              <th>Status</th>
-              <th>Contact Number</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${renderCentralOverdueQueue(filtered)}
-          </tbody>
-        </table>
-      </div>
+      ${DashUI.overdueQueueTable(filtered, getSiteZone)}
     </section>
   `;
-}
 
-function renderCentralSiteTableRows(sites, filteredPts, allPts){
-  if (!sites.length) return '<tr><td colspan="11" class="muted">No sites match the current filter.</td></tr>';
-  return sites.map(st => {
-    const sPts = filteredPts.filter(p => p.site === st.code);
-    const sAllPts = allPts.filter(p => p.site === st.code);
-    const n = sPts.length;
-    const bPct = pct(sPts.filter(p => p.v?.b?.done).length, n);
-    const m3Pct = pct(sPts.filter(p => p.v?.m3?.done).length, n);
-    const m6Pct = pct(sPts.filter(p => p.v?.m6?.done).length, n);
-
-    const fu = sPts.flatMap(p => ['m3','m6'].map(k => onTime(p, k))).filter(x => x !== null);
-    const ontimePct = fu.length ? Math.round(100 * fu.filter(Boolean).length / fu.length) : null;
-    const overdue = sPts.reduce((c, p) => c + ['m3','m6'].filter(k => ['Overdue','Missed'].includes(vstat(p, k))).length, 0);
-
-    const latestPills = sPts.map(p => {
-      const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
-      return last ? act(p.v[last]) : null;
-    }).filter(x => x !== null);
-    const gdmt4Pct = latestPills.length ? Math.round(100 * latestPills.filter(x => x === 4).length / latestPills.length) : null;
-
-    const invs = [...new Set(sAllPts.map(p => p.inv).filter(Boolean))].join(', ') || 'Pending Assignment';
-
-    return `<tr>
-      <td>
-        <b>${esc(st.code)}</b>
-        <div class="muted" style="font-size:12px">${esc(st.name)}</div>
-      </td>
-      <td><span class="tag" style="background:var(--soft);color:var(--ink-2)">${esc(st.zone || 'Central')}</span></td>
-      <td><div style="font-weight:500">${esc(invs)}</div></td>
-      <td class="num"><b>${n}</b></td>
-      <td>${renderMiniBar(bPct)}</td>
-      <td>${renderMiniBar(m3Pct)}</td>
-      <td>${renderMiniBar(m6Pct)}</td>
-      <td class="num"><b class="${ontimePct>=80?'good':ontimePct?'warn':''}">${ontimePct!=null?ontimePct+'%':'–'}</b></td>
-      <td class="num"><span class="${overdue?'chip Overdue':'muted'}">${overdue || '0'}</span></td>
-      <td class="num"><b style="${gdmt4Pct>=70?'color:var(--success)':''}">${gdmt4Pct!=null?gdmt4Pct+'%':'–'}</b></td>
-      <td>
-        <button type="button" class="btn" data-export-site="${esc(st.code)}" style="padding:4px 10px;font-size:12px">
-          <i class="ms" style="font-size:15px">download</i>CSV
-        </button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-function renderMiniBar(val){
-  const v = val || 0;
-  return `<div style="display:flex;align-items:center;gap:6px">
-    <div style="flex:1;height:6px;background:var(--line);border-radius:4px;overflow:hidden">
-      <div style="width:${v}%;height:100%;background:${v>=80?'var(--success)':'var(--primary)'};border-radius:4px"></div>
-    </div>
-    <span style="font-size:11px;font-weight:600;min-width:28px">${val != null ? val + '%' : '–'}</span>
-  </div>`;
-}
-
-function renderCentralEnrolmentBars(pts, sites){
-  const now = new Date(), months = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ y: d.getFullYear(), m: d.getMonth(), lbl: d.toLocaleDateString('en-GB', { month: 'short' }), counts: {} });
-  }
-  pts.forEach(p => {
-    if (!p.consent) return;
-    const d = day(p.consent);
-    const h = months.find(x => x.y === d.getFullYear() && x.m === d.getMonth());
-    if (h) h.counts[p.site] = (h.counts[p.site] || 0) + 1;
-  });
-  const codes = sites.map(s => s.code);
-  const totals = months.map(m => Object.values(m.counts).reduce((x, y) => x + y, 0));
-  const max = Math.max(1, ...totals);
-  const W = 620, H = 240, pad = 36, top = 16, gw = (W - pad - 10) / 6, bw = Math.min(36, gw * 0.55);
-  const cols = ['#1a5fb4','#1e7a4c','#9a5b00','#b3261e','#6b4fbb','#0f7c8c','#7a5c3e'];
-
-  let g = '';
-  [0, 0.5, 1].forEach(f => {
-    const y = H - pad - (H - pad - top) * f;
-    g += `<line x1="${pad}" x2="${W - 10}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pad - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${Math.round(max * f)}</text>`;
-  });
-  months.forEach((m, i) => {
-    const x = pad + i * gw + (gw - bw) / 2;
-    let base = H - pad;
-    codes.forEach((c, ci) => {
-      const v = m.counts[c] || 0;
-      if (!v) return;
-      const h = (H - pad - top) * v / max;
-      base -= h;
-      g += `<rect x="${x}" y="${base}" width="${bw}" height="${h}" fill="${cols[ci % cols.length]}"><title>${esc(c)} · ${m.lbl}: ${v}</title></rect>`;
-    });
-    g += `<text x="${x + bw/2}" y="${H - pad + 18}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${m.lbl}</text>`;
-    if (totals[i]) g += `<text x="${x + bw/2}" y="${base - 6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${totals[i]}</text>`;
-  });
-  const legend = codes.map((c, ci) => `<span><i style="background:${cols[ci % cols.length]}"></i>${esc(c)}</span>`).join('');
-  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="New patients per month by centre">${g}</svg><div class="legend-row">${legend}</div>`;
-}
-
-function renderCentralMilestoneDonut(pts){
-  const counts = { Completed: 0, 'In progress': 0, Due: 0, Overdue: 0, 'Not started': 0 };
-  pts.forEach(p => ['b','m3','m6'].forEach(k => {
-    const v = vstat(p, k);
-    const key = v === 'Missed' ? 'Overdue' : v === 'In Progress' ? 'In progress' : v === 'Not Started' ? 'Not started' : v;
-    counts[key] = (counts[key] || 0) + 1;
-  }));
-  const parts = [
-    { label: 'Completed', value: counts.Completed, color: 'var(--success)' },
-    { label: 'In progress', value: counts['In progress'], color: 'var(--primary)' },
-    { label: 'Due', value: counts.Due, color: 'var(--warning)' },
-    { label: 'Overdue', value: counts.Overdue, color: 'var(--error)' },
-    { label: 'Not started', value: counts['Not started'], color: 'var(--ink-3)' }
-  ];
-  const total = parts.reduce((x, p) => x + p.value, 0), R = 54, C = 2 * Math.PI * R;
-  let off = 0;
-  const segs = parts.filter(p => p.value > 0).map(p => {
-    const len = total ? C * p.value / total : 0;
-    const s = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${p.color}" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${p.label}: ${p.value}</title></circle>`;
-    off += len;
-    return s;
-  }).join('');
-  return `<div class="donut-wrap">
-    <svg viewBox="0 0 140 140" role="img" aria-label="Visit status breakdown">
-      <circle cx="70" cy="70" r="${R}" fill="none" stroke="var(--soft-2)" stroke-width="18"/>${segs}
-      <text x="70" y="68" text-anchor="middle" font-size="22" font-weight="600" fill="var(--ink)">${total}</text>
-      <text x="70" y="86" text-anchor="middle" font-size="11" fill="var(--ink-3)">visits</text>
-    </svg>
-    <ul class="legend-list">${parts.map(p => `<li><i style="background:${p.color}"></i><span>${p.label}</span><b>${p.value}</b></li>`).join('')}</ul>
-  </div>`;
-}
-
-function renderCentralGdmtPanel(pts){
-  const n = pts.length;
-  if (!n) return '<div class="empty"><i class="ms">medication</i>No patients to analyze.</div>';
-
-  // Calculate coverage for each of the 4 foundational pillars across latest visit
-  const pillarCounts = { arni: 0, bb: 0, mra: 0, sg: 0 };
-  const reasons = {};
-
-  pts.forEach(p => {
-    const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
-    if (!last) return;
-    const v = p.v[last];
-    PL.forEach(([q]) => {
-      if (G(v, 'g.' + q + '.status') === 'Active') pillarCounts[q]++;
-    });
-    // Incomplete reasons
-    if (v.rs) {
-      Object.entries(v.rs).forEach(([rCode, active]) => {
-        if (active) reasons[rCode] = (reasons[rCode] || 0) + 1;
-      });
-    }
-  });
-
-  const R_NAMES = {
-    hypo: 'Hypotension', brady: 'Bradycardia', renal: 'Renal dysfunction',
-    k: 'Hyperkalemia', intol: 'Intolerance', cost: 'Cost/access',
-    pref: 'Patient preference', phys: 'Physician decision'
-  };
-
-  return `
-    <div class="gdmt-grid">
-      <div class="gdmt-card p1">
-        <div class="gdmt-head">
-          <span class="gdmt-title">1. ARNI (Sacubitril+Valsartan)</span>
-          <span class="gdmt-val">${pct(pillarCounts.arni, n)??0}%</span>
-        </div>
-        <div class="gdmt-bar"><i style="width:${pct(pillarCounts.arni, n)??0}%;background:var(--brand-magenta)"></i></div>
-        <small class="muted">${pillarCounts.arni} of ${n} patients on ARNI</small>
+  let bodyHtml = '';
+  if (currentCentralTab === 'league') {
+    bodyHtml = `<div class="dash-fade-in">${leagueHtml}</div>`;
+  } else if (currentCentralTab === 'analytics') {
+    bodyHtml = `<div class="dash-fade-in">${analyticsHtml}</div>`;
+  } else if (currentCentralTab === 'queue') {
+    bodyHtml = `<div class="dash-fade-in">${queueHtml}</div>`;
+  } else {
+    // 'all'
+    bodyHtml = `
+      <div class="dash-fade-in">
+        ${kpisHtml}
+        ${leagueHtml}
+        ${analyticsHtml}
+        ${queueHtml}
       </div>
-
-      <div class="gdmt-card p2">
-        <div class="gdmt-head">
-          <span class="gdmt-title">2. Beta-blocker</span>
-          <span class="gdmt-val">${pct(pillarCounts.bb, n)??0}%</span>
-        </div>
-        <div class="gdmt-bar"><i style="width:${pct(pillarCounts.bb, n)??0}%;background:var(--primary)"></i></div>
-        <small class="muted">${pillarCounts.bb} of ${n} patients on BB</small>
-      </div>
-
-      <div class="gdmt-card p3">
-        <div class="gdmt-head">
-          <span class="gdmt-title">3. MRA</span>
-          <span class="gdmt-val">${pct(pillarCounts.mra, n)??0}%</span>
-        </div>
-        <div class="gdmt-bar"><i style="width:${pct(pillarCounts.mra, n)??0}%;background:var(--warning)"></i></div>
-        <small class="muted">${pillarCounts.mra} of ${n} patients on MRA</small>
-      </div>
-
-      <div class="gdmt-card p4">
-        <div class="gdmt-head">
-          <span class="gdmt-title">4. SGLT2 inhibitor</span>
-          <span class="gdmt-val">${pct(pillarCounts.sg, n)??0}%</span>
-        </div>
-        <div class="gdmt-bar"><i style="width:${pct(pillarCounts.sg, n)??0}%;background:var(--success)"></i></div>
-        <small class="muted">${pillarCounts.sg} of ${n} patients on SGLT2i</small>
-      </div>
-    </div>
-
-    <div style="margin-top:16px">
-      <div style="font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px">Documented Clinical Reasons for Incomplete GDMT:</div>
-      <div class="reason-tags">
-        ${Object.entries(reasons).map(([code, cnt]) => `
-          <span class="reason-tag"><b>${R_NAMES[code]||code}:</b> ${cnt} patients</span>
-        `).join('') || '<span class="muted" style="font-size:12px">None documented or fully optimized</span>'}
-      </div>
-    </div>
-  `;
-}
-
-function renderCentralTrajectoriesPanel(pts, st){
-  // Calculate NYHA distribution at Baseline vs 6M
-  const bNyha = { I: 0, II: 0, III: 0, IV: 0 };
-  const m6Nyha = { I: 0, II: 0, III: 0, IV: 0 };
-  let m6Count = 0;
-
-  pts.forEach(p => {
-    if (p.v?.b?.nyha && bNyha[p.v.b.nyha] !== undefined) bNyha[p.v.b.nyha]++;
-    if (p.v?.m6?.done && p.v?.m6?.nyha && m6Nyha[p.v.m6.nyha] !== undefined) {
-      m6Nyha[p.v.m6.nyha]++;
-      m6Count++;
-    }
-  });
-
-  return `
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="traj-row">
-        <div>
-          <b>NYHA Functional Class Shift</b>
-          <div class="muted" style="font-size:12px">Baseline vs Month 6 Cohort (${m6Count} finished M6)</div>
-        </div>
-        <div class="traj-stages">
-          <span class="traj-pill" title="Baseline Class III/IV">B: ${bNyha.III + bNyha.IV} in Cl III/IV</span>
-          <span class="traj-arrow">➔</span>
-          <span class="traj-pill" style="background:var(--success-soft);color:var(--on-success-soft)" title="M6 Class I/II">M6: ${m6Nyha.I + m6Nyha.II} in Cl I/II</span>
-        </div>
-      </div>
-
-      <div class="traj-row">
-        <div>
-          <b>Functional Capacity (1MSTS)</b>
-          <div class="muted" style="font-size:12px">Mean 1-Minute Sit-to-Stand repetitions gain</div>
-        </div>
-        <b style="font-size:18px;color:${mean(st.dMsts)>0?'var(--success)':'var(--ink)'}">${signed(mean(st.dMsts))} reps</b>
-      </div>
-
-      <div class="traj-row">
-        <div>
-          <b>Echocardiographic Recovery (LVEF)</b>
-          <div class="muted" style="font-size:12px">Mean left ventricular ejection fraction improvement</div>
-        </div>
-        <b style="font-size:18px;color:${mean(st.dEf)>0?'var(--success)':'var(--ink)'}">${signed(mean(st.dEf))}%</b>
-      </div>
-
-      <div class="traj-row">
-        <div>
-          <b>Adverse Hospitalization &amp; Event Rates</b>
-          <div class="muted" style="font-size:12px">Reported during longitudinal follow-up</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <span class="chip ${st.events.hf?'Overdue':'good'}">${st.events.hf} HF Hosp</span>
-          <span class="chip ${st.events.death?'Overdue':'good'}">${st.events.death} Death</span>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderCentralOverdueQueue(pts){
-  const overdueList = [];
-  pts.forEach(p => {
-    ['m3','m6'].forEach(k => {
-      const s = vstat(p, k);
-      if (s === 'Overdue' || s === 'Missed') {
-        const win = window_(p, k);
-        const daysOver = win ? Math.round((new Date() - win[1]) / DAY) : 0;
-        overdueList.push({ p, k, s, win, daysOver });
-      }
-    });
-  });
-
-  if (!overdueList.length) {
-    return '<tr><td colspan="9" class="muted" style="text-align:center;padding:24px"><i class="ms" style="font-size:24px;vertical-align:-4px;color:var(--success)">check_circle</i> No overdue or missed follow-up visits across the registry. Excellent site protocol compliance!</td></tr>';
+    `;
   }
 
-  overdueList.sort((a,b) => b.daysOver - a.daysOver);
-
-  return overdueList.slice(0, 15).map(o => `
-    <tr>
-      <td><b>${esc(o.p.id)}</b><div class="muted" style="font-size:11px">${esc(o.p.name || 'Patient')}</div></td>
-      <td><b>${esc(o.p.site)}</b></td>
-      <td><span class="tag" style="background:var(--soft);color:var(--ink-2)">${esc(getSiteZone(o.p.site))}</span></td>
-      <td>${esc(o.p.inv || '–')}</td>
-      <td><b>${o.k === 'm3' ? 'Month 3' : 'Month 6'}</b></td>
-      <td><small>${o.win ? fmtShortD(o.win[0]) + ' – ' + fmtShortD(o.win[1]) : '–'}</small></td>
-      <td><span class="chip Overdue">${o.s} (+${o.daysOver}d)</span></td>
-      <td><code>${esc(o.p.contact || '–')}</code></td>
-      <td>
-        <a class="btn" href="${ECRF}?patient=${encodeURIComponent(o.p.id)}&tab=${o.k}" style="padding:4px 8px;font-size:12px">
-          <i class="ms" style="font-size:15px">visibility</i>Inspect
-        </a>
-      </td>
-    </tr>
-  `).join('');
+  return headerHtml + bodyHtml;
 }
 
 
@@ -1021,172 +715,6 @@ function renderCentralOverdueQueue(pts){
    SUPER ADMIN OVERVIEW & PROFILE DRILL-DOWN HELPERS
    ========================================================================== */
 let adminProfileUsername = null;
-
-/* Grouped bars: rows = [{label: siteCode, values: [b%, m3%, m6%]}] */
-function groupedBars(rows){
-  if (!rows.length) return '<div class="empty"><i class="ms">bar_chart</i>No sites yet.</div>';
-  const W = 620, H = 240, pad = 36, top = 16, gw = (W - pad - 10) / rows.length, bw = Math.min(22, gw / 4);
-  const cols = ['var(--primary)', 'var(--success)', 'var(--warning)'];
-  let g = '';
-  [0, 25, 50, 75, 100].forEach(v => {
-    const y = H - pad - (H - pad - top) * v / 100;
-    g += `<line x1="${pad}" x2="${W - 10}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pad - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${v}%</text>`;
-  });
-  rows.forEach((r, i) => {
-    const x0 = pad + i * gw + (gw - 3 * bw - 8) / 2;
-    r.values.forEach((v, j) => {
-      const h = (H - pad - top) * (v || 0) / 100;
-      g += `<rect x="${x0 + j * (bw + 4)}" y="${H - pad - h}" width="${bw}" height="${h}" rx="5" fill="${cols[j]}"><title>${esc(r.label)}: ${v == null ? '–' : v + '%'}</title></rect>`;
-    });
-    g += `<text x="${pad + i * gw + gw / 2}" y="${H - pad + 18}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${esc(r.label)}</text>`;
-  });
-  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Completion by site">${g}</svg>
-    <div class="legend-row"><span><i style="background:var(--primary)"></i>Baseline</span><span><i style="background:var(--success)"></i>3 months</span><span><i style="background:var(--warning)"></i>6 months</span></div>`;
-}
-
-/* Horizontal bars: items = [{label, sub, value, color}] */
-function hbars(items){
-  if (!items.length) return '<div class="empty"><i class="ms">groups</i>No investigators yet.</div>';
-  const max = Math.max(1, ...items.map(i => i.value));
-  return `<div class="hbars">${items.map(i => `<div class="hbar-row">
-    <div class="hbar-label"><b>${esc(i.label)}</b><small>${esc(i.sub || '')}</small></div>
-    <div class="hbar-track" role="img" aria-label="${esc(i.label)}: ${i.value} patients"><i style="width:${100 * i.value / max}%;background:${i.color}"></i></div>
-    <span class="hbar-val">${i.value}</span></div>`).join('')}</div>`;
-}
-
-/* Super Admin: Single Investigator Profile Dashboard Drill-Down */
-function renderInvestigatorProfileView(pu, allPts){
-  const mine = allPts.filter(p => p.inv === pu.name || p.owner === pu.username);
-  const st = aggregateStats(mine);
-  const rows = mine.map(p => `<tr>
-    <td><b>${esc(p.id)}</b><div class="muted" style="font-size:12px">${esc(p.name || 'Patient')}</div></td>
-    <td><b>${esc(p.site)}</b></td>
-    <td><span class="chip ${chipCls(vstat(p,'b'))}">${vstat(p,'b')}</span></td>
-    <td><span class="chip ${chipCls(vstat(p,'m3'))}">${vstat(p,'m3')}</span></td>
-    <td><span class="chip ${chipCls(vstat(p,'m6'))}">${vstat(p,'m6')}</span></td>
-    <td class="num">${(p.audit || []).length}</td>
-    <td><a class="btn" href="${ECRF}?patient=${encodeURIComponent(p.id)}" style="padding:4px 8px;font-size:12px"><i class="ms" style="font-size:15px">open_in_new</i>View</a></td>
-  </tr>`).join('');
-
-  const activity = mine.flatMap(p => (p.audit || []).map(a => ({ ...a, pid: p.id }))).sort((a,b) => (b.at || 0) - (a.at || 0)).slice(0, 10);
-
-  const overdueList = [];
-  mine.forEach(p => {
-    ['m3','m6'].forEach(k => {
-      const s = vstat(p, k);
-      if (s === 'Overdue' || s === 'Missed') {
-        const win = window_(p, k);
-        const daysOver = win ? Math.round((new Date() - win[1]) / DAY) : 0;
-        overdueList.push({ p, k, s, win, daysOver });
-      }
-    });
-  });
-
-  return `
-    <div style="margin-bottom:16px">
-      <button type="button" class="btn" id="btnAdminProfileBack"><i class="ms">arrow_back</i>Back to Study Overview</button>
-    </div>
-
-    <!-- Investigator Profile Header Card -->
-    <section class="card" style="margin-bottom:16px">
-      <div class="card-head">
-        <div style="display:flex;align-items:center;gap:12px">
-          <span class="avatar" style="width:48px;height:48px;font-size:18px">${initials(pu.name)}</span>
-          <div>
-            <h2 style="font-size:20px;margin:0">${esc(pu.name)}</h2>
-            <div class="muted" style="font-size:13px"><code>${esc(pu.username)}</code> · Assigned: ${pu.sites?.join(', ') || 'No sites'}</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="chip ${pu.active?'In':'Not'}">${pu.active?'Active Clinician':'Inactive'}</span>
-          <button type="button" class="btn" data-export-inv="${esc(pu.username)}"><i class="ms">download</i>Export CSV</button>
-        </div>
-      </div>
-
-      <div class="kpis" style="margin-top:16px">
-        <div class="kpi">
-          <div class="top"><span class="ico"><i class="ms">group</i></span></div>
-          <b>${st.n}</b><span>Patients</span><small>Entered by this investigator</small>
-        </div>
-        <div class="kpi">
-          <div class="top"><span class="ico"><i class="ms">biotech</i></span><span class="tag ${pct(st.b,st.n)>=80?'good':''}">${pct(st.b,st.n)??0}%</span></div>
-          <b>${st.b}</b><span>Baseline Complete</span><small>${st.b} of ${st.n} verified</small>
-        </div>
-        <div class="kpi">
-          <div class="top"><span class="ico"><i class="ms">event_busy</i></span><span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount}</span></div>
-          <b>${st.overdueCount}</b><span>Follow-ups Overdue</span><small>Outside window</small>
-        </div>
-        <div class="kpi">
-          <div class="top"><span class="ico"><i class="ms">schedule</i></span><span class="tag ${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</span></div>
-          <b>${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b><span>On-Time Visits</span><small>Protocol adherence</small>
-        </div>
-      </div>
-    </section>
-
-    <!-- Investigator Patient List -->
-    <section class="card" style="margin-bottom:16px">
-      <div class="card-head">
-        <h2>Patients Entered (${mine.length})</h2>
-        <small>Visit status and record modification count</small>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Patient</th><th>Site</th><th>Baseline</th><th>3 Months</th><th>6 Months</th><th class="num">Audit Changes</th><th>Action</th></tr>
-          </thead>
-          <tbody>
-            ${rows || '<tr><td colspan="7" class="muted">No patients entered yet by this investigator.</td></tr>'}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Investigator Overdue Follow-ups -->
-    <section class="card" style="margin-bottom:16px">
-      <div class="card-head">
-        <h2>Overdue Follow-ups (${overdueList.length})</h2>
-        <small>3 and 6 month visits past protocol window</small>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Study ID</th><th>Site</th><th>Visit</th><th>Expected Window</th><th>Status</th><th>Contact</th><th>Action</th></tr>
-          </thead>
-          <tbody>
-            ${overdueList.map(o => `<tr>
-              <td><b>${esc(o.p.id)}</b></td>
-              <td><b>${esc(o.p.site)}</b></td>
-              <td><b>${o.k === 'm3' ? 'Month 3' : 'Month 6'}</b></td>
-              <td><small>${o.win ? fmtShortD(o.win[0]) + ' – ' + fmtShortD(o.win[1]) : '–'}</small></td>
-              <td><span class="chip Overdue">${o.s} (+${o.daysOver}d)</span></td>
-              <td><code>${esc(o.p.contact || '–')}</code></td>
-              <td><a class="btn" href="${ECRF}?patient=${encodeURIComponent(o.p.id)}&tab=${o.k}" style="padding:4px 8px;font-size:12px"><i class="ms" style="font-size:15px">visibility</i>Inspect</a></td>
-            </tr>`).join('') || '<tr><td colspan="7" class="muted" style="text-align:center;padding:20px"><i class="ms" style="font-size:22px;vertical-align:-4px;color:var(--success)">task_alt</i> No overdue follow-ups for this investigator.</td></tr>'}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Recent Change Activity Audit -->
-    <section class="card">
-      <div class="card-head">
-        <h2>Recent Clinical Activity Audit</h2>
-        <small>Last 10 field modifications recorded for this investigator's patients</small>
-      </div>
-      ${activity.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Timestamp</th><th>Patient</th><th>Field Modified</th><th>Modification</th></tr></thead>
-        <tbody>
-          ${activity.map(a => `<tr>
-            <td style="font-size:12px;white-space:nowrap">${esc(a.t || '')}</td>
-            <td><b>${esc(a.pid)}</b></td>
-            <td><code>${esc(a.f || '')}</code></td>
-            <td>${a.o ? esc(a.o) + ' ➔ ' : ''}<b>${esc(a.n || '')}</b></td>
-          </tr>`).join('')}
-        </tbody>
-      </table></div>` : '<div class="empty"><i class="ms">history</i>No recent change activity logged yet.</div>'}
-    </section>
-  `;
-}
 
 function exportSingleInvestigator(username){
   const s = accessStore();
@@ -1233,7 +761,7 @@ function renderSuperAdminView(allPts){
   const s = accessStore();
   if (adminProfileUsername) {
     const pu = s.users.find(u => u.username === adminProfileUsername);
-    if (pu) return renderInvestigatorProfileView(pu, allPts);
+    if (pu) return DashUI.investigatorProfile(pu, allPts, aggregateStats);
     adminProfileUsername = null;
   }
 
@@ -1243,7 +771,6 @@ function renderSuperAdminView(allPts){
   const invActive = invUsers.filter(u => u.active).length;
   const auditLogs = centralAuditLog();
 
-  // Completion by site (grouped bars: Baseline, 3M, 6M)
   const siteBars = s.sites.map(x => {
     const sPts = allPts.filter(p => p.site === x.code);
     const n = sPts.length;
@@ -1257,7 +784,6 @@ function renderSuperAdminView(allPts){
     };
   });
 
-  // Patients by investigator (horizontal ranking bars)
   const teamBars = invUsers.map((u, i) => {
     const uPts = allPts.filter(p => p.inv === u.name || p.owner === u.username);
     const uSt = aggregateStats(uPts);
@@ -1269,7 +795,15 @@ function renderSuperAdminView(allPts){
     };
   });
 
-  return `
+  const tabs = [
+    { id: 'all', label: 'Executive Overview', icon: 'space_dashboard' },
+    { id: 'teams', label: 'Teams & Oversight', icon: 'diversity_3', badge: `${invUsers.length + centralUsers.length}` },
+    { id: 'analytics', label: 'Visual Analytics', icon: 'analytics' },
+    { id: 'league', label: 'Site League Table', icon: 'leaderboard', badge: s.sites.length },
+    { id: 'queue', label: 'Overdue Queue', icon: 'warning', badge: st.overdueCount }
+  ];
+
+  const headerHtml = `
     <div class="hello">
       <div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
@@ -1284,131 +818,27 @@ function renderSuperAdminView(allPts){
         <button type="button" class="btn" id="btnExportModal"><i class="ms">download</i>Export All Data</button>
       </div>
     </div>
+    ${DashUI.viewTabs(tabs, currentSuperTab)}
+  `;
 
-    <!-- Global KPIs -->
-    <section class="kpis">
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">group</i></span></div>
-        <b>${st.n}</b><span>Total Registry Patients</span><small>All hospital sites</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">domain</i></span></div>
-        <b>${s.sites.length} <small style="font-size:14px;color:var(--ink-3)">/ ~100</small></b><span>Participating Sites</span><small>National network</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">clinical_notes</i></span><span class="tag good">${invActive} Active</span></div>
-        <b>${invUsers.length}</b><span>Site Investigators</span><small>${invActive} active clinicians</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">supervisor_account</i></span><span class="tag info">Directorate</span></div>
-        <b>${centralUsers.length}</b><span>Central Monitors</span><small>Read-only governance</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">schedule</i></span><span class="tag ${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</span></div>
-        <b>${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b><span>Follow-up Adherence</span><small>Protocol adherence</small>
-      </div>
-      <div class="kpi">
-        <div class="top"><span class="ico"><i class="ms">event_busy</i></span><span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount}</span></div>
-        <b style="${st.overdueCount?'color:var(--error)':''}">${st.overdueCount}</b><span>Overdue Follow-ups</span><small>Study-wide alerts</small>
-      </div>
-    </section>
+  const kpisHtml = DashUI.kpiGrid([
+    { icon: 'group', value: st.n, label: 'Total Registry Patients', sub: 'All hospital sites', iconBg: 'brand' },
+    { icon: 'domain', value: `${s.sites.length} / ~100`, label: 'Participating Sites', sub: 'National network' },
+    { icon: 'clinical_notes', value: invUsers.length, label: 'Site Investigators', sub: `${invActive} active clinicians`, tag: `${invActive} Active`, tagType: 'good', iconBg: 'success' },
+    { icon: 'supervisor_account', value: centralUsers.length, label: 'Central Monitors', sub: 'Read-only governance', tag: 'Directorate', tagType: 'info' },
+    { icon: 'schedule', value: st.ontimeRate != null ? `${st.ontimeRate}%` : '–', label: 'Follow-up Adherence', sub: 'Protocol adherence', tag: st.ontimeRate >= 80 ? 'Good' : 'Review', tagType: st.ontimeRate >= 80 ? 'good' : 'warn' },
+    { icon: 'event_busy', value: st.overdueCount, label: 'Overdue Follow-ups', sub: 'Study-wide alerts', tag: `${st.overdueCount}`, tagType: st.overdueCount ? 'warn' : 'good', alert: !!st.overdueCount, iconBg: st.overdueCount ? 'error' : 'warn' }
+  ]);
 
-    <!-- Two Separate Teams Presentation (Central Team vs Site Investigators) -->
-    <section class="teams-grid">
-      <!-- Team 1: Central Monitoring Directorate -->
-      <div class="card">
-        <div class="card-head">
-          <div>
-            <h2>Central Monitoring Directorate</h2>
-            <small>Study leadership &amp; data monitors ("The boss after super admin") · Read-only with full export authority</small>
-          </div>
-          <a class="btn" href="${ADMIN}#users" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">manage_accounts</i>Manage</a>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Member</th><th>Username</th><th>Assigned Zone(s)</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              ${centralUsers.map(u => `
-                <tr>
-                  <td><b>${esc(u.name)}</b></td>
-                  <td><code>${esc(u.username)}</code></td>
-                  <td>${u.zones?.length ? u.zones.join(', ') : 'All Zones (National)'}</td>
-                  <td><span class="chip ${u.active?'In':'Not'}">${u.active?'Active':'Inactive'}</span></td>
-                </tr>
-              `).join('') || '<tr><td colspan="4" class="muted">No Central Team users configured.</td></tr>'}
-            </tbody>
-          </table>
-        </div>
+  const teamsHtml = DashUI.twoTeamsGrid({
+    centralUsers,
+    invUsers,
+    allPts,
+    auditLogs,
+    aggregateStatsFn: aggregateStats
+  });
 
-        <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
-          <div style="font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:8px">
-            <i class="ms" style="font-size:14px;vertical-align:-2px">receipt_long</i> Central Team Monitoring &amp; Export Audit Log (Latest 5 Events):
-          </div>
-          <div style="font-size:12px;color:var(--ink-2)">
-            ${auditLogs.slice(0, 5).map(a => `
-              <div style="padding:6px 0;border-bottom:1px dashed var(--line);display:flex;justify-content:space-between;align-items:center">
-                <span><b>${esc(a.name)}:</b> <span class="tag info" style="font-size:10px;padding:1px 6px">${esc(a.action)}</span> ${esc(a.details)}</span>
-                <span class="muted" style="font-size:11px;white-space:nowrap">${esc(a.t)}</span>
-              </div>
-            `).join('') || '<div class="muted">No central export or audit actions recorded yet.</div>'}
-          </div>
-        </div>
-      </div>
-
-      <!-- Team 2: Clinical Site Investigators -->
-      <div class="card">
-        <div class="card-head">
-          <div>
-            <h2>Site Investigators Team</h2>
-            <small>Frontline cardiologists entering patient visits at hospital sites · Click to drill into profile</small>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button type="button" class="btn" id="btnExportAllInvs" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">download</i>CSV</button>
-            <a class="btn" href="${ADMIN}#users" style="padding:4px 10px;font-size:12px"><i class="ms" style="font-size:15px">add</i>Add</a>
-          </div>
-        </div>
-        <div style="display:flex;gap:16px;margin-bottom:12px;padding:0 4px">
-          <div><b style="font-size:18px;line-height:1">${invUsers.length}</b><div class="muted" style="font-size:11px">Total</div></div>
-          <div><b style="font-size:18px;line-height:1;color:var(--success)">${invActive}</b><div class="muted" style="font-size:11px">Active</div></div>
-          <div><b style="font-size:18px;line-height:1;color:var(--ink-3)">${invUsers.length - invActive}</b><div class="muted" style="font-size:11px">Inactive</div></div>
-        </div>
-        <div class="table-wrap">
-          <table class="rows-rounded">
-            <thead>
-              <tr><th>Investigator</th><th>Assigned Sites</th><th class="num">Patients</th><th class="num">On-Time %</th><th>Drill-Down Profile</th></tr>
-            </thead>
-            <tbody>
-              ${invUsers.map(u => {
-                const uPts = allPts.filter(p => p.inv === u.name || p.owner === u.username);
-                const uSt = aggregateStats(uPts);
-                return `
-                  <tr class="row-link" data-admin-profile="${esc(u.username)}" title="Open ${esc(u.name)} profile dashboard">
-                    <td>
-                      <button type="button" class="name-link" data-admin-profile="${esc(u.username)}">
-                        <b>${esc(u.name)}</b><i class="ms">chevron_right</i>
-                      </button>
-                      <div class="muted" style="font-size:11px">${esc(u.username)}</div>
-                    </td>
-                    <td>${u.sites?.join(', ') || '<span class="muted">No Sites</span>'}</td>
-                    <td class="num"><b>${uPts.length}</b></td>
-                    <td class="num"><b class="${uSt.ontimeRate>=80?'good':uSt.ontimeRate?'warn':''}">${uSt.ontimeRate!=null?uSt.ontimeRate+'%':'–'}</b></td>
-                    <td>
-                      <button type="button" class="btn" data-admin-profile="${esc(u.username)}" style="padding:4px 10px;font-size:12px">
-                        <i class="ms" style="font-size:15px">account_circle</i>View Profile
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              }).join('') || '<tr><td colspan="5" class="muted">No Site Investigators configured.</td></tr>'}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- Visual Analytics Dash Grid: Completion, Milestone, Trajectory, Ranking -->
+  const analyticsHtml = `
     <div class="dash-grid" style="margin-top:16px">
       <!-- 1. Completion by site (Grouped Bars) -->
       <section class="card">
@@ -1416,7 +846,7 @@ function renderSuperAdminView(allPts){
           <h2>Completion by Site</h2>
           <small>Share of patients with each visit complete (Baseline, 3M, 6M)</small>
         </div>
-        ${groupedBars(siteBars)}
+        ${DashCharts.groupedBars(siteBars)}
       </section>
 
       <!-- 2. Visit status breakdown (Donut) -->
@@ -1425,7 +855,7 @@ function renderSuperAdminView(allPts){
           <h2>Visit Status Distribution</h2>
           <small>Status across all scheduled patient visits</small>
         </div>
-        ${renderCentralMilestoneDonut(allPts)}
+        ${DashCharts.milestoneDonut(allPts)}
       </section>
 
       <!-- 3. Registry enrolment trajectory (SVG stacked bars) -->
@@ -1434,7 +864,7 @@ function renderSuperAdminView(allPts){
           <h2>Registry Enrolment by Centre</h2>
           <small>Monthly patient intake by centre (last 6 months)</small>
         </div>
-        ${renderCentralEnrolmentBars(allPts, s.sites)}
+        ${DashCharts.enrolmentBars(allPts, s.sites)}
       </section>
 
       <!-- 4. Patients by investigator (Horizontal ranking bars) -->
@@ -1443,11 +873,12 @@ function renderSuperAdminView(allPts){
           <h2>Patients by Investigator</h2>
           <small>Volume and on-time compliance across team members</small>
         </div>
-        ${hbars(teamBars)}
+        ${DashCharts.hbars(teamBars)}
       </section>
     </div>
+  `;
 
-    <!-- Multi-Site Performance League Table -->
+  const leagueHtml = `
     <section class="card" style="margin-top:16px">
       <div class="card-head">
         <div>
@@ -1458,31 +889,11 @@ function renderSuperAdminView(allPts){
           <button type="button" class="btn" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
         </div>
       </div>
-      <div class="table-wrap">
-        <table class="rows-rounded">
-          <thead>
-            <tr>
-              <th>Site &amp; Centre Name</th>
-              <th>Zone</th>
-              <th>Lead Investigator</th>
-              <th class="num">Enrolled</th>
-              <th>Baseline %</th>
-              <th>3 Months %</th>
-              <th>6 Months %</th>
-              <th class="num">On-Time %</th>
-              <th class="num">Overdue</th>
-              <th class="num">GDMT 4/4 %</th>
-              <th>Quick Export</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${renderCentralSiteTableRows(s.sites, allPts, allPts)}
-          </tbody>
-        </table>
-      </div>
+      ${DashUI.siteLeagueTable(s.sites, allPts, allPts)}
     </section>
+  `;
 
-    <!-- Study-wide Overdue & At-Risk Follow-up Queue -->
+  const queueHtml = `
     <section class="card" style="margin-top:16px">
       <div class="card-head">
         <div>
@@ -1491,28 +902,33 @@ function renderSuperAdminView(allPts){
         </div>
         <span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount} Alerts</span>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Study ID</th>
-              <th>Site</th>
-              <th>Zone</th>
-              <th>Investigator</th>
-              <th>Visit Due</th>
-              <th>Expected Window</th>
-              <th>Status</th>
-              <th>Contact Number</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${renderCentralOverdueQueue(allPts)}
-          </tbody>
-        </table>
-      </div>
+      ${DashUI.overdueQueueTable(allPts, getSiteZone)}
     </section>
   `;
+
+  let bodyHtml = '';
+  if (currentSuperTab === 'teams') {
+    bodyHtml = `<div class="dash-fade-in">${teamsHtml}</div>`;
+  } else if (currentSuperTab === 'analytics') {
+    bodyHtml = `<div class="dash-fade-in">${analyticsHtml}</div>`;
+  } else if (currentSuperTab === 'league') {
+    bodyHtml = `<div class="dash-fade-in">${leagueHtml}</div>`;
+  } else if (currentSuperTab === 'queue') {
+    bodyHtml = `<div class="dash-fade-in">${queueHtml}</div>`;
+  } else {
+    // 'all'
+    bodyHtml = `
+      <div class="dash-fade-in">
+        ${kpisHtml}
+        ${teamsHtml}
+        ${analyticsHtml}
+        ${leagueHtml}
+        ${queueHtml}
+      </div>
+    `;
+  }
+
+  return headerHtml + bodyHtml;
 }
 
 
@@ -1640,6 +1056,28 @@ function renderDashboard(){
 }
 
 function attachEvents(){
+  // Tab switcher clicks
+  document.querySelectorAll('.dash-tab[data-dashtab]').forEach(btn => {
+    btn.onclick = () => {
+      const tabId = btn.dataset.dashtab;
+      if (ROLE === 'investigator') currentInvTab = tabId;
+      else if (ROLE === 'superadmin') currentSuperTab = tabId;
+      else currentCentralTab = tabId;
+      renderDashboard();
+    };
+  });
+
+  // Breadcrumb navigation from investigator drill-down profile
+  const btnBreadcrumb = $('btnBreadcrumbDash');
+  if (btnBreadcrumb) {
+    btnBreadcrumb.onclick = e => {
+      e.preventDefault();
+      adminProfileUsername = null;
+      renderDashboard();
+      window.scrollTo(0, 0);
+    };
+  }
+
   // Period filter clicks (Today, Week, Month from header.js)
   document.querySelectorAll('[data-period]').forEach(btn => {
     btn.onclick = () => {
