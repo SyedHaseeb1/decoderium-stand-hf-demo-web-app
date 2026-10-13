@@ -673,19 +673,18 @@ label {
   display: block; margin-bottom: 6px;
   font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: 0.2px;
 }
-label input:not([type="checkbox"]), label select, .field input, .field select {
+label input:not([type="checkbox"]), .field input {
   display: block; width: 100%; margin-top: 0;
   padding: 10px 12px; border: 1px solid #747a86; border-radius: 12px;
   background: var(--card); color: var(--ink); font-size: 14px; font-weight: 400;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-label input:not([type="checkbox"]):hover, label select:hover, .field input:hover, .field select:hover { border-color: var(--ink); }
-label input:not([type="checkbox"]):focus, label select:focus, .field input:focus, .field select:focus {
-  outline: none; border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary);
+label input:not([type="checkbox"]):hover, .field input:hover { border-color: var(--ink); }
+label input:not([type="checkbox"]):focus, .field input:focus {
+  outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft);
 }
-label input:disabled, label select:disabled { background: var(--soft); color: var(--ink-2); cursor: not-allowed; }
+label input:disabled { background: var(--soft); color: var(--ink-2); cursor: not-allowed; }
 label input[aria-invalid="true"] { border-color: var(--error); }
-label select option { color: var(--ink); }
 
 .field { display: block; margin-bottom: 16px; }
 .field > span { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: 0.2px; }
@@ -878,9 +877,84 @@ label.check-row:has(input:focus-visible) { outline: 2px solid var(--primary); ou
 .field-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .site-opts { display: flex; flex-wrap: wrap; gap: 6px; }
 .site-opts label.check-row { padding: 6px 10px; font-size: 13px; border-radius: 999px; }
-select {
-  padding: 9px 12px; border: 1px solid #747a86; border-radius: 12px;
-  background: var(--card); color: var(--ink); font-size: 14px;
+/* Universal Form Dropdowns (STAND-HF Design System) */
+select,
+label select,
+.field select,
+.filter-select,
+.export-filter-row select {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 40px 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #747a86;
+  background-color: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235b616d' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 18px 18px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+select:hover,
+label select:hover,
+.field select:hover,
+.filter-select:hover,
+.export-filter-row select:hover {
+  border-color: var(--ink);
+  background-color: var(--card);
+}
+
+select:focus,
+label select:focus,
+.field select:focus,
+.filter-select:focus,
+.export-filter-row select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%231a5fb4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+select:disabled,
+label select:disabled,
+.field select:disabled,
+.filter-select:disabled,
+.export-filter-row select:disabled {
+  background-color: var(--soft-2);
+  color: var(--ink-3);
+  border-color: var(--line);
+  cursor: not-allowed;
+  opacity: 0.75;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%238a909c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+select option {
+  padding: 8px 12px;
+  font-size: 14px;
+  background-color: var(--card);
+  color: var(--ink);
+}
+
+/* Compact selects in table cells */
+td select {
+  width: auto;
+  min-width: 140px;
+  min-height: 38px;
+  padding: 6px 34px 6px 12px;
+  font-size: 13px;
+  background-position: right 10px center;
+  background-size: 16px 16px;
 }
 td input:not([type="checkbox"]), .form-grid input {
   width: 100%; min-width: 160px; padding: 9px 12px; border: 1px solid #747a86; border-radius: 12px;
@@ -1245,26 +1319,10 @@ td label.check-row input { width: 16px; height: 16px; }
   font-size: 18px;
   color: var(--primary);
 }
-/* Dashboard filter dropdowns: the same field style as the rest of the app (44px for tablet taps) */
+/* Dashboard hierarchy filter dropdowns: inline fit for filter bar */
 .filter-select {
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid #747a86;
-  background: var(--card);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 400;
-  cursor: pointer;
-  outline: none;
-  min-height: 44px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.filter-select:hover {
-  border-color: var(--ink);
-}
-.filter-select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-soft);
+  width: auto;
+  max-width: 260px;
 }
 .hierarchy-meta {
   display: flex;
@@ -1658,8 +1716,8 @@ dialog.export-dialog::backdrop {
 .export-filter-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px;
+  gap: 14px;
+  padding: 16px;
   background: var(--soft);
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -1668,11 +1726,12 @@ dialog.export-dialog::backdrop {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--ink);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
+  padding-bottom: 2px;
 }
 .export-filter-group-title .ms {
   font-size: 16px;
@@ -1684,21 +1743,32 @@ dialog.export-dialog::backdrop {
   gap: 6px;
 }
 .export-filter-row label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.15px;
+  margin-bottom: 0;
 }
-/* Export dropdowns use the same field style as the rest of the app; 44px keeps the tablet touch target */
-.export-filter-row select,
+/* Export text input styling */
 .export-filter-row input {
   width: 100%;
   min-height: 44px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid #747a86;
   background: var(--card);
   color: var(--ink);
   font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.export-filter-row input:hover {
+  border-color: var(--ink);
+}
+.export-filter-row input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .export-pills {
   display: flex;
