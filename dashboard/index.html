@@ -48,7 +48,7 @@
       <div class="ed-grid">
         <label class="ed-option">
           <input type="radio" name="edScope" value="all" checked>
-          <div><b>All Registry Data</b><div class="muted">All ~100 sites, all patient visits</div></div>
+          <div><b>All Registry Data</b><div class="muted" id="edScopeAllDesc">All registered centres, all patient visits</div></div>
         </label>
         <label class="ed-option">
           <input type="radio" name="edScope" value="filtered">
@@ -572,6 +572,8 @@ function renderCentralView(allPts){
   const totalAll = aggregateStats(allPts);
   const zoneSites = filterZone === 'all' ? allSites : allSites.filter(x => x.zone === filterZone);
   const relevantInvs = [...new Set(filtered.map(p => p.inv).filter(Boolean))].sort();
+  const reportingSitesCount = new Set(filtered.map(p => p.site).filter(Boolean)).size;
+  const totalSitesInScope = zoneSites.length;
 
   const tabs = [
     { id: 'all', label: 'Full Oversight', icon: 'dashboard' },
@@ -614,7 +616,14 @@ function renderCentralView(allPts){
 
   const kpisHtml = DashUI.kpiGrid([
     { icon: 'groups', value: st.n, label: 'Enrolled Patients', sub: `Registry total: ${totalAll.n}`, tag: 'Live', tagType: 'good', iconBg: 'brand' },
-    { icon: 'domain', value: `${[...new Set(filtered.map(p=>p.site))].length} / ~100`, label: 'Reporting Centres', sub: 'Target: 100 cardiology sites', tag: 'Sites', tagType: 'info' },
+    {
+      icon: 'domain',
+      value: `${reportingSitesCount} / ${totalSitesInScope}`,
+      label: 'Reporting Centres',
+      sub: `${reportingSitesCount} of ${totalSitesInScope} centres with enrolled patients`,
+      tag: `${pct(reportingSitesCount, totalSitesInScope) ?? 0}% Active`,
+      tagType: reportingSitesCount === totalSitesInScope ? 'good' : 'info'
+    },
     { icon: 'biotech', value: st.b, label: 'Baseline Complete', sub: `${st.b} verified complete`, tag: `${pct(st.b,st.n)??0}%`, tagType: st.n && pct(st.b,st.n)>=80 ? 'good' : '', iconBg: 'success' },
     { icon: 'event_available', value: st.ontimeRate != null ? `${st.ontimeRate}%` : '–', label: 'Follow-up Adherence', sub: `${st.overdueCount} overdue/missed visits`, tag: st.ontimeRate >= 80 ? 'Good' : 'Review', tagType: st.ontimeRate >= 80 ? 'good' : 'warn', iconBg: 'warn' },
     { icon: 'medication', value: st.fourPillars, label: '4-Pillar GDMT (4/4)', sub: `${st.gdmtRate??0}% optimized therapy`, tag: `${st.gdmtRate??0}%`, tagType: st.gdmtRate >= 70 ? 'good' : '', valueColor: 'var(--brand-magenta)' }
@@ -810,7 +819,7 @@ function renderSuperAdminView(allPts){
           <h1 id="welcome">Super Admin Study Executive Dashboard</h1>
           <span class="tag" style="background:#1b1d22;color:#fff;font-size:12px;padding:3px 10px"><i class="ms" style="font-size:14px;vertical-align:-2px">shield</i> Super Admin</span>
         </div>
-        <p id="meta">Unified executive oversight across ~100 Cardiology Sites, Central Monitoring Team &amp; Site Investigators</p>
+        <p id="meta">Unified executive oversight across ${s.sites.length} Cardiology Sites, Central Monitoring Team &amp; Site Investigators</p>
       </div>
       <div class="actions">
         <a class="btn primary" href="${ADMIN}#users"><i class="ms">manage_accounts</i>Manage Teams</a>
@@ -821,9 +830,19 @@ function renderSuperAdminView(allPts){
     ${DashUI.viewTabs(tabs, currentSuperTab)}
   `;
 
+  const activeSites = new Set(allPts.map(p => p.site).filter(Boolean)).size;
+  const totalSites = s.sites.length;
+
   const kpisHtml = DashUI.kpiGrid([
     { icon: 'group', value: st.n, label: 'Total Registry Patients', sub: 'All hospital sites', iconBg: 'brand' },
-    { icon: 'domain', value: `${s.sites.length} / ~100`, label: 'Participating Sites', sub: 'National network' },
+    {
+      icon: 'domain',
+      value: `${activeSites} / ${totalSites}`,
+      label: 'Active / Registered Sites',
+      sub: `${activeSites} of ${totalSites} centres actively enrolling`,
+      tag: `${pct(activeSites, totalSites) ?? 0}% Active`,
+      tagType: activeSites === totalSites ? 'good' : 'info'
+    },
     { icon: 'clinical_notes', value: invUsers.length, label: 'Site Investigators', sub: `${invActive} active clinicians`, tag: `${invActive} Active`, tagType: 'good', iconBg: 'success' },
     { icon: 'supervisor_account', value: centralUsers.length, label: 'Central Monitors', sub: 'Read-only governance', tag: 'Directorate', tagType: 'info' },
     { icon: 'schedule', value: st.ontimeRate != null ? `${st.ontimeRate}%` : '–', label: 'Follow-up Adherence', sub: 'Protocol adherence', tag: st.ontimeRate >= 80 ? 'Good' : 'Review', tagType: st.ontimeRate >= 80 ? 'good' : 'warn' },
@@ -883,7 +902,7 @@ function renderSuperAdminView(allPts){
       <div class="card-head">
         <div>
           <h2>Multi-Site Performance League Table</h2>
-          <small>Comprehensive performance across all ~100 participating cardiology centres</small>
+          <small>Comprehensive performance across all ${s.sites.length} participating cardiology centres</small>
         </div>
         <div style="display:flex;gap:10px">
           <button type="button" class="btn btn-sm" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
@@ -1186,6 +1205,9 @@ function attachEvents(){
   const exportDlg = $('exportDlg');
   if (btnExportModal && exportDlg) {
     btnExportModal.onclick = () => {
+      const s = accessStore();
+      const allDesc = $('edScopeAllDesc');
+      if (allDesc) allDesc.textContent = `All ${s.sites.length} participating centres, all patient visits`;
       const lbl = $('edScopeFilterLabel');
       if (lbl) lbl.textContent = `Zone:${filterZone}, Site:${filterSite}, Inv:${filterInv}`;
       exportDlg.showModal();
