@@ -151,14 +151,18 @@ Follow clinical validation specifications in [`docs/06-validation-rules.md`](fil
 1. **Hard Errors (Block Save)**:
    - Required fields missing.
    - Patient Name: Minimum 2 characters; letters, spaces, dots, apostrophes, and hyphens only.
-   - Contact Number: 7 to 15 digits; non-digit characters stripped as typed.
+   - Contact Number: **Exactly 11 digits** (e.g. 03001234567); non-digits and non-separators stripped as typed.
    - Consent Date: Mandatory date; **cannot be in the future**.
    - Patient Age: Must be between 18 and 150. Values outside this range are rejected.
+   - Active GDMT Pillar: Requires generic drug, strength, and frequency selection.
 2. **Soft Warnings (Allow Save with Confirmation)**:
    - Age 111–150 triggers an advisory: "Please verify patient age."
    - Extreme physiological or lab values outside standard clinical bounds require verification.
-3. **Visit Schedule Windows**:
-   - **Baseline (B)**: Day 0 enrollment.
+   - Non-active GDMT pillars require at least one documented reason.
+3. **Visit Schedule & Form Structure**:
+   - **Section B (Clinical & Functional)**: Single card containing Weight, Heart rate, Systolic BP, Diastolic BP, NYHA class, LVEF (%) [N/A at 3M], 1MSTS repetitions, and 1MSTS stop reason. Visit date, Echo date, and 1MSTS repeated are removed from UI.
+   - **Section C (Foundational GDMT)**: 4 pillars with Generic drug, Strength dropdown, Frequency dropdown (`OD`, `BD`, `TDS`), and Status dropdown. Choosing a generic drug automatically marks Status as `'Active'`. Start date is removed.
+   - **Baseline (B)**: Enrollment visit (auto-defaults date to consent date).
    - **Month 3 (M3)**: 90 days ± 14 days from Baseline.
    - **Month 6 (M6)**: 180 days ± 14 days from Baseline.
 

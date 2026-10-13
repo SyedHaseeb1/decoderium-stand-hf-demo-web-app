@@ -53,8 +53,7 @@
 
   /* Sign out ends the session on every page */
   document.getElementById('bOut').addEventListener('click',function(){
-    try{sessionStorage.removeItem('standhf_auth')}catch(e){}
-    location.href=root+'login/'});
+    window.standhfSignOut(root+'login/')});
 
   /* Profile: round icon opens the profile panel */
   var pp=document.getElementById('profPanel'), pb=document.getElementById('profBtn');

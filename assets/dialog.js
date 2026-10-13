@@ -40,3 +40,25 @@
     confirm:function(o){return open(o||{},'confirm')},
     alert:function(o){return open(o||{},'alert')}};
 })();
+
+/* Sign out, used by every sign-out button. Asks first, and warns when records are not synced yet. */
+window.standhfSignOut=function(loginUrl){
+  var pending=0;
+  try{
+    var d=JSON.parse(localStorage.getItem('standhf_ecrf_v1')||'null');
+    if(d&&Array.isArray(d.pts))pending=d.pts.filter(function(p){return p&&p.sync==='Pending'}).length;
+  }catch(e){}
+  window.appDialog.confirm({
+    tone:pending?'warning':'neutral',
+    icon:pending?'cloud_off':'logout',
+    title:'Sign out of STAND-HF?',
+    message:pending?'Records that are not synced yet stay saved on this device.':'You will need to sign in again to continue.',
+    items:pending?[pending+(pending>1?' records are':' record is')+' not synced yet']:[],
+    confirmText:'Sign out',
+    cancelText:'Stay signed in'
+  }).then(function(ok){
+    if(!ok)return;
+    try{sessionStorage.removeItem('standhf_auth')}catch(e){}
+    location.replace(loginUrl);
+  });
+};

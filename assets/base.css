@@ -920,6 +920,10 @@ dialog.app-dialog::backdrop { background: rgba(27, 29, 34, 0.35); }
 .pillar label { margin-bottom: 10px; }
 .pillar .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (max-width: 420px) { .pillar .g2 { grid-template-columns: 1fr; } }
+.pillar .pillar-status { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.pillar .pillar-status label { font-weight: 600; color: var(--ink); }
+.pillar.active .pillar-status input { font-weight: 600; color: var(--success); border-color: color-mix(in srgb, var(--success) 35%, var(--line)); }
+.pillar.stopped .pillar-status input { font-weight: 600; color: var(--error); border-color: color-mix(in srgb, var(--error) 35%, var(--line)); }
 
 .reasons { padding: 16px; background: var(--soft); border-radius: 18px; margin-top: 4px; }
 .reasons .pillar-head { margin-bottom: 12px; }

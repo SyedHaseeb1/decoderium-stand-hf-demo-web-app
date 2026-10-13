@@ -45,9 +45,9 @@
 
 <script src="../assets/access.js?v=20261015b"></script>
 <script src="../assets/notifications-data.js?v=20261015b"></script>
-<script src="../assets/dialog.js?v=20261015b"></script>
-<script src="../assets/header.js?v=20261015b" data-root="../"></script>
-<script src="../assets/nav.js?v=20261015b"></script>
+<script src="../assets/dialog.js?v=20261015c"></script>
+<script src="../assets/header.js?v=20261015c" data-root="../"></script>
+<script src="../assets/nav.js?v=20261015c"></script>
 <script>
 const LOGIN='../login/', ECRF='../records/', SUPER='superadmin';
 const $=id=>document.getElementById(id);
@@ -868,7 +868,6 @@ $('userName').textContent=name||'Signed in';
 $('userRole').textContent=ROLE_NAMES[session().role]||'';
 $('welcome').textContent='System Administration';
 $('avatar').textContent=initials(name);
-$('bOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.replace(LOGIN)};
 
 render();
 </script>

@@ -136,7 +136,7 @@
   window.addEventListener('hashchange',window.standhfUpdateNav);
   window.addEventListener('popstate',window.standhfUpdateNav);
 
-  document.getElementById('navOut').onclick=()=>{try{sessionStorage.removeItem('standhf_auth')}catch(e){}location.replace(LOGIN)};
+  document.getElementById('navOut').onclick=()=>window.standhfSignOut(LOGIN);
 })();
 
 /* Central loader: shown until the page is ready, then removed */
