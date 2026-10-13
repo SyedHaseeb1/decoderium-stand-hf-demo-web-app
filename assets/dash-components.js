@@ -140,45 +140,52 @@
       const filteredCount = cfg.filteredCount || 0;
       const isFiltered = filterZone !== 'all' || filterSite !== 'all' || filterInv !== 'all' || filterGdmt !== 'all';
 
+      function renderFilterCb(id, label, val, opts, icon) {
+        const curOpt = opts.find(o => String(o.val) === String(val)) || opts[0] || { val: '', label: '' };
+        return `
+          <div class="filter-group">
+            <i class="ms">${icon}</i>
+            <label style="font-weight:600">${label}:</label>
+            <div class="cb custom-cb" data-cb-id="${id}">
+              <input type="text" id="${id}_display" class="cb-input" readonly
+                value="${esc(curOpt.label)}" data-cb-input role="combobox" aria-expanded="false">
+              <span class="ms cb-ico">expand_more</span>
+              <input type="hidden" id="${id}" value="${esc(curOpt.val)}">
+              <ul class="cb-list" role="listbox" hidden>
+                ${opts.map(o => `
+                  <li role="option" data-val="${esc(o.val)}" class="${String(o.val) === String(curOpt.val) ? 'act' : ''}">
+                    <span>${esc(o.label)}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          </div>
+        `;
+      }
+
       return `
         <div class="hierarchy-bar">
           <div class="hierarchy-filters">
-            <div class="filter-group">
-              <i class="ms">travel_explore</i>
-              <label for="selZone" style="font-weight:600">Zone:</label>
-              <select id="selZone" class="filter-select">
-                <option value="all" ${filterZone==='all'?'selected':''}>All Zones (National)</option>
-                ${zones.map(z => `<option value="${z}" ${filterZone===z?'selected':''}>Zone ${z}</option>`).join('')}
-              </select>
-            </div>
+            ${renderFilterCb('selZone', 'Zone', filterZone, [
+              { val: 'all', label: 'All Zones (National)' },
+              ...zones.map(z => ({ val: z, label: `Zone ${z}` }))
+            ], 'travel_explore')}
 
-            <div class="filter-group">
-              <i class="ms">local_hospital</i>
-              <label for="selSite" style="font-weight:600">Site:</label>
-              <select id="selSite" class="filter-select">
-                <option value="all" ${filterSite==='all'?'selected':''}>All Sites (${sites.length})</option>
-                ${sites.map(st => `<option value="${st.code}" ${filterSite===st.code?'selected':''}>${st.code} — ${esc(st.name)}</option>`).join('')}
-              </select>
-            </div>
+            ${renderFilterCb('selSite', 'Site', filterSite, [
+              { val: 'all', label: `All Sites (${sites.length})` },
+              ...sites.map(st => ({ val: st.code, label: `${st.code} — ${st.name}` }))
+            ], 'local_hospital')}
 
-            <div class="filter-group">
-              <i class="ms">person</i>
-              <label for="selInv" style="font-weight:600">Investigator:</label>
-              <select id="selInv" class="filter-select">
-                <option value="all" ${filterInv==='all'?'selected':''}>All Investigators (${invs.length})</option>
-                ${invs.map(iv => `<option value="${esc(iv)}" ${filterInv===iv?'selected':''}>${esc(iv)}</option>`).join('')}
-              </select>
-            </div>
+            ${renderFilterCb('selInv', 'Investigator', filterInv, [
+              { val: 'all', label: `All Investigators (${invs.length})` },
+              ...invs.map(iv => ({ val: iv, label: iv }))
+            ], 'person')}
 
-            <div class="filter-group">
-              <i class="ms">pill</i>
-              <label for="selGdmt" style="font-weight:600">GDMT:</label>
-              <select id="selGdmt" class="filter-select">
-                <option value="all" ${filterGdmt==='all'?'selected':''}>All Therapies</option>
-                <option value="4" ${filterGdmt==='4'?'selected':''}>4 of 4 Pillars Only</option>
-                <option value="incomplete" ${filterGdmt==='incomplete'?'selected':''}>Incomplete (&lt;4 Pillars)</option>
-              </select>
-            </div>
+            ${renderFilterCb('selGdmt', 'GDMT', filterGdmt, [
+              { val: 'all', label: 'All Therapies' },
+              { val: '4', label: '4 of 4 Pillars Only' },
+              { val: 'incomplete', label: 'Incomplete (<4 Pillars)' }
+            ], 'pill')}
           </div>
 
           <div class="hierarchy-meta">
