@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261015f">
+  <link rel="stylesheet" href="../assets/base.css?v=20261015g">
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
   </script>
@@ -112,7 +112,7 @@
 <script src="../assets/header.js?v=20261015b" data-root="../"></script>
 <script src="../assets/nav.js?v=20261015b"></script>
 <script src="../assets/dash-charts.js?v=20261015c"></script>
-<script src="../assets/dash-components.js?v=20261015c"></script>
+<script src="../assets/dash-components.js?v=20261015d"></script>
 
 <script>
 (function(){
@@ -1548,6 +1548,107 @@ function renderExportPreviewTable(cohort){
   `;
 }
 
+// --- Custom Combobox Component (Matches STAND-HF .cb Design System) ---
+function renderFilterCombobox({ id, label, value, options, disabled }) {
+  const curOpt = options.find(o => String(o.val) === String(value)) || options[0] || { val: '', label: '' };
+  return `
+    <div class="export-filter-row">
+      <label>${label}</label>
+      <div class="cb custom-cb" data-cb-id="${id}" ${disabled ? 'data-disabled="true"' : ''}>
+        <input type="text" id="${id}_display" class="cb-input" readonly
+          value="${esc(curOpt.label)}" data-cb-input role="combobox" aria-expanded="false" ${disabled ? 'disabled' : ''}>
+        <span class="ms cb-ico">expand_more</span>
+        <input type="hidden" id="${id}" value="${esc(curOpt.val)}">
+        <ul class="cb-list" role="listbox" hidden>
+          ${options.map(o => `
+            <li role="option" data-val="${esc(o.val)}" class="${String(o.val) === String(curOpt.val) ? 'act' : ''}">
+              <span>${esc(o.label)}</span>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
+function updateComboboxOptions(id, options, defaultVal = 'all') {
+  const wrap = document.querySelector(`.custom-cb[data-cb-id="${id}"]`);
+  if (!wrap) return;
+  const hidden = wrap.querySelector('input[type="hidden"]');
+  const display = wrap.querySelector('[data-cb-input]');
+  const ul = wrap.querySelector('.cb-list');
+  const curOpt = options.find(o => String(o.val) === String(defaultVal)) || options[0] || { val: '', label: '' };
+  
+  if (hidden) hidden.value = curOpt.val;
+  if (display) display.value = curOpt.label;
+  if (ul) {
+    ul.innerHTML = options.map(o => `
+      <li role="option" data-val="${esc(o.val)}" class="${String(o.val) === String(curOpt.val) ? 'act' : ''}">
+        <span>${esc(o.label)}</span>
+      </li>
+    `).join('');
+  }
+}
+
+function initCustomComboboxes(container = document) {
+  container.querySelectorAll('.custom-cb').forEach(cb => {
+    if (cb._cbInited) return;
+    cb._cbInited = true;
+    const inp = cb.querySelector('[data-cb-input]');
+    const ul = cb.querySelector('.cb-list');
+    const hidden = cb.querySelector('input[type="hidden"]');
+    if (!inp || !ul || !hidden) return;
+
+    cb.onclick = (e) => {
+      if (inp.disabled || cb.dataset.disabled === 'true') return;
+      const li = e.target.closest('li[data-val]');
+      if (li) {
+        const newVal = li.dataset.val;
+        const newText = li.querySelector('span')?.textContent || li.textContent.trim();
+        hidden.value = newVal;
+        inp.value = newText;
+        ul.querySelectorAll('li').forEach(l => l.classList.toggle('act', l === li));
+        ul.hidden = true;
+        cb.classList.remove('is-open');
+        inp.setAttribute('aria-expanded', 'false');
+        if (typeof hidden.onchange === 'function') hidden.onchange();
+        hidden.dispatchEvent(new Event('change', { bubbles: true }));
+        return;
+      }
+
+      const isOpen = !ul.hidden;
+      document.querySelectorAll('.custom-cb.is-open').forEach(other => {
+        if (other !== cb) {
+          other.classList.remove('is-open');
+          const oUl = other.querySelector('.cb-list');
+          if (oUl) oUl.hidden = true;
+          const oInp = other.querySelector('[data-cb-input]');
+          if (oInp) oInp.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      ul.hidden = isOpen;
+      cb.classList.toggle('is-open', !isOpen);
+      inp.setAttribute('aria-expanded', String(!isOpen));
+    };
+  });
+}
+
+if (!window._cbGlobalClickBound) {
+  window._cbGlobalClickBound = true;
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.custom-cb')) {
+      document.querySelectorAll('.custom-cb.is-open').forEach(cb => {
+        cb.classList.remove('is-open');
+        const ul = cb.querySelector('.cb-list');
+        if (ul) ul.hidden = true;
+        const inp = cb.querySelector('[data-cb-input]');
+        if (inp) inp.setAttribute('aria-expanded', 'false');
+      });
+    }
+  });
+}
+
 // --- Main Section Generator: Data Export Hub & Filter Studio ---
 function renderExportStudioSection(ptsPool, scopeTitle){
   const s = accessStore();
@@ -1558,6 +1659,35 @@ function renderExportStudioSection(ptsPool, scopeTitle){
 
   const cohort = getExportFilteredCohort(ptsPool);
   const nPts = cohort.length;
+
+  const zoneOpts = (!isInvRole ? [{ val: 'all', label: 'All Zones' }] : []).concat(
+    availableZones.map(z => ({ val: z, label: `${z} Zone` }))
+  );
+  const siteOpts = [{ val: 'all', label: isInvRole ? 'All Assigned Sites' : 'All Participating Centres' }].concat(
+    availableSites.map(code => ({ val: code, label: `${code} – ${getSiteName(code)}` }))
+  );
+  const invOpts = [{ val: 'all', label: 'All Site Investigators' }].concat(
+    availableInvs.map(name => ({ val: name, label: name }))
+  );
+  const pillarOpts = [
+    { val: 'all', label: 'Any / All Pillars' },
+    { val: 'arni', label: 'Pillar 1: ARNI (Sacubitril/Valsartan)' },
+    { val: 'bb', label: 'Pillar 2: Evidence-based Beta Blocker' },
+    { val: 'mra', label: 'Pillar 3: MRA (Spironolactone/Eplerenone)' },
+    { val: 'sg', label: 'Pillar 4: SGLT2 Inhibitor' }
+  ];
+  const etioOpts = [
+    { val: 'all', label: 'All HF Etiologies' },
+    { val: 'ischemic', label: 'Ischemic Cardiomyopathy' },
+    { val: 'non_ischemic', label: 'Non-Ischemic / Dilated' },
+    { val: 'other', label: 'Other / Hypertensive / Valvular' }
+  ];
+  const periodOpts = [
+    { val: 'all', label: 'All Time (Entire Study)' },
+    { val: '30', label: 'Last 30 Days' },
+    { val: '90', label: 'Last 90 Days' },
+    { val: '180', label: 'Last 180 Days (6 Months)' }
+  ];
 
   return `
     <div class="export-studio-wrap">
@@ -1602,29 +1732,26 @@ function renderExportStudioSection(ptsPool, scopeTitle){
           <!-- Filter Group 1: Geographic & Team Hierarchy -->
           <div class="export-filter-group">
             <div class="export-filter-group-title"><i class="ms">apartment</i>Scope &amp; Team</div>
-            <div class="export-filter-row">
-              <label for="expFilterZone">Zone</label>
-              <select id="expFilterZone" ${isInvRole && availableZones.length<=1 ? 'disabled' : ''}>
-                ${!isInvRole ? '<option value="all">All Zones</option>' : ''}
-                ${availableZones.map(z => `<option value="${esc(z)}"${exportFilterState.zone===z?' selected':''}>${esc(z)} Zone</option>`).join('')}
-              </select>
-            </div>
-            <div class="export-filter-row">
-              <label for="expFilterSite">Hospital Site</label>
-              <select id="expFilterSite" ${isInvRole && availableSites.length<=1 ? 'disabled' : ''}>
-                <option value="all">${isInvRole ? 'All Assigned Sites' : 'All Participating Centres'}</option>
-                ${availableSites.map(code => `<option value="${esc(code)}"${exportFilterState.site===code?' selected':''}>${esc(code)} – ${esc(getSiteName(code))}</option>`).join('')}
-              </select>
-            </div>
-            ${!isInvRole ? `
-              <div class="export-filter-row">
-                <label for="expFilterInv">Site Investigator</label>
-                <select id="expFilterInv">
-                  <option value="all">All Site Investigators</option>
-                  ${availableInvs.map(name => `<option value="${esc(name)}"${exportFilterState.inv===name?' selected':''}>${esc(name)}</option>`).join('')}
-                </select>
-              </div>
-            ` : ''}
+            ${renderFilterCombobox({
+              id: 'expFilterZone',
+              label: 'Zone',
+              value: exportFilterState.zone,
+              options: zoneOpts,
+              disabled: isInvRole && availableZones.length <= 1
+            })}
+            ${renderFilterCombobox({
+              id: 'expFilterSite',
+              label: 'Hospital Site',
+              value: exportFilterState.site,
+              options: siteOpts,
+              disabled: isInvRole && availableSites.length <= 1
+            })}
+            ${!isInvRole ? renderFilterCombobox({
+              id: 'expFilterInv',
+              label: 'Site Investigator',
+              value: exportFilterState.inv,
+              options: invOpts
+            }) : ''}
           </div>
 
           <!-- Filter Group 2: Longitudinal Visit Stages & Status -->
@@ -1669,34 +1796,24 @@ function renderExportStudioSection(ptsPool, scopeTitle){
                 <button type="button" class="export-pill-btn ${exportFilterState.gdmt==='suboptimal'?'active':''}" data-gdmt="suboptimal">&lt;4 Pillars</button>
               </div>
             </div>
-            <div class="export-filter-row">
-              <label for="expFilterPillar">Specific Medication Pillar</label>
-              <select id="expFilterPillar">
-                <option value="all">Any / All Pillars</option>
-                <option value="arni"${exportFilterState.pillar==='arni'?' selected':''}>Pillar 1: ARNI (Sacubitril/Valsartan)</option>
-                <option value="bb"${exportFilterState.pillar==='bb'?' selected':''}>Pillar 2: Evidence-based Beta Blocker</option>
-                <option value="mra"${exportFilterState.pillar==='mra'?' selected':''}>Pillar 3: MRA (Spironolactone/Eplerenone)</option>
-                <option value="sg"${exportFilterState.pillar==='sg'?' selected':''}>Pillar 4: SGLT2 Inhibitor</option>
-              </select>
-            </div>
-            <div class="export-filter-row">
-              <label for="expFilterEtio">Heart Failure Etiology</label>
-              <select id="expFilterEtio">
-                <option value="all">All HF Etiologies</option>
-                <option value="ischemic"${exportFilterState.etio==='ischemic'?' selected':''}>Ischemic Cardiomyopathy</option>
-                <option value="non_ischemic"${exportFilterState.etio==='non_ischemic'?' selected':''}>Non-Ischemic / Dilated</option>
-                <option value="other"${exportFilterState.etio==='other'?' selected':''}>Other / Hypertensive / Valvular</option>
-              </select>
-            </div>
-            <div class="export-filter-row">
-              <label for="expFilterPeriod">Enrollment Date Range</label>
-              <select id="expFilterPeriod">
-                <option value="all"${exportFilterState.period==='all'?' selected':''}>All Time (Entire Study)</option>
-                <option value="30"${exportFilterState.period==='30'?' selected':''}>Last 30 Days</option>
-                <option value="90"${exportFilterState.period==='90'?' selected':''}>Last 90 Days</option>
-                <option value="180"${exportFilterState.period==='180'?' selected':''}>Last 180 Days (6 Months)</option>
-              </select>
-            </div>
+            ${renderFilterCombobox({
+              id: 'expFilterPillar',
+              label: 'Specific Medication Pillar',
+              value: exportFilterState.pillar,
+              options: pillarOpts
+            })}
+            ${renderFilterCombobox({
+              id: 'expFilterEtio',
+              label: 'Heart Failure Etiology',
+              value: exportFilterState.etio,
+              options: etioOpts
+            })}
+            ${renderFilterCombobox({
+              id: 'expFilterPeriod',
+              label: 'Enrollment Date Range',
+              value: exportFilterState.period,
+              options: periodOpts
+            })}
           </div>
 
           <!-- Filter Group 4: De-identification & Privacy Controls -->
@@ -1907,6 +2024,7 @@ function renderDashboard(){
 }
 
 function attachEvents(){
+  initCustomComboboxes();
   // Tab switcher clicks
   document.querySelectorAll('.dash-tab[data-dashtab]').forEach(btn => {
     btn.onclick = () => {
@@ -2054,13 +2172,12 @@ function attachEvents(){
       exportFilterState.zone = expZone.value;
       if (ROLE !== 'investigator') {
         const s = accessStore();
-        const expSite = $('expFilterSite');
-        if (expSite) {
-          const availSites = exportFilterState.zone === 'all' ? s.sites : s.sites.filter(x => x.zone === exportFilterState.zone);
-          expSite.innerHTML = `<option value="all">All Participating Centres</option>` +
-            availSites.map(x => `<option value="${esc(x.code)}">${esc(x.code)} – ${esc(x.name)}</option>`).join('');
-          exportFilterState.site = 'all';
-        }
+        const availSites = exportFilterState.zone === 'all' ? s.sites : s.sites.filter(x => x.zone === exportFilterState.zone);
+        const newSiteOpts = [{ val: 'all', label: 'All Participating Centres' }].concat(
+          availSites.map(x => ({ val: x.code, label: `${x.code} – ${getSiteName(x.code)}` }))
+        );
+        updateComboboxOptions('expFilterSite', newSiteOpts, 'all');
+        exportFilterState.site = 'all';
       }
       updateExportStudioUI(currentPtsPool);
     };
