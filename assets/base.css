@@ -1747,6 +1747,41 @@ button.list-head:hover {
   margin-top: 0;
 }
 
+/* Collapsible section headers */
+.sec.sec-collapsible {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, filter 0.15s ease, margin-bottom 0.15s ease;
+}
+
+.sec.sec-collapsible:hover {
+  filter: brightness(0.96);
+}
+
+.sec.sec-collapsible:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.sec.sec-collapsible .sec-chev {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--primary);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sec.sec-collapsible.collapsed {
+  margin-bottom: 8px;
+  opacity: 0.95;
+}
+
+.sec.sec-collapsible.collapsed .sec-chev {
+  transform: rotate(-90deg);
+}
+
 .g {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

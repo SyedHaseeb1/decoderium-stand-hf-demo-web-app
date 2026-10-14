@@ -87,6 +87,37 @@
        4 across only when every card has room for its dropdown text, otherwise they wrap;
        Strength and Frequency sit side by side only inside a wide enough card. */
     .pillars-wrap{container:pillars / inline-size}
+    .gdmt-table{padding:4px 8px 8px}  /* no overflow clipping: the open dropdown list must show */
+    .gdmt-tbl{width:100%;border-collapse:separate;border-spacing:0 10px;table-layout:fixed}
+    /* the column header already names each field, so the in-cell label text is hidden; the control stays */
+    .gdmt-tbl td label{display:block;font-size:0;margin:0}
+    .gdmt-tbl td .cb,.gdmt-tbl td .cb input[data-cb-input]{font-size:13.5px}
+    .gdmt-tbl td .cb input[data-cb-input]{padding-left:10px;padding-right:30px}  /* just enough room for the chevron */
+    .gdmt-tbl td .cb .cb-ico{right:8px}
+    .gdmt-tbl .cb-list{min-width:100%;width:max-content;max-width:min(320px,88vw);box-shadow:0 8px 24px rgba(0,0,0,.15),0 2px 6px rgba(0,0,0,.06);z-index:120}
+    .gdmt-tbl .cb-list li{white-space:nowrap;padding:9px 12px;font-size:13.5px}
+    .gdmt-tbl th,.gdmt-tbl td{padding:6px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+    .gdmt-tbl th:nth-child(3),.gdmt-tbl td:nth-child(3){width:18%}   /* Strength */
+    .gdmt-tbl th:nth-child(4),.gdmt-tbl td:nth-child(4){width:16%}   /* Frequency */
+    .gdmt-tbl th:last-child,.gdmt-tbl td:last-child{width:20%}   /* Status */
+    /* Header uses the same label style as the card fields; first label lines up with the therapy names */
+    .gdmt-tbl thead th{font-size:13px;font-weight:700;color:var(--ink);text-transform:none;letter-spacing:0;padding:0 8px 8px;border-bottom:0;vertical-align:bottom;background:transparent;box-shadow:none}  /* flat, bold, no card background */
+    .gdmt-tbl thead th:first-child{padding-left:12px}
+    .gdmt-tbl td{overflow:visible}  /* the open dropdown list must not be clipped by its cell */
+    .gdmt-tbl tbody th{font-weight:600;color:var(--ink);width:20%;white-space:normal;border-left:4px solid var(--line)}
+    /* Same look as the cards above: soft row, white when active, coloured edge by status */
+    .gdmt-tbl tbody tr{transition:background-color .2s ease}
+    .gdmt-tbl tbody tr > *{background:var(--card)}  /* cards inside the tinted section are white, as above */
+    .gdmt-tbl tbody tr > *{border-bottom:0;vertical-align:middle;padding-top:12px;padding-bottom:12px}
+    .gdmt-tbl tbody tr > :first-child{border-radius:18px 0 0 18px}
+    .gdmt-tbl tbody tr > :last-child{border-radius:0 18px 18px 0}
+        .gdmt-tbl tbody tr.active th{border-left-color:var(--success)}
+    .gdmt-tbl tbody tr.stopped th{border-left-color:var(--error)}
+    /* Status text follows the status colour, as on the cards */
+    .gdmt-tbl tbody tr.active td:last-child input[data-cb-input]{font-weight:600;color:var(--success);border-color:color-mix(in srgb, var(--success) 35%, var(--line))}
+    .gdmt-tbl tbody tr.stopped td:last-child input[data-cb-input]{font-weight:600;color:var(--error);border-color:color-mix(in srgb, var(--error) 35%, var(--line))}
+    .gdmt-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.35;font-size:14px;flex:1 1 auto;min-width:0}  /* therapy names: at most 2 lines */
+    .gdmt-tbl td .cb input[data-cb-input]{min-width:0}
     .pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:14px}
     .pillars .pillar{min-width:0;display:flex;flex-direction:column;container:pillar / inline-size}
     .pillar-head{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:10px}
@@ -162,8 +193,53 @@
 <script src="../assets/nav.js?v=20261016d"></script>
 <script>
 const KEY='standhf_ecrf_v1';
-let DB={pts:[],off:false},sel=null,tab='info',newMode=false,listOpen=!window.matchMedia('(max-width: 1000px)').matches,ptSearchQuery='';
+const LIST_COLLAPSED_KEY='standhf_pt_list_collapsed';
+const SEC_COLLAPSED_KEY='standhf_sec_collapsed';
+let collapsedSecs={};
+try{const cs=localStorage.getItem(SEC_COLLAPSED_KEY);if(cs)collapsedSecs=JSON.parse(cs)}catch(e){}
+const isTabletOrMobile=()=>window.matchMedia('(max-width: 1024px)').matches;
+function getInitialListOpen(){
+  try{
+    const saved=localStorage.getItem(LIST_COLLAPSED_KEY);
+    if(saved!==null) return saved!=='1';
+  }catch(e){}
+  return !window.matchMedia('(max-width: 1000px)').matches;
+}
+let DB={pts:[],off:false},sel=null,tab='info',newMode=false,listOpen=getInitialListOpen(),ptSearchQuery='';
 try{const s=localStorage.getItem(KEY);if(s)DB=JSON.parse(s)}catch(e){}
+
+function setListOpen(open, persistPreference=true){
+  listOpen = !!open;
+  const listEl = $('list');
+  if(listEl){
+    listEl.classList.toggle('collapsed', !listOpen);
+    const btn = $('listToggle');
+    if(btn){
+      btn.setAttribute('aria-expanded', String(listOpen));
+      const chev = btn.querySelector('.chev');
+      if(chev) chev.textContent = listChevron();
+    }
+  }
+  if(persistPreference){
+    try{localStorage.setItem(LIST_COLLAPSED_KEY, listOpen ? '0' : '1')}catch(e){}
+  }
+}
+
+/* Phones open only the first section by default; tablets and desktops keep everything open.
+   A section the user opened or closed keeps that choice. */
+const FIRST_SECS=['info-pt','rx'];
+const phoneQuery=window.matchMedia('(max-width: 640px)');
+const secCollapsed=secId=>collapsedSecs[secId]!==undefined?!!collapsedSecs[secId]:(phoneQuery.matches&&!FIRST_SECS.includes(secId));
+
+function secHeader(secId, titleHtml, rightHtml='', extraClass=''){
+  const isCol = secCollapsed(secId);
+  return `<div class="sec sec-collapsible${isCol?' collapsed':''}${extraClass?' '+extraClass:''}" data-sec="${secId}" role="button" tabindex="0" aria-expanded="${!isCol}"><span>${titleHtml}</span><div style="display:inline-flex;align-items:center;gap:8px">${rightHtml}<i class="ms sec-chev">${isCol?'expand_more':'expand_less'}</i></div></div>`;
+}
+
+function secBodyAttrs(secId, extraStyle=''){
+  const isCol = secCollapsed(secId);
+  return `data-sec-body="${secId}"${isCol?' hidden':''}${extraStyle?` style="${extraStyle}"`:''}`;
+}
 
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const G=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o),S=(o,p,v)=>{const k=p.split('.');let a=o;k.slice(0,-1).forEach(x=>a=a[x]=a[x]||{});a[k.pop()]=v};
@@ -356,6 +432,11 @@ function paintFields(){const p=cur();if(!p)return;
   document.querySelectorAll('#pane .pillar').forEach(card=>{const sel=card.querySelector('[data-p$=".status"]');if(!sel)return;const s=sel.value;
     card.classList.toggle('active',s==='Active');card.classList.toggle('stopped',s==='Stopped');
     const chip=card.querySelector('.chip');if(chip){chip.textContent=s||'Not started';chip.className='chip '+(s==='Active'?'Completed':s==='Stopped'?'Overdue':'Not')}});
+  /* C2 table rows follow their status dropdown the same way (row colour and status text) */
+  let activeRows=0;
+  document.querySelectorAll('#pane .gdmt-tbl tbody tr').forEach(row=>{const sel=row.querySelector('[data-p$=".status"]');if(!sel)return;const s=sel.value;
+    row.classList.toggle('active',s==='Active');row.classList.toggle('stopped',s==='Stopped');if(s==='Active')activeRows++});
+  const pc2=$('pc2');if(pc2)pc2.textContent=activeRows+' / 4';
   document.querySelectorAll('#pane [data-p]').forEach(el=>{const st=fieldState(p,el.dataset.p);
     el.classList.remove('fld-e','fld-w','fld-ok');const c=fcls(st);if(c)el.classList.add(c);
     if(el.type!=='checkbox')el.setAttribute('aria-invalid',String(st.lvl==='e'));
@@ -393,6 +474,16 @@ const pillar=(p,k,q,n)=>{const s=G(p,`v.${k}.g.${q}.status`)||'Not started';
     <div class="g2">${sel_(p,`v.${k}.g.${q}.strength`,'Strength',strOpts)}${sel_(p,`v.${k}.g.${q}.freq`,'Frequency',lookup('gdmt.frequency'))}</div>
     <div class="pillar-status">${sel_(p,`v.${k}.g.${q}.status`,'Status',lookup('gdmt.status'))}</div>
   </div>`};
+
+/* Same four therapies as the cards above, as one horizontal table (comparison view) */
+const gdmtTable=(p,k)=>`<table class="gdmt-tbl"><thead><tr><th>Therapy</th><th>Generic drug</th><th>Strength</th><th>Frequency</th><th>Status</th></tr></thead><tbody>${PL.map(([q,n])=>{
+  const strOpts=()=>(window.GDMT_STRENGTHS&&window.GDMT_STRENGTHS[G(p,`v.${k}.g.${q}.drug`)])||[];
+  const st=G(p,`v.${k}.g.${q}.status`)||'';
+  return `<tr class="${st==='Active'?'active':st==='Stopped'?'stopped':''}"><th scope="row"><span class="gdmt-name">${n}</span></th>
+    <td>${sel_(p,`v.${k}.g.${q}.drug`,'Generic drug',DRUGS[q])}</td>
+    <td>${sel_(p,`v.${k}.g.${q}.strength`,'Strength',strOpts)}</td>
+    <td>${sel_(p,`v.${k}.g.${q}.freq`,'Frequency',lookup('gdmt.frequency'))}</td>
+    <td>${sel_(p,`v.${k}.g.${q}.status`,'Status',lookup('gdmt.status'))}</td></tr>`;}).join('')}</tbody></table>`;
 
 /* Keep the selected patient visible by scrolling the list only (never the whole page) */
 function keepSelectedVisible(){
@@ -484,23 +575,19 @@ function pane(){saveView();
  const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info" title="Participant Info"><span class="tab-full">Participant info</span><span class="tab-short">Info</span></button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);const shortN=k==='b'?'Baseline':k==='m3'?'3M':'6M';return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':`title="${n}"`}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}<span class="tab-full">${n}</span><span class="tab-short">${shortN}</span></button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum" title="Summary & Audit"><span class="tab-full">Summary & audit</span><span class="tab-short">Audit</span></button></div>`;
  const readOnlyNotice=!editable?`<div class="lock-banner" style="background:var(--primary-soft);color:var(--primary);border-color:rgba(26,95,180,0.2);margin-bottom:14px"><i class="ms">visibility</i><span><b>Read-Only Mode:</b> You are viewing this record with oversight permissions. Clinical data entry and edits are restricted to authorized Site Investigators.</span></div>`:'';
   let h=`<div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs+readOnlyNotice;
-  if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${editable&&(!p.name||!p.contact)?banner('Patient name and contact number are required. Add them below.'):''}<div class="sec">Participant</div><div class="g tint"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel','inputmode="numeric" placeholder="e.g. 03001234567"')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
+  if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${editable&&(!p.name||!p.contact)?banner('Patient name and contact number are required. Add them below.'):''}${secHeader('info-pt','Participant')}<div class="g tint" ${secBodyAttrs('info-pt')}><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel','inputmode="numeric" placeholder="e.g. 03001234567"')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
   else if(tab==='sum')h+=summary(p);
  else{const k=tab,v=p.v[k],name=VK.find(a=>a[0]===k)[1],b=p.v.b.date||p.consent;
   let win='';if(k!=='b'){const t=k==='m3'?90:180,w=k==='m3'?14:21;win=b?`Target day ${t} ±${w}: ${fmt(addD(b,t-w))} to ${fmt(addD(b,t+w))}`:'Enter baseline date first'}
   h+=`${v.done?okBanner(name+' is complete and locked.'+(editable?' Reopen the visit to make changes.':'')):''}<div class="visit-info">
     <strong>${name} visit</strong> — Status: <strong>${vstat(p,k)}</strong>${win?'<br>'+win:''}
   </div>
-  <div class="sec"><span>A. Prescription<span class="req" aria-hidden="true">*</span></span></div><div class="tint rx-wrap"><div class="rx-grid"><div class="rx-up">${v.done?banner('Visit is locked. Reopen the visit to add files.'):!editable?`<div class="lock-banner" style="background:transparent;border:1px dashed var(--line);color:var(--ink-2);margin:0;padding:12px 14px"><i class="ms">lock</i><span>Uploads restricted to authorized Site Investigators.</span></div>`:`<button type="button" class="rx-drop" data-a="upload"><i class="ms">upload_file</i><span><b>Upload prescription</b><small>Drag and drop, or browse. PDF, JPG or PNG, up to 10 MB each, 5 files max</small></span></button>`}</div><div class="rx-files"><div class="filelist rx-list rx-row">${filesHtml(p,k)}</div></div></div></div>
-    <div class="sec">B. Clinical & Functional Assessment</div>
-  <div class="g tint" style="margin-bottom:12px">${inp(p,'v.'+k+'.wt','Weight (kg)','number','step=0.1')}${inp(p,'v.'+k+'.hr','Heart rate (bpm)','number')}${inp(p,'v.'+k+'.sbp','Systolic BP (mmHg)','number')}${inp(p,'v.'+k+'.dbp','Diastolic BP (mmHg)','number')}${sel_(p,'v.'+k+'.nyha','NYHA class',['','I','II','III','IV'])}${k==='m3'?'<label>LVEF (%)<input value="N/A at 3 months" disabled></label>':inp(p,'v.'+k+'.lvef','LVEF (%)','number','min=5 max=80')}${inp(p,'v.'+k+'.msts','1MSTS: repetitions in 60 sec','number','min=0')}${sel_(p,'v.'+k+'.stop','1MSTS stopped early? reason',STOP)}</div>
-  <div class="sec">C. Foundational GDMT <span style="float:right">Active: <b id="pc">${act(v)} / 4</b></span></div>
-  <div class="pillars-wrap"><div class="pillars tint">${PL.map(([q,n])=>pillar(p,k,q,n)).join('')}</div></div>
-  <div class="reasons tint"><div class="pillar-head"><b>Reason(s) GDMT not initiated or stopped</b></div><div class="checks">${RS.map(([r,l])=>opt(p,`v.${k}.rs.${r}`,l)).join('')}</div><div class="g2 reasons-other">${inp(p,'v.'+k+'.rsO','Other reason')}</div></div>
-  <div class="sec">D. Clinical Events ${k==='b'?'(prior history)':'(since previous visit)'}</div>
-  <div class="g tint">${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div>
-  <div class="g tint" style="margin-top:12px">${inp(p,`v.${k}.ev.int`,'Major intervention / event')}${inp(p,`v.${k}.ini`,'Investigator initials')}</div>
-  ${navBar(k,!can('mark_complete')||!editable?'':v.done?`<span class="lock-hint"><i class="ms">lock</i>Visit locked as complete</span><button data-a="reopen"><i class="ms">undo</i>Reopen visit</button>`:`<button data-a="done"><i class="ms">task_alt</i>Mark complete</button><span id="miss" class="e"></span>`)}`}
+   ${secHeader('rx','<span>A. Prescription<span class="req" aria-hidden="true">*</span></span>')}<div class="tint rx-wrap" ${secBodyAttrs('rx')}><div class="rx-grid"><div class="rx-up">${v.done?banner('Visit is locked. Reopen the visit to add files.'):!editable?`<div class="lock-banner" style="background:transparent;border:1px dashed var(--line);color:var(--ink-2);margin:0;padding:12px 14px"><i class="ms">lock</i><span>Uploads restricted to authorized Site Investigators.</span></div>`:`<button type="button" class="rx-drop" data-a="upload"><i class="ms">upload_file</i><span><b>Upload prescription</b><small>Drag and drop, or browse. PDF, JPG or PNG, up to 10 MB each, 5 files max</small></span></button>`}</div><div class="rx-files"><div class="filelist rx-list rx-row">${filesHtml(p,k)}</div></div></div></div>
+   ${secHeader('clin','B. Clinical & Functional Assessment')}<div class="g tint" ${secBodyAttrs('clin','margin-bottom:12px')}>${inp(p,'v.'+k+'.wt','Weight (kg)','number','step=0.1')}${inp(p,'v.'+k+'.hr','Heart rate (bpm)','number')}${inp(p,'v.'+k+'.sbp','Systolic BP (mmHg)','number')}${inp(p,'v.'+k+'.dbp','Diastolic BP (mmHg)','number')}${sel_(p,'v.'+k+'.nyha','NYHA class',['','I','II','III','IV'])}${k==='m3'?'<label>LVEF (%)<input value="N/A at 3 months" disabled></label>':inp(p,'v.'+k+'.lvef','LVEF (%)','number','min=5 max=80')}${inp(p,'v.'+k+'.msts','1MSTS: repetitions in 60 sec','number','min=0')}${sel_(p,'v.'+k+'.stop','1MSTS stopped early? reason',STOP)}</div>
+   ${secHeader('gdmt','C. Foundational GDMT',`<span>Active: <b id="pc">${act(v)} / 4</b></span>`)}<div class="pillars-wrap" ${secBodyAttrs('gdmt')}><div class="pillars tint">${PL.map(([q,n])=>pillar(p,k,q,n)).join('')}</div></div>
+   ${secHeader('gdmt-table','C2. Foundational GDMT, table view',`<span>Active: <b id="pc2">${PL.filter(([q])=>G(p,`v.${k}.g.${q}.status`)==='Active').length} / 4</b></span>`)}<div class="gdmt-table tint" ${secBodyAttrs('gdmt-table')}>${gdmtTable(p,k)}</div><div class="reasons tint" ${secBodyAttrs('gdmt-table')}><div class="pillar-head"><b>Reason(s) GDMT not initiated or stopped</b></div><div class="checks">${RS.map(([r,l])=>opt(p,`v.${k}.rs.${r}`,l)).join('')}</div><div class="g2 reasons-other">${inp(p,'v.'+k+'.rsO','Other reason')}</div></div>
+   ${secHeader('events',`D. Clinical Events ${k==='b'?'(prior history)':'(since previous visit)'}`)}<div class="g tint" ${secBodyAttrs('events')}>${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div><div class="g tint" ${secBodyAttrs('events','margin-top:12px')}>${inp(p,`v.${k}.ev.int`,'Major intervention / event')}${inp(p,`v.${k}.ini`,'Investigator initials')}</div>
+   ${navBar(k,!can('mark_complete')||!editable?'':v.done?`<span class="lock-hint"><i class="ms">lock</i>Visit locked as complete</span><button data-a="reopen"><i class="ms">undo</i>Reopen visit</button>`:`<button data-a="done"><i class="ms">task_alt</i>Mark complete</button><span id="miss" class="e"></span>`)}`}
  el.innerHTML=h;el.classList.remove('form-in');void el.offsetWidth;el.classList.add('form-in');
  if(!editable||!can('enter_data')){
    el.querySelectorAll('[data-p],input,select,textarea').forEach(i=>{i.disabled=true;if(i.hasAttribute('data-cb-input'))i.setAttribute('readonly','true')});
@@ -518,18 +605,18 @@ function summary(p){const r=(f)=>VK.map(([k])=>`<td>${f(p.v[k],k)||'–'}</td>`)
  const st=PL.map(([q])=>{let s=null;VK.forEach(([k])=>{const x=G(p.v[k],'g.'+q+'.start');if(x&&x>(s||''))s=x});return s}),b=p.v.b.date||p.consent;
  let sp='Need baseline date and 4 start dates';if(b&&st.every(Boolean)){const m=Math.max(...st.map(x=>(day(x)-day(b))/864e5));sp=m<=0?'Same-day (all four on or before baseline)':m<=7?'Rapid (within 7 days)':m<=30?'Early (within 30 days)':'Later than 30 days'}else{sp='Recorded by visit schedule'}
  const row=(l,x)=>`<tr><th>${l}</th><td>${esc(x||'–')}</td></tr>`;
- return`<div class="sec">Patient record</div><div class="wrap"><table>${row('Study ID',p.id)}${row('Patient name',p.name)}${row('Contact number',p.contact)}${row('Site',p.site)}${row('Investigator',p.inv)}${row('Consent date',p.consent)}${row('Age',p.age)}${row('Sex',p.sex)}${row('HF etiology',p.etio)}${row('Etiology (other)',p.etioO)}</table></div>
- <div class="sec">Prescriptions and attached files</div>${VK.map(([k,n])=>`<div class="tint" style="margin-bottom:12px"><b style="display:block;margin-bottom:8px">${n}</b><div class="rx-row">${filesHtml(p,k,true)}</div></div>`).join('')}
- <div class="sec" style="margin-top:20px">Summary (auto-calculated; entered values are never changed)</div><div class="wrap"><table><tr><th></th><th>Baseline</th><th>3 Months</th><th>6 Months</th></tr>
+ return`${secHeader('sum-rec','Patient record')}<div class="wrap" ${secBodyAttrs('sum-rec')}><table>${row('Study ID',p.id)}${row('Patient name',p.name)}${row('Contact number',p.contact)}${row('Site',p.site)}${row('Investigator',p.inv)}${row('Consent date',p.consent)}${row('Age',p.age)}${row('Sex',p.sex)}${row('HF etiology',p.etio)}${row('Etiology (other)',p.etioO)}</table></div>
+ ${secHeader('sum-rx','Prescriptions and attached files')}<div ${secBodyAttrs('sum-rx')}>${VK.map(([k,n])=>`<div class="tint" style="margin-bottom:12px"><b style="display:block;margin-bottom:8px">${n}</b><div class="rx-row">${filesHtml(p,k,true)}</div></div>`).join('')}</div>
+ ${secHeader('sum-calc','Summary (auto-calculated; entered values are never changed)','','margin-top:20px')}<div class="wrap" ${secBodyAttrs('sum-calc')}><table><tr><th></th><th>Baseline</th><th>3 Months</th><th>6 Months</th></tr>
  <tr><th>Visit date</th>${r((v,k)=>v.date||(k==='b'?p.consent:''))}</tr><tr><th>1MSTS reps</th>${r(v=>v.msts)}</tr><tr><th>NYHA</th>${r(v=>v.nyha)}</tr><tr><th>LVEF (%)</th>${r(v=>v.lvef)}</tr><tr><th>Active pillars</th>${r((v)=>has(v)?act(v)+' / 4':'')}</tr><tr><th>Status</th>${VK.map(([k])=>`<td>${vstat(p,k)}</td>`).join('')}</tr></table></div>
- <p style="margin-top:16px"><b>Primary outcomes:</b></p>
+ <div ${secBodyAttrs('sum-calc')}><p style="margin-top:16px"><b>Primary outcomes:</b></p>
  <p>Δ 1MSTS baseline → 6M: <b>${d(p.v.b.msts,p.v.m6.msts)} reps</b><br>
  Δ LVEF baseline → 6M: <b>${d(p.v.b.lvef,p.v.m6.lvef)} points</b></p>
- <p><b>Onboarding speed:</b> ${sp}</p>
+ <p><b>Onboarding speed:</b> ${sp}</p></div>
  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;flex-wrap:wrap">
-  <div class="sec" style="margin:0">Audit trail <span class="mut" style="font-weight:400">(latest ${Math.min(p.audit.length,50)} of ${p.audit.length})</span></div>
+  <div style="flex:1 1 300px">${secHeader('sum-audit',`Audit trail <span class="mut" style="font-weight:400">(latest ${Math.min(p.audit.length,50)} of ${p.audit.length})</span>`,'','margin:0')}</div>
   <div class="search-expandable" title="Search clinical audit trail"><button type="button" class="search-icon" aria-label="Search audit trail"><i class="ms">search</i></button><input id="auditSearchInput" type="search" placeholder="Search clinical audit changes..." autocomplete="off" maxlength="70"><button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button></div>
- </div><div class="wrap"><table id="auditTable"><thead><tr><th>When</th><th>Editor</th><th>Field</th><th>Before</th><th>After</th></tr></thead><tbody>${p.audit.slice(-50).reverse().map(a=>`<tr class="audit-row"><td style="font-size:12px;white-space:nowrap">${esc(a.t)}</td><td style="font-size:12px">${esc(a.by||'—')}</td><td style="font-size:12px">${esc(auditLabel(a.f))}</td><td style="font-size:12px;color:var(--ink-3)">${esc(a.o)||'—'}</td><td style="font-size:12px;font-weight:600">${esc(a.n)||'—'}</td></tr>`).join('')||'<tr><td colspan=5 class="mut">No changes yet</td></tr>'}</tbody></table></div>`}
+ </div><div class="wrap" ${secBodyAttrs('sum-audit')}><table id="auditTable"><thead><tr><th>When</th><th>Editor</th><th>Field</th><th>Before</th><th>After</th></tr></thead><tbody>${p.audit.slice(-50).reverse().map(a=>`<tr class="audit-row"><td style="font-size:12px;white-space:nowrap">${esc(a.t)}</td><td style="font-size:12px">${esc(a.by||'—')}</td><td style="font-size:12px">${esc(auditLabel(a.f))}</td><td style="font-size:12px;color:var(--ink-3)">${esc(a.o)||'—'}</td><td style="font-size:12px;font-weight:600">${esc(a.n)||'—'}</td></tr>`).join('')||'<tr><td colspan=5 class="mut">No changes yet</td></tr>'}</tbody></table></div>`}
 
 document.addEventListener('change',e=>{const el=e.target;if(el.id==='off'){DB.off=el.checked;persist();if(!DB.off)DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash();return}
  if(el.id==='fu'){handleUpload(el);return}
@@ -571,7 +658,7 @@ document.addEventListener('click',e=>{const o=e.target.closest&&e.target.closest
  if(!(e.target.closest&&e.target.closest('.list-sort,.sort-menu')))document.querySelectorAll('#list .sort-menu').forEach(m=>m.hidden=true)});
 document.addEventListener('click',async e=>{const t=e.target.closest('[data-id],[data-t],[data-a],[data-jump]');if(!t)return;
  if(t.dataset.jump){jumpTo(t.dataset.jump);return}
- if(t.dataset.id){sel=t.dataset.id;newMode=false;if(window.matchMedia('(max-width: 1000px)').matches)listOpen=false;pane();document.querySelectorAll('#list .pt').forEach(el=>el.classList.toggle('on',el.dataset.id===sel));keepSelectedVisible()}
+ if(t.dataset.id){sel=t.dataset.id;newMode=false;if(isTabletOrMobile())setListOpen(false,false);pane();document.querySelectorAll('#list .pt').forEach(el=>el.classList.toggle('on',el.dataset.id===sel));keepSelectedVisible()}
  else if(t.dataset.t){tab=t.dataset.t;newMode=false;pane();dash()}
  else if(t.dataset.a==='next'){const p=cur(),k=t.dataset.k,i=ORDER.indexOf(k);if(!p)return;
    if(!canEditPatient(p)){tab=ORDER[i+1];pane();dash();$('pane').scrollIntoView({behavior:'smooth',block:'start'});return}
@@ -857,6 +944,20 @@ function showIssues(p,k,m,er,verb='Cannot mark complete'){
 }
 function jumpTo(sel){const el=document.querySelector(sel);
   if(!el||el.disabled){toast('Open the related section first: this field is not on this screen');return}
+  const body=el.closest('[data-sec-body]');
+  if(body&&body.hidden){
+    const secId=body.getAttribute('data-sec-body');
+    body.hidden=false;
+    const sec=document.querySelector(`.sec-collapsible[data-sec="${secId}"]`);
+    if(sec){
+      sec.classList.remove('collapsed');
+      sec.setAttribute('aria-expanded','true');
+      const chev=sec.querySelector('.sec-chev');
+      if(chev)chev.textContent='expand_less';
+    }
+    collapsedSecs[secId]=false;  // open the section that holds the error (saved, so the phone default does not fold it again)
+    try{localStorage.setItem(SEC_COLLAPSED_KEY,JSON.stringify(collapsedSecs))}catch(e){}
+  }
   el.scrollIntoView({behavior:'smooth',block:'center'});el.focus({preventScroll:true});
   el.classList.add('fld-flash');setTimeout(()=>el.classList.remove('fld-flash'),1400)}
 
@@ -963,10 +1064,10 @@ function paneNew(){
     <div class="pane-title"><span>New Participant Registration</span></div>
     <p class="np-lead">The Study ID is generated from the site code. Patient name and contact number are required.</p>
     <div class="dlg-err" id="newErr" hidden></div>
-    <div class="sec">Investigator &amp; Site</div>
-    <div class="g tint">${combo(null,'site','Site code','','Select site')}${combo(null,'inv','Investigator name',signedIn())}</div>
-    <div class="sec">Patient Information</div>
-    <div class="g tint">
+    ${secHeader('new-inv','Investigator &amp; Site')}
+    <div class="g tint" ${secBodyAttrs('new-inv')}>${combo(null,'site','Site code','','Select site')}${combo(null,'inv','Investigator name',signedIn())}</div>
+    ${secHeader('new-pt','Patient Information')}
+    <div class="g tint" ${secBodyAttrs('new-pt')}>
       <label>Study ID<input value="Assigned on save (e.g. RIC-001)" disabled></label>
       <label>Patient name<span class="req" aria-hidden="true">*</span><input id="nName" autocomplete="off" maxlength="70" placeholder="Full legal name" required></label>
       <label>Contact number<span class="req" aria-hidden="true">*</span><input id="nContact" type="tel" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="e.g. 03001234567" required></label>
@@ -1007,6 +1108,7 @@ window.standhfOpenNew=()=>{
     return;
   }
   newMode=true;
+  if(isTabletOrMobile()) setListOpen(false, false);
   try{
     const u=new URL(location.href);
     u.searchParams.set('new','1');
@@ -1101,8 +1203,58 @@ function listChevron(){
   const phone=window.matchMedia('(max-width: 720px)').matches;
   return phone?(listOpen?'expand_less':'expand_more'):(listOpen?'chevron_left':'chevron_right');
 }
-/* Patient list: show or hide */
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#listToggle')){listOpen=!listOpen;dash();}});
+/* Patient list: show or hide with localStorage persistence */
+document.addEventListener('click',e=>{
+  if(e.target.closest&&e.target.closest('#listToggle')){
+    setListOpen(!listOpen, true);
+    dash();
+  }
+});
+
+/* Collapsible form section headers: toggles .collapsed and persists to localStorage */
+document.addEventListener('click', e => {
+  const sec = e.target.closest && e.target.closest('.sec-collapsible');
+  if(!sec) return;
+  if(e.target.closest('button, input, select, a, label, [data-a]')) return;
+  const secId = sec.dataset.sec;
+  if(!secId) return;
+  const isCol = !sec.classList.contains('collapsed');
+  sec.classList.toggle('collapsed', isCol);
+  sec.setAttribute('aria-expanded', String(!isCol));
+  const chev = sec.querySelector('.sec-chev');
+  if(chev) chev.textContent = isCol ? 'expand_more' : 'expand_less';
+  document.querySelectorAll(`[data-sec-body="${secId}"]`).forEach(body => {
+    body.hidden = isCol;
+  });
+  collapsedSecs[secId] = isCol;  // explicit choice, so the phone default does not override it
+  try {
+    localStorage.setItem(SEC_COLLAPSED_KEY, JSON.stringify(collapsedSecs));
+  } catch(err){}
+});
+
+document.addEventListener('keydown', e => {
+  if((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('sec-collapsible')){
+    e.preventDefault();
+    e.target.click();
+  }
+});
+
+/* Auto-collapse patient list in tablet/mobile mode when editing the form */
+function autoCollapsePatientListOnEdit(e){
+  if(!isTabletOrMobile() || !listOpen) return;
+  const t = e.target;
+  if(!t) return;
+  if(t.closest('.tabs') || t.closest('.np-header-bar') || t.closest('#list') || t.closest('#listToggle')) return;
+  if(t.matches('input, select, textarea, [data-p], .cb, .check-row, .rx-drop, [contenteditable], [data-cb-input]') || t.closest('.g, .tint, .wrap, .pillars-wrap, .addform, .rx-wrap, .reasons, .upl, .np')){
+    setListOpen(false, false);
+  }
+}
+document.addEventListener('focusin', e => {
+  if(e.target && e.target.closest('#pane')) autoCollapsePatientListOnEdit(e);
+});
+document.addEventListener('input', e => {
+  if(e.target && e.target.closest('#pane')) autoCollapsePatientListOnEdit(e);
+});
 
 /* Search filters the patient list: synchronized between in-section search and topbar search */
 function filterPatientList(q){
