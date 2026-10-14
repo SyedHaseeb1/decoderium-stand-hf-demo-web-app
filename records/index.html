@@ -22,7 +22,6 @@
   <style>
     .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
     .tint{background:var(--soft);border-radius:14px;padding:16px}
-    .tint .pillar{background:var(--card)}
     .rx-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
     .rx-wrap{container-type:inline-size}
     .rx-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
@@ -83,10 +82,6 @@
     .sort-opt.on{font-weight:600;color:var(--primary)}
     /* In-section patient search bar */
     .pl-search-wrap{flex:none;padding:0 12px 8px 12px}
-    /* GDMT pillars size to the space they actually get, not to the viewport:
-       4 across only when every card has room for its dropdown text, otherwise they wrap;
-       Strength and Frequency sit side by side only inside a wide enough card. */
-    .pillars-wrap{container:pillars / inline-size}
     .gdmt-table{padding:4px 8px 8px}  /* no overflow clipping: the open dropdown list must show */
     .gdmt-tbl{width:100%;border-collapse:separate;border-spacing:0 10px;table-layout:fixed}
     /* the column header already names each field, so the in-cell label text is hidden; the control stays */
@@ -116,33 +111,11 @@
     /* Status text follows the status colour, as on the cards */
     .gdmt-tbl tbody tr.active td:last-child input[data-cb-input]{font-weight:600;color:var(--success);border-color:color-mix(in srgb, var(--success) 35%, var(--line))}
     .gdmt-tbl tbody tr.stopped td:last-child input[data-cb-input]{font-weight:600;color:var(--error);border-color:color-mix(in srgb, var(--error) 35%, var(--line))}
+    .reasons-head{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:10px}
     .gdmt-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.35;font-size:14px;flex:1 1 auto;min-width:0}  /* therapy names: at most 2 lines */
     .gdmt-tbl td .cb input[data-cb-input]{min-width:0}
-    .pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:14px}
-    .pillars .pillar{min-width:0;display:flex;flex-direction:column;container:pillar / inline-size}
-    .pillar-head{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:10px}
-    .pillar-head b{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px;font-weight:600}
-    .pillar-head .chip{flex:none}
-    .pillar label{display:block;margin-bottom:8px;font-size:13px;font-weight:500;color:var(--ink-2)}
-    .pillar label:last-child{margin-bottom:0}
-    .pillar .cb input[data-cb-input]{padding-left:10px;padding-right:32px;font-size:13.5px}
-    .pillar .cb .cb-ico{right:10px;font-size:18px}
     /* Strength & Frequency stack by default, side by side once the card is at least 240px wide */
-    .pillar .g2{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
-    .pillar .g2 label{margin-bottom:0}
-    @container pillar (min-width: 240px){
-      .pillar .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    }
     /* Four across once the form is at least 260px wide */
-    @container pillars (min-width: 260px){
-      .pillars{display:flex;flex-wrap:nowrap;gap:12px}
-      .pillars .pillar{flex:1 1 0}
-    }
-    .pillar .pillar-status{margin-top:4px;padding-top:8px;border-top:1px solid var(--line)}
-    .pillar .pillar-status label{font-weight:600;color:var(--ink);margin-bottom:0}
-    .pillar .cb-list{min-width:100%;width:max-content;max-width:min(320px,88vw);box-shadow:0 8px 24px rgba(0,0,0,.15),0 2px 6px rgba(0,0,0,.06);z-index:120}
-    .pillar .cb-list li{white-space:nowrap;padding:9px 12px;font-size:13.5px}
-    .pillars .pillar:nth-child(n+3) .cb-list,.pillars .pillar:last-child .cb-list{left:auto;right:0}
     /* Check rows inside the form grids: compact, so they sit level with the fields */
     .g label.check-row{min-height:42px;box-sizing:border-box;padding:0 12px;align-self:end;margin-bottom:6px;border-color:var(--line);background:var(--card)}
     .g label.check-row:has(input:checked){background:color-mix(in srgb,var(--primary-soft) 55%,var(--card));border-color:color-mix(in srgb,var(--primary) 45%,var(--line))}
@@ -429,9 +402,6 @@ const freq=st=>st.req?'<span class="req" aria-hidden="true">*</span>':'';
 const fmsgCls=lvl=>`fmsg ${lvl}`+(lvl?` tag ${lvl==='e'?'bad':'warn'}`:'');
 const fmsg=st=>`<span class="${fmsgCls(st.lvl)}">${esc(st.msg)}</span>`;
 function paintFields(){const p=cur();if(!p)return;
-  document.querySelectorAll('#pane .pillar').forEach(card=>{const sel=card.querySelector('[data-p$=".status"]');if(!sel)return;const s=sel.value;
-    card.classList.toggle('active',s==='Active');card.classList.toggle('stopped',s==='Stopped');
-    const chip=card.querySelector('.chip');if(chip){chip.textContent=s||'Not started';chip.className='chip '+(s==='Active'?'Completed':s==='Stopped'?'Overdue':'Not')}});
   /* C2 table rows follow their status dropdown the same way (row colour and status text) */
   let activeRows=0;
   document.querySelectorAll('#pane .gdmt-tbl tbody tr').forEach(row=>{const sel=row.querySelector('[data-p$=".status"]');if(!sel)return;const s=sel.value;
@@ -466,14 +436,6 @@ const sel_=(p,path,l,o)=>{const st=fieldState(p,path);const list=typeof o==='fun
 /* One checkbox design everywhere: the card-style check row */
 const ck=(p,path,l)=>opt(p,path,l);
 const opt=(p,path,l)=>`<label class="check-row"><input type="checkbox" data-p="${path}" ${G(p,path)?'checked':''}><span>${l}</span></label>`;
-const pillar=(p,k,q,n)=>{const s=G(p,`v.${k}.g.${q}.status`)||'Not started';
-  const strOpts=()=>(window.GDMT_STRENGTHS&&window.GDMT_STRENGTHS[G(p,`v.${k}.g.${q}.drug`)])||[];
-  return `<div class="pillar ${s==='Active'?'active':s==='Stopped'?'stopped':''}" data-pillar="${q}">
-    <div class="pillar-head"><b>${n}</b><span class="chip ${s==='Active'?'Completed':s==='Stopped'?'Overdue':'Not'}">${s||'Not started'}</span></div>
-    ${sel_(p,`v.${k}.g.${q}.drug`,'Generic drug',DRUGS[q])}
-    <div class="g2">${sel_(p,`v.${k}.g.${q}.strength`,'Strength',strOpts)}${sel_(p,`v.${k}.g.${q}.freq`,'Frequency',lookup('gdmt.frequency'))}</div>
-    <div class="pillar-status">${sel_(p,`v.${k}.g.${q}.status`,'Status',lookup('gdmt.status'))}</div>
-  </div>`};
 
 /* Same four therapies as the cards above, as one horizontal table (comparison view) */
 const gdmtTable=(p,k)=>`<table class="gdmt-tbl"><thead><tr><th>Therapy</th><th>Generic drug</th><th>Strength</th><th>Frequency</th><th>Status</th></tr></thead><tbody>${PL.map(([q,n])=>{
@@ -513,7 +475,7 @@ function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).len
     ['Baseline completed',c('b'),'performance'],
     ['3M done / overdue',c('m3')+' / '+od('m3'),'performance'],
     ['6M done / overdue',c('m6')+' / '+od('m6'),'performance'],
-    ['4/4 pillars (latest visit)',full,'gdmt'],
+    ['4/4 pillars (latest visit)',full,'gdmt-table'],
     ['Mean 1MSTS',mean('b')+' → '+mean('m3')+' → '+mean('m6'),'performance']
   ].map(t=>`<div class="kpi kpi-clickable" style="cursor:pointer" onclick="${t[2]==='records'?'window.standhfOpenRecords()':`location.href='../dashboard/#${t[2]}'`}" title="Click to view ${t[0]} ${t[2]==='records'?'records':'report'}" role="link" tabindex="0"><b>${t[1]}</b><span>${t[0]}</span></div>`).join('');
     const keepScroll=(document.querySelector('#list .pl-scroll')||{scrollTop:0}).scrollTop;
@@ -522,7 +484,7 @@ function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).len
   $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patients</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?`<button type="button" class="icon-btn list-sort" data-a="sortMenu" aria-label="Sort patients" title="Sort: ${esc(listSort)}"><i class="ms">sort</i></button><div class="sort-menu" hidden>${SORT_LABELS.map(l=>`<button type="button" class="sort-opt${l===listSort?' on':''}" data-sortopt="${esc(l)}">${esc(l)}</button>`).join('')}</div>`:'')+searchBarHtml+(P.length?'':'<div class="empty"><i class="ms">groups</i>No patients yet. Create one or load the demo data.</div>')+'<div class="pl-scroll">'+noMatchHtml+sortPts(P).map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.name||'Name missing')}</span><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><span class="pt-updated">Updated ${updatedTxt(p)}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('')+'</div>';
   const scrollBox=document.querySelector('#list .pl-scroll');if(scrollBox)scrollBox.scrollTop=keepScroll;keepSelectedVisible();
   if(ptSearchQuery)filterPatientList(ptSearchQuery);
-  $('list').classList.toggle('collapsed',!listOpen);const p=cur();if(p){const pc=$('pc');if(pc&&tab in p.v)pc.textContent=act(p.v[tab])+' / 4';const st=$('vs');if(st&&tab in p.v)st.textContent=vstat(p,tab)}}
+  $('list').classList.toggle('collapsed',!listOpen);const p=cur();if(p){const st=$('vs');if(st&&tab in p.v)st.textContent=vstat(p,tab)}}
 
 /* Human labels for the names used in "missing" lists */
 function fieldLabel(x){
@@ -584,8 +546,7 @@ function pane(){saveView();
   </div>
    ${secHeader('rx','<span>A. Prescription<span class="req" aria-hidden="true">*</span></span>')}<div class="tint rx-wrap" ${secBodyAttrs('rx')}><div class="rx-grid"><div class="rx-up">${v.done?banner('Visit is locked. Reopen the visit to add files.'):!editable?`<div class="lock-banner" style="background:transparent;border:1px dashed var(--line);color:var(--ink-2);margin:0;padding:12px 14px"><i class="ms">lock</i><span>Uploads restricted to authorized Site Investigators.</span></div>`:`<button type="button" class="rx-drop" data-a="upload"><i class="ms">upload_file</i><span><b>Upload prescription</b><small>Drag and drop, or browse. PDF, JPG or PNG, up to 10 MB each, 5 files max</small></span></button>`}</div><div class="rx-files"><div class="filelist rx-list rx-row">${filesHtml(p,k)}</div></div></div></div>
    ${secHeader('clin','B. Clinical & Functional Assessment')}<div class="g tint" ${secBodyAttrs('clin','margin-bottom:12px')}>${inp(p,'v.'+k+'.wt','Weight (kg)','number','step=0.1')}${inp(p,'v.'+k+'.hr','Heart rate (bpm)','number')}${inp(p,'v.'+k+'.sbp','Systolic BP (mmHg)','number')}${inp(p,'v.'+k+'.dbp','Diastolic BP (mmHg)','number')}${sel_(p,'v.'+k+'.nyha','NYHA class',['','I','II','III','IV'])}${k==='m3'?'<label>LVEF (%)<input value="N/A at 3 months" disabled></label>':inp(p,'v.'+k+'.lvef','LVEF (%)','number','min=5 max=80')}${inp(p,'v.'+k+'.msts','1MSTS: repetitions in 60 sec','number','min=0')}${sel_(p,'v.'+k+'.stop','1MSTS stopped early? reason',STOP)}</div>
-   ${secHeader('gdmt','C. Foundational GDMT',`<span>Active: <b id="pc">${act(v)} / 4</b></span>`)}<div class="pillars-wrap" ${secBodyAttrs('gdmt')}><div class="pillars tint">${PL.map(([q,n])=>pillar(p,k,q,n)).join('')}</div></div>
-   ${secHeader('gdmt-table','C2. Foundational GDMT, table view',`<span>Active: <b id="pc2">${PL.filter(([q])=>G(p,`v.${k}.g.${q}.status`)==='Active').length} / 4</b></span>`)}<div class="gdmt-table tint" ${secBodyAttrs('gdmt-table')}>${gdmtTable(p,k)}</div><div class="reasons tint" ${secBodyAttrs('gdmt-table')}><div class="pillar-head"><b>Reason(s) GDMT not initiated or stopped</b></div><div class="checks">${RS.map(([r,l])=>opt(p,`v.${k}.rs.${r}`,l)).join('')}</div><div class="g2 reasons-other">${inp(p,'v.'+k+'.rsO','Other reason')}</div></div>
+   ${secHeader('gdmt-table','C. Foundational GDMT',`<span>Active: <b id="pc2">${PL.filter(([q])=>G(p,`v.${k}.g.${q}.status`)==='Active').length} / 4</b></span>`)}<div class="gdmt-table tint" ${secBodyAttrs('gdmt-table')}>${gdmtTable(p,k)}</div><div class="reasons tint" ${secBodyAttrs('gdmt-table')}><div class="reasons-head"><b>Reason(s) GDMT not initiated or stopped</b></div><div class="checks">${RS.map(([r,l])=>opt(p,`v.${k}.rs.${r}`,l)).join('')}</div><div class="g2 reasons-other">${inp(p,'v.'+k+'.rsO','Other reason')}</div></div>
    ${secHeader('events',`D. Clinical Events ${k==='b'?'(prior history)':'(since previous visit)'}`)}<div class="g tint" ${secBodyAttrs('events')}>${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div><div class="g tint" ${secBodyAttrs('events','margin-top:12px')}>${inp(p,`v.${k}.ev.int`,'Major intervention / event')}${inp(p,`v.${k}.ini`,'Investigator initials')}</div>
    ${navBar(k,!can('mark_complete')||!editable?'':v.done?`<span class="lock-hint"><i class="ms">lock</i>Visit locked as complete</span><button data-a="reopen"><i class="ms">undo</i>Reopen visit</button>`:`<button data-a="done"><i class="ms">task_alt</i>Mark complete</button><span id="miss" class="e"></span>`)}`}
  el.innerHTML=h;el.classList.remove('form-in');void el.offsetWidth;el.classList.add('form-in');
@@ -1245,7 +1206,7 @@ function autoCollapsePatientListOnEdit(e){
   const t = e.target;
   if(!t) return;
   if(t.closest('.tabs') || t.closest('.np-header-bar') || t.closest('#list') || t.closest('#listToggle')) return;
-  if(t.matches('input, select, textarea, [data-p], .cb, .check-row, .rx-drop, [contenteditable], [data-cb-input]') || t.closest('.g, .tint, .wrap, .pillars-wrap, .addform, .rx-wrap, .reasons, .upl, .np')){
+  if(t.matches('input, select, textarea, [data-p], .cb, .check-row, .rx-drop, [contenteditable], [data-cb-input]') || t.closest('.g, .tint, .wrap, .addform, .rx-wrap, .reasons, .upl, .np')){
     setListOpen(false, false);
   }
 }
