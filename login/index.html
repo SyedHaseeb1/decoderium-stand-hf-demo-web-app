@@ -51,13 +51,13 @@
 
       <label class="field">
         <span>Username</span>
-        <input id="user" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">
+        <input id="user" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="30">
       </label>
 
       <label class="field">
         <span>Password</span>
         <div class="input-wrap">
-          <input id="pass" name="password" type="password" autocomplete="current-password" class="has-toggle">
+          <input id="pass" name="password" type="password" autocomplete="current-password" class="has-toggle" maxlength="100">
           <button type="button" class="toggle-pw" id="togglePw" aria-label="Show password" title="Show password">
             <span class="ms">visibility</span>
           </button>
@@ -83,6 +83,7 @@
 </main>
 
 <script src="../assets/access.js?v=20261015a"></script>
+<script src="../assets/validator.js?v=20261016a"></script>
 <script>
 const APP='../records/', DASH='../dashboard/', ADMIN='../admin/', AUTH_KEY='standhf_auth', USER_KEY='standhf_user', ROLE_KEY='standhf_role';
 const REMEMBER_KEY='standhf_remember_user';

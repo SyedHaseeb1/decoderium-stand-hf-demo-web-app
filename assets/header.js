@@ -34,7 +34,7 @@
   host.innerHTML=
     '<div class="warn offline-bar" id="offBar" role="status" '+(initOn?'hidden':'')+'><i class="ms">cloud_off</i><span>You are offline. Changes are saved on this device and will sync when the connection returns.</span><button type="button" class="off-retry-btn" id="offRetry" title="Check connection">Check connection</button></div>'+
     '<header class="topbar">'+
-      '<label class="search"><i class="ms">search</i><input id="search" type="search" placeholder="'+esc(ds.search||'Search')+'" autocomplete="off"></label>'+
+      '<label class="search"><i class="ms">search</i><input id="search" type="search" placeholder="'+esc(ds.search||'Search')+'" autocomplete="off" maxlength="100"></label>'+
       segment+
       '<button type="button" class="'+initPillClass+'" id="sync" role="button" aria-live="polite" title="'+initPillTitle+'"'+(ds.own!==undefined?' data-own="1"':'')+'>'+initPillText+'</button>'+
       '<div class="notify"><button type="button" class="bell" id="bell" aria-label="Notifications" title="Notifications"><i class="ms">notifications</i><span class="badge" id="bellCount" hidden>0</span></button><div class="notify-panel" id="notifyPanel" role="dialog" aria-label="Notifications" hidden></div></div>'+

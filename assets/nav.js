@@ -16,13 +16,12 @@
   const page=document.body.dataset.page;
   /* Which nav item is active: admin and dashboard sections follow the URL hash */
   const pageKey=()=>{
-    if(page==='doctor')return 'doctor';
     if(page==='admin'){const h=location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:'adm-users'}
     if(page==='dashboard'){
+      if(window.standhfDashNavKey) return window.standhfDashNavKey;  // set by the open tab
       const h=location.hash.slice(1).toLowerCase();
       if(['performance','clinical','report','reports','analytics'].includes(h)) return 'performance';
       if(['sites','league'].includes(h)) return 'sites';
-      if(h==='gdmt') return 'gdmt';
       if(['export','exports','downloads','download'].includes(h)) return 'export';
       return 'dashboard';
     }
@@ -35,14 +34,12 @@
   const groups=[
     {label:'General',items:[
       {key:'dashboard',label:'Dashboard',href:DASH,icon:'space_dashboard',show:true},
-      {key:'doctor',label:'Doctor view',href:'../dashboard-detailed/',icon:'stethoscope',show:isInv},
       {key:'add',label:'Add new patient',href:ECRF+'?new=1',icon:'person_add',show:isInv},
       {key:'records',label:'Participant records',href:ECRF,icon:'folder_shared',show:true}
     ]},
     {label:'Reports',items:[
       {key:'performance',label:'Performance',href:DASH+'#performance',icon:'monitoring',show:!compact},
       {key:'sites',label:'Sites & League',href:DASH+'#sites',icon:'leaderboard',show:!compact},
-      {key:'gdmt',label:'GDMT Coverage',href:DASH+'#gdmt',icon:'medication',show:!compact},
       {key:'export',label:'Data Export',href:DASH+'#export',icon:'file_download',show:!compact}
     ]},
     {label:'Administration',items:[

@@ -105,12 +105,13 @@
 
 <!-- Required Shared Infrastructure Scripts in Strict Order -->
 <script src="../assets/access.js?v=20261015b"></script>
+<script src="../assets/validator.js?v=20261016a"></script>
 <script src="../assets/notifications-data.js?v=20261015b"></script>
 <script src="../assets/lookups.js?v=20261015b"></script>
 <script src="../assets/file-card.js?v=20261015b"></script>
 <script src="../assets/dialog.js?v=20261015c"></script>
 <script src="../assets/header.js?v=20261015c" data-root="../"></script>
-<script src="../assets/nav.js?v=20261015c"></script>
+<script src="../assets/nav.js?v=20261016d"></script>
 <script src="../assets/dash-charts.js?v=20261015c"></script>
 <script src="../assets/dash-components.js?v=20261015d"></script>
 
@@ -294,7 +295,7 @@ function applyHash(h){
     } else if (['sites', 'league'].includes(clean)) {
       if (currentInvTab !== 'sites') { currentInvTab = 'sites'; changed = true; }
     } else if (['patients', 'patient'].includes(clean)) {
-      if (currentInvTab !== 'patients') { currentInvTab = 'patients'; changed = true; }
+      if (currentInvTab !== 'all') { currentInvTab = 'all'; changed = true; }
     } else if (['upcoming', 'queue', 'visits'].includes(clean)) {
       if (currentInvTab !== 'upcoming') { currentInvTab = 'upcoming'; changed = true; }
     } else if (['export', 'exports', 'download', 'downloads'].includes(clean)) {
@@ -374,7 +375,6 @@ function renderInvestigatorView(allPts){
 
   const tabs = [
     { id: 'all', label: 'Overview', icon: 'dashboard' },
-    { id: 'patients', label: 'My Patients', icon: 'group', badge: mine.length },
     { id: 'upcoming', label: 'Upcoming Visits', icon: 'event_upcoming', badge: upcoming.length },
     { id: 'clinical', label: 'Clinical Performance', icon: 'monitoring' },
     { id: 'sites', label: 'Assigned Sites', icon: 'local_hospital', badge: sites.length },
@@ -397,17 +397,7 @@ function renderInvestigatorView(allPts){
   `;
 
   let bodyHtml = '';
-  if (currentInvTab === 'patients') {
-    bodyHtml = `
-      <section class="row two dash-fade-in">
-        <div class="card">
-          <div class="card-head"><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
-          <div class="plist" id="invPlist">${renderInvestigatorList(upcoming)}</div>
-        </div>
-        <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming.find(u => u.p.id === invSelectedId) || upcoming[0])}</div>
-      </section>
-    `;
-  } else if (currentInvTab === 'upcoming') {
+  if (currentInvTab === 'upcoming') {
     bodyHtml = `
       <div class="dash-fade-in">
         <div class="card">
@@ -2015,6 +2005,23 @@ function updateExportStudioUI(ptsPool){
 /* ==========================================================================
    INITIALIZATION & EVENT BINDINGS
    ========================================================================== */
+/* Sidebar item that matches each tab, per role (tabs with no sidebar item fall back to Dashboard) */
+const NAV_KEY_BY_TAB = {
+  investigator: { all: 'dashboard', upcoming: 'dashboard', clinical: 'performance', sites: 'sites', export: 'export' },
+  central:      { all: 'dashboard', queue: 'dashboard', analytics: 'performance', league: 'sites', export: 'export' },
+  superadmin:   { all: 'dashboard', teams: 'dashboard', queue: 'dashboard', analytics: 'performance', league: 'sites', export: 'export' }
+};
+
+/* Keeps the sidebar highlight and the URL hash on the open tab */
+function syncNavToTab(){
+  const tab = ROLE === 'investigator' ? currentInvTab : ROLE === 'superadmin' ? currentSuperTab : currentCentralTab;
+  const key = (NAV_KEY_BY_TAB[ROLE] || {})[tab] || 'dashboard';
+  window.standhfDashNavKey = key;
+  const want = location.pathname + location.search + (key === 'dashboard' ? '' : '#' + key);
+  if (location.pathname + location.search + location.hash !== want) history.replaceState(null, '', want);
+  if (typeof window.standhfUpdateNav === 'function') window.standhfUpdateNav();
+}
+
 function renderDashboard(){
   const allPts = loadData();
   const root = $('dashRoot');
@@ -2030,6 +2037,7 @@ function renderDashboard(){
   }
 
   attachEvents();
+  syncNavToTab();
 }
 
 function attachEvents(){

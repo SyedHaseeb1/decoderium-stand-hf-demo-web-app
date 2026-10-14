@@ -66,13 +66,13 @@
         <div class="form-grid-2">
           <div class="form-field">
             <label for="nuName">Full Name <span class="req">*</span></label>
-            <input id="nuName" name="name" required autocomplete="name">
+            <input id="nuName" name="name" required autocomplete="name" maxlength="100">
             <span class="muted" style="font-size:12px">As shown on official records</span>
             <span class="fmsg" data-for="nuName"></span>
           </div>
           <div class="form-field">
             <label for="nuUser">Username <span class="req">*</span></label>
-            <input id="nuUser" name="username" required autocapitalize="off" spellcheck="false" autocomplete="off">
+            <input id="nuUser" name="username" required autocapitalize="off" spellcheck="false" autocomplete="off" maxlength="30">
             <span class="muted" style="font-size:12px">Lowercase letters, numbers, dot or underscore</span>
             <span class="fmsg" data-for="nuUser"></span>
           </div>
@@ -87,7 +87,7 @@
           </div>
           <div class="form-field">
             <label for="nuEmail">Official Email</label>
-            <input id="nuEmail" name="email" type="email" autocapitalize="off">
+            <input id="nuEmail" name="email" type="email" autocapitalize="off" maxlength="100">
             <span class="muted" style="font-size:12px">Hospital address, e.g. name@hospital.pk</span>
             <span class="fmsg" data-for="nuEmail"></span>
           </div>
@@ -96,7 +96,7 @@
         <div class="form-field" style="margin-top:10px">
           <label for="nuDesig">Clinical Designation</label>
           <div class="cb" data-cb="designation">
-            <input id="nuDesig" name="designation" placeholder="Search or select title" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list">
+            <input id="nuDesig" name="designation" placeholder="Search or select title" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -121,7 +121,7 @@
         <div class="form-field" id="nuZonePickerField">
           <label for="nuZoneInput">Add zone</label>
           <div class="cb" data-cb="user-zone" data-prefix="nu">
-            <input id="nuZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list">
+            <input id="nuZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -185,12 +185,12 @@
       <div class="form-grid-2">
         <div class="form-field">
           <label for="euName">Full Name <span class="req">*</span></label>
-          <input id="euName" name="name" required>
+          <input id="euName" name="name" required maxlength="100">
         </div>
         <div class="form-field">
           <label for="euDesig">Clinical Designation</label>
           <div class="cb" data-cb="designation">
-            <input id="euDesig" name="designation" placeholder="Search or select title" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list">
+            <input id="euDesig" name="designation" placeholder="Search or select title" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -205,7 +205,7 @@
         </div>
         <div class="form-field">
           <label for="euEmail">Official Email</label>
-          <input id="euEmail" name="email" type="email">
+          <input id="euEmail" name="email" type="email" maxlength="100">
           <span class="fmsg" data-for="euEmail"></span>
         </div>
       </div>
@@ -233,7 +233,7 @@
         <div class="form-field" id="euZonePickerField">
           <label for="euZoneInput">Add zone</label>
           <div class="cb" data-cb="user-zone" data-prefix="eu">
-            <input id="euZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list">
+            <input id="euZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -293,7 +293,7 @@
         <div class="form-field">
           <label for="nsZone">Geographic Zone <span class="req">*</span></label>
           <div class="cb" data-cb="zone">
-            <input id="nsZone" name="zone" required placeholder="Search or select zone (e.g. Lahore, Karachi, North...)" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list">
+            <input id="nsZone" name="zone" required placeholder="Search or select zone (e.g. Lahore, Karachi, North...)" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -303,7 +303,7 @@
 
       <div class="form-field">
         <label for="nsName">Hospital Centre Name <span class="req">*</span></label>
-        <input id="nsName" name="name" required placeholder="e.g. Rawalpindi Institute of Cardiology">
+        <input id="nsName" name="name" required placeholder="e.g. Rawalpindi Institute of Cardiology" maxlength="150">
         <span class="fmsg" data-for="nsName"></span>
       </div>
     </div>
@@ -341,7 +341,7 @@
         <div class="form-field">
           <label for="esZone">Geographic Zone <span class="req">*</span></label>
           <div class="cb" data-cb="zone">
-            <input id="esZone" name="zone" required placeholder="Search or select zone" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list">
+            <input id="esZone" name="zone" required placeholder="Search or select zone" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -351,7 +351,7 @@
 
       <div class="form-field">
         <label for="esName">Hospital Centre Name <span class="req">*</span></label>
-        <input id="esName" name="name" required>
+        <input id="esName" name="name" required maxlength="150">
         <span class="fmsg" data-for="esName"></span>
       </div>
     </div>
@@ -365,11 +365,12 @@
 
 <!-- Scripts in strict dependency order -->
 <script src="../assets/access.js?v=20261015c"></script>
+<script src="../assets/validator.js?v=20261016a"></script>
 <script src="../assets/notifications-data.js?v=20261015b"></script>
 <script src="../assets/lookups.js?v=20261015d"></script>
 <script src="../assets/dialog.js?v=20261015c"></script>
 <script src="../assets/header.js?v=20261015c" data-root="../"></script>
-<script src="../assets/nav.js?v=20261015c"></script>
+<script src="../assets/nav.js?v=20261016d"></script>
 
 <script>
 const LOGIN='../login/', ECRF='../records/', SUPER='superadmin';
@@ -857,7 +858,7 @@ function usersView(){
       <div class="admin-toolbar-left">
         <div class="admin-search-box">
           <i class="ms">search</i>
-          <input type="search" id="usrSearchInput" placeholder="Search by name, handle, hospital, or zone..." value="${esc(userSearchQuery)}">
+          <input type="search" id="usrSearchInput" placeholder="Search by name, handle, hospital, or zone..." value="${esc(userSearchQuery)}" maxlength="100">
         </div>
         <div class="filter-pills" id="usrFilterPills">
           <button type="button" class="filter-pill ${userRoleFilter==='all'?'active':''}" data-role-filter="all">
@@ -1029,7 +1030,7 @@ function sitesView(){
       <div class="admin-toolbar-left">
         <div class="admin-search-box">
           <i class="ms">search</i>
-          <input type="search" id="siteSearchInput" placeholder="Search by hospital code, name, or zone..." value="${esc(siteSearchQuery)}">
+          <input type="search" id="siteSearchInput" placeholder="Search by hospital code, name, or zone..." value="${esc(siteSearchQuery)}" maxlength="100">
         </div>
         <div class="filter-pills" id="siteFilterPills">
           <button type="button" class="filter-pill ${siteZoneFilter==='all'?'active':''}" data-zone-filter="all">All Zones (${s.sites.length})</button>
@@ -1293,10 +1294,36 @@ $('fAddUser')?.addEventListener('submit',e=>{
 
   // Validations
   let hasErr=false;
-  if(!name){setMsg('nuName','Enter the full name',true);hasErr=true}
-  
-  const badUser=!username?'Enter a username':!/^[a-z0-9._]+$/.test(username)?'Use lowercase letters, numbers, dot or underscore':accessStore().users.some(u=>u.username===username)?'That username is already taken':'';
-  if(badUser){setMsg('nuUser',badUser,true);hasErr=true}
+  if(window.STANDHF_VALIDATOR){
+    const nChk = window.STANDHF_VALIDATOR.validate('name', name, true);
+    if(!nChk.ok){ setMsg('nuName', nChk.msg, true); hasErr=true; }
+    else setMsg('nuName', '', false);
+
+    const uChk = window.STANDHF_VALIDATOR.validate('username', username, true);
+    if(!uChk.ok){ setMsg('nuUser', uChk.msg, true); hasErr=true; }
+    else if(accessStore().users.some(u=>u.username===username)){ setMsg('nuUser','That username is already taken',true); hasErr=true; }
+    else setMsg('nuUser', '', false);
+
+    if(email){
+      const eChk = window.STANDHF_VALIDATOR.validate('email', email, false);
+      if(!eChk.ok){ setMsg('nuEmail', eChk.msg, true); hasErr=true; }
+      else setMsg('nuEmail', '', false);
+    } else setMsg('nuEmail', '', false);
+
+    if(phone){
+      const pChk = window.STANDHF_VALIDATOR.validate('phone', phone, false);
+      if(!pChk.ok){ setMsg('nuPhone', pChk.msg, true); hasErr=true; }
+      else setMsg('nuPhone', '', false);
+    } else setMsg('nuPhone', '', false);
+  } else {
+    if(!name){setMsg('nuName','Enter the full name',true);hasErr=true}
+    const badUser=!username?'Enter a username':!/^[a-z0-9._]+$/.test(username)?'Use lowercase letters, numbers, dot or underscore':accessStore().users.some(u=>u.username===username)?'That username is already taken':'';
+    if(badUser){setMsg('nuUser',badUser,true);hasErr=true}
+    const badEmail=email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if(badEmail){setMsg('nuEmail','Enter a valid email address',true);hasErr=true}
+    const pMsg = contactError(phone, false);
+    if(pMsg){setMsg('nuPhone',pMsg,true);hasErr=true}
+  }
 
   if(role==='investigator'&&!selectedZones.length){
     setMsg('nuZones','Please search and select at least one survey zone for Site Investigator',true);
@@ -1304,12 +1331,6 @@ $('fAddUser')?.addEventListener('submit',e=>{
   } else {
     setMsg('nuZones','',false);
   }
-
-  const badEmail=email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  if(badEmail){setMsg('nuEmail','Enter a valid email address',true);hasErr=true}
-
-  const pMsg = contactError(phone, false);
-  if(pMsg){setMsg('nuPhone',pMsg,true);hasErr=true}
 
   if(hasErr)return;
 
@@ -1453,19 +1474,35 @@ $('fEditUser')?.addEventListener('submit',e=>{
   const selectedZones = dlg._selectedZones || [];
   const me=session().username;
 
-  if(!name){toast('Full name is required');return}
+  if(window.STANDHF_VALIDATOR){
+    const nChk = window.STANDHF_VALIDATOR.validate('name', name, true);
+    if(!nChk.ok){ toast(nChk.msg); return; }
+
+    if(email){
+      const eChk = window.STANDHF_VALIDATOR.validate('email', email, false);
+      if(!eChk.ok){ setMsg('euEmail', eChk.msg, true); return; }
+      else setMsg('euEmail', '', false);
+    } else setMsg('euEmail', '', false);
+
+    if(phone){
+      const pChk = window.STANDHF_VALIDATOR.validate('phone', phone, false);
+      if(!pChk.ok){ setMsg('euPhone', pChk.msg, true); return; }
+      else setMsg('euPhone', '', false);
+    } else setMsg('euPhone', '', false);
+  } else {
+    if(!name){toast('Full name is required');return}
+    const badEmail=email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if(badEmail){setMsg('euEmail','Enter a valid email address',true);return}
+    const pMsg = contactError(phone, false);
+    if(pMsg){setMsg('euPhone',pMsg,true);return}
+  }
+
   if(role==='investigator'&&!selectedZones.length){
     setMsg('euZones','Please search and select at least one survey zone',true);
     return;
   } else {
     setMsg('euZones','',false);
   }
-
-  const badEmail=email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  if(badEmail){setMsg('euEmail','Enter a valid email address',true);return}
-
-  const pMsg = contactError(phone, false);
-  if(pMsg){setMsg('euPhone',pMsg,true);return}
 
   const saved=commit(s=>{
     const user=s.users.find(u=>u.username===username);
@@ -1541,9 +1578,20 @@ $('fAddSite')?.addEventListener('submit',e=>{
   const zone=typeof window.normalizeZone==='function'?window.normalizeZone(rawZone):rawZone;
 
   let hasErr=false;
-  const badCode=!code?'Enter a site code':!/^[A-Z0-9]{2,5}$/.test(code)?'Use 2 to 5 letters or numbers':accessStore().sites.some(x=>x.code===code)?'That code is already registered':'';
-  if(badCode){setMsg('nsCode',badCode,true);hasErr=true}
-  if(!name){setMsg('nsName','Enter the hospital name',true);hasErr=true}
+  if(window.STANDHF_VALIDATOR){
+    const cChk = window.STANDHF_VALIDATOR.validate('site_code', code, true);
+    if(!cChk.ok){ setMsg('nsCode', cChk.msg, true); hasErr=true; }
+    else if(accessStore().sites.some(x=>x.code===code)){ setMsg('nsCode','That code is already registered',true); hasErr=true; }
+    else setMsg('nsCode','',false);
+
+    const nChk = window.STANDHF_VALIDATOR.validate('site_name', name, true);
+    if(!nChk.ok){ setMsg('nsName', nChk.msg, true); hasErr=true; }
+    else setMsg('nsName','',false);
+  } else {
+    const badCode=!code?'Enter a site code':!/^[A-Z0-9]{2,5}$/.test(code)?'Use 2 to 5 letters or numbers':accessStore().sites.some(x=>x.code===code)?'That code is already registered':'';
+    if(badCode){setMsg('nsCode',badCode,true);hasErr=true}
+    if(!name){setMsg('nsName','Enter the hospital name',true);hasErr=true}
+  }
 
   const allZones = CB_DATA.zone();
   const isApprovedZone = allZones.some(z => z.toLowerCase() === zone.toLowerCase());
@@ -1599,7 +1647,13 @@ $('fEditSite')?.addEventListener('submit',e=>{
   const rawZone=$('esZone').value.trim() || 'Central';
   const zone=typeof window.normalizeZone==='function'?window.normalizeZone(rawZone):rawZone;
 
-  if(!name){setMsg('esName','Enter the hospital name',true);return}
+  if(window.STANDHF_VALIDATOR){
+    const nChk = window.STANDHF_VALIDATOR.validate('site_name', name, true);
+    if(!nChk.ok){ setMsg('esName', nChk.msg, true); return; }
+    else setMsg('esName','',false);
+  } else {
+    if(!name){setMsg('esName','Enter the hospital name',true);return}
+  }
 
   const allZones = CB_DATA.zone();
   const isApprovedZone = allZones.some(z => z.toLowerCase() === zone.toLowerCase());

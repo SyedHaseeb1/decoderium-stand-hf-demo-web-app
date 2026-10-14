@@ -189,13 +189,16 @@ const inScope=p=>recordVisible(p);
    - Enforced uniformly across all forms, patients, and users.
    ========================================================= */
 function contactClean(s){
+  if(typeof window !== 'undefined' && window.STANDHF_VALIDATOR) return window.STANDHF_VALIDATOR.contactClean(s);
   return String(s || '').replace(/\D/g, '').slice(0, 11);
 }
 function contactOk(s){
+  if(typeof window !== 'undefined' && window.STANDHF_VALIDATOR) return window.STANDHF_VALIDATOR.contactOk(s);
   var d = String(s || '').replace(/\D/g, '');
   return d.length >= 10 && d.length <= 11;
 }
 function contactError(val, required){
+  if(typeof window !== 'undefined' && window.STANDHF_VALIDATOR) return window.STANDHF_VALIDATOR.contactError(val, required);
   var raw = String(val || '').trim();
   if(!raw){
     return required ? 'Enter contact number' : '';

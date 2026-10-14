@@ -150,12 +150,13 @@
   </div>
 </div>
 <script src="../assets/access.js?v=20261016a"></script>
+<script src="../assets/validator.js?v=20261016a"></script>
 <script src="../assets/notifications-data.js?v=20261016a"></script>
 <script src="../assets/lookups.js?v=20261016a"></script>
 <script src="../assets/file-card.js?v=20261016a"></script>
 <script src="../assets/dialog.js?v=20261016a"></script>
 <script src="../assets/header.js?v=20261016a" data-root="../"></script>
-<script src="../assets/nav.js?v=20261016a"></script>
+<script src="../assets/nav.js?v=20261016d"></script>
 <script>
 const KEY='standhf_ecrf_v1';
 let DB={pts:[],off:false},sel=null,tab='info',newMode=false,listOpen=!window.matchMedia('(max-width: 1000px)').matches;
@@ -297,6 +298,10 @@ function fieldState(p,path){
   const set=(l,m)=>{if(!st.lvl||(l==='e'&&st.lvl==='w')){st.lvl=l;st.msg=m}};
   if(empty){if(req&&tried)set('e','Required');return st}
   const txt=String(val),n=num(val),bd=b.date?day(b.date):null,t0=todayStart();
+  if(window.STANDHF_VALIDATOR){
+    const vRes=window.STANDHF_VALIDATOR.validate(f,val,req,{baselineDate:b.date,dbp:v.dbp,sbp:v.sbp,visitKey:k});
+    if(vRes&&vRes.lvl)set(vRes.lvl,vRes.msg);
+  }
   if(!isV){
     if(f==='name'||f==='inv'){if(txt.trim().length<2)set('e','Enter at least 2 characters');else if(!NAME_RE.test(txt.trim()))set('e',"Letters, spaces, . ' - only")}
     if(f==='etioO'&&txt.trim().length<2)set('e','Enter at least 2 characters');
@@ -353,8 +358,23 @@ function paintFields(){const p=cur();if(!p)return;
     if(el.type!=='checkbox')el.setAttribute('aria-invalid',String(st.lvl==='e'));
     const m=el.closest('label')&&el.closest('label').querySelector('.fmsg');if(m){m.textContent=st.msg;m.className=fmsgCls(st.msg?st.lvl:'')}})}
 const MAXLEN=[[/^name$/,100],[/^contact$/,11],[/^etioO$/,100],[/\.drug$/,80],[/\.strength$/,30],[/\.freq$/,10],[/\.dose$/,40],[/\.ev\.int$/,200],[/\.ini$/,5],[/\.rsO$/,100]];
-const maxAttr=path=>{const r=MAXLEN.find(([re])=>re.test(path));return r?`maxlength="${r[1]}"`:''};
-const inp=(p,path,l,t,x='')=>{const st=fieldState(p,path);return `<label>${l}${freq(st)}<input data-p="${path}" type="${t||'text'}" value="${esc(G(p,path))}" ${maxAttr(path)} ${x} class="${fcls(st)}" ${st.lvl==='e'?'aria-invalid="true"':''}>${fmsg(st)}</label>`};
+const maxAttr=path=>{
+  if(window.STANDHF_VALIDATOR){
+    const s=window.STANDHF_VALIDATOR.matchSchema(path);
+    if(s&&s.maxLength)return `maxlength="${s.maxLength}"`;
+  }
+  const r=MAXLEN.find(([re])=>re.test(path));
+  return r?`maxlength="${r[1]}"`:'maxlength="100"';
+};
+const inp=(p,path,l,t,x='')=>{
+  const st=fieldState(p,path);
+  let im='';
+  if(window.STANDHF_VALIDATOR){
+    const s=window.STANDHF_VALIDATOR.matchSchema(path);
+    if(s&&s.inputmode)im=`inputmode="${s.inputmode}"`;
+  }
+  return `<label>${l}${freq(st)}<input data-p="${path}" type="${t||'text'}" value="${esc(G(p,path))}" ${maxAttr(path)} ${im} ${x} class="${fcls(st)}" ${st.lvl==='e'?'aria-invalid="true"':''}>${fmsg(st)}</label>`;
+};
 /* Drugs offered under each GDMT pillar. Placeholder list, marked TBC until the client confirms it (Q-16) */
 const DRUGS={arni:lookup('gdmt.arni'),bb:lookup('gdmt.bb'),mra:lookup('gdmt.mra'),sg:lookup('gdmt.sg')};
 /* o is a list, or a function that returns the list when the dropdown opens (used for doses, which depend on the drug) */
@@ -846,32 +866,52 @@ function newErrors(site,nm,ct,inv){
   const out=[];
   if(!canAddPatient()) out.push({f:'site',msg:'Only authorized Site Investigators can enroll new patients.'});
   else if(!site) out.push({f:'site',msg:'Enter a site code.'});
-  else if(!SITE_RE.test(site)) out.push({f:'site',msg:'Site code: 2 to 5 capital letters, for example RIC.'});
-  else if(!canAddPatient(site)) out.push({f:'site',msg:'You are not authorized to enroll patients at site '+site+'.'});
-  if(!nm) out.push({f:'name',msg:'Enter the patient name.'});
+  else {
+    const sChk = window.STANDHF_VALIDATOR ? window.STANDHF_VALIDATOR.validate('site', site, true) : null;
+    if(sChk && !sChk.ok) out.push({f:'site',msg:sChk.msg});
+    else if(!SITE_RE.test(site)) out.push({f:'site',msg:'Site code: 2 to 5 capital letters, for example RIC.'});
+    else if(!canAddPatient(site)) out.push({f:'site',msg:'You are not authorized to enroll patients at site '+site+'.'});
+  }
+
+  const nChk = window.STANDHF_VALIDATOR ? window.STANDHF_VALIDATOR.validate('name', nm, true) : null;
+  if(nChk && !nChk.ok) out.push({f:'name',msg:nChk.msg});
+  else if(!nm) out.push({f:'name',msg:'Enter the patient name.'});
   else if(nm.length<2) out.push({f:'name',msg:'Patient name: at least 2 characters.'});
   else if(!NAME_RE.test(nm)) out.push({f:'name',msg:"Patient name: letters, spaces, . ' - only."});
-  if(!ct) out.push({f:'contact',msg:'Enter the contact number.'});
-  else if(String(ct).replace(/\D/g,'').length>11) out.push({f:'contact',msg:'Contact number cannot exceed 11 digits.'});
-  else if(String(ct).replace(/\D/g,'').length<10) out.push({f:'contact',msg:'Contact number is too short (10–11 digits required).'});
-  else if(!contactOk(ct)) out.push({f:'contact',msg:'Contact number must be valid digits.'});
-  if(!inv) out.push({f:'inv',msg:'Enter the investigator name.'});
+
+  const cChk = window.STANDHF_VALIDATOR ? window.STANDHF_VALIDATOR.validate('contact', ct, true) : null;
+  if(cChk && !cChk.ok) out.push({f:'contact',msg:cChk.msg});
+  else if(!ct) out.push({f:'contact',msg:'Enter the contact number.'});
+  else if(!contactOk(ct)) out.push({f:'contact',msg:contactError(ct, true)});
+
+  const iChk = window.STANDHF_VALIDATOR ? window.STANDHF_VALIDATOR.validate('inv', inv, true) : null;
+  if(iChk && !iChk.ok) out.push({f:'inv',msg:iChk.msg});
+  else if(!inv) out.push({f:'inv',msg:'Enter the investigator name.'});
   else if(inv.length<2) out.push({f:'inv',msg:'Investigator name: at least 2 characters.'});
   else if(!NAME_RE.test(inv)) out.push({f:'inv',msg:"Investigator name: letters, spaces, . ' - only."});
+
   return out;
 }
 const NEW_FIELD={site:'[data-cb="site"] input',name:'#nName',contact:'#nContact',inv:'[data-cb="inv"] input',consent:'#nConsent',age:'#nAge',sex:'#nSex',etio:'#nEtio',etioO:'#nEtioO'};
 /* Personal information checks, run when the patient is created */
 function personalErrors(v){
   const out=[],add=(f,msg)=>out.push({f,msg});
-  if(!v.consent)add('consent','Enter the consent date.');
-  else if(day(v.consent)>todayStart())add('consent','Consent date cannot be in the future.');
-  if(!v.age)add('age','Enter the age.');
-  else if(!Number.isInteger(+v.age)||+v.age<18||+v.age>150)add('age','Please check age');
+  if(window.STANDHF_VALIDATOR){
+    const cChk = window.STANDHF_VALIDATOR.validate('consent', v.consent, true);
+    if(!cChk.ok) add('consent', cChk.msg);
+    const aChk = window.STANDHF_VALIDATOR.validate('age', v.age, true);
+    if(!aChk.ok) add('age', aChk.msg);
+  } else {
+    if(!v.consent)add('consent','Enter the consent date.');
+    else if(day(v.consent)>todayStart())add('consent','Consent date cannot be in the future.');
+    if(!v.age)add('age','Enter the age.');
+    else if(!Number.isInteger(+v.age)||+v.age<18||+v.age>150)add('age','Please check age');
+  }
   if(!v.sex)add('sex','Select the sex.');
   if(!v.etio)add('etio','Select the HF etiology.');
-  else if(v.etio==='Other'&&v.etioO.length<2)add('etioO','Enter the other etiology.');
-  return out}
+  else if(v.etio==='Other'&&(!v.etioO||v.etioO.length<2))add('etioO','Enter the other etiology.');
+  return out;
+}
 function clearNewErrors(){
   document.querySelectorAll('#fNew .fld-e').forEach(x=>{x.classList.remove('fld-e');x.removeAttribute('aria-invalid')});
   document.querySelectorAll('#fNew .np-msg').forEach(x=>x.remove());
@@ -922,7 +962,7 @@ function paneNew(){
       <label>Patient name<span class="req" aria-hidden="true">*</span><input id="nName" autocomplete="off" maxlength="100" placeholder="Full legal name" required></label>
       <label>Contact number<span class="req" aria-hidden="true">*</span><input id="nContact" type="tel" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="e.g. 03001234567" required></label>
       <label>Consent date<span class="req" aria-hidden="true">*</span><input id="nConsent" type="date" value="${new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}"></label>
-      <label>Age (years)<span class="req" aria-hidden="true">*</span><input id="nAge" type="number" min="18" max="150" placeholder="18 - 150"></label>
+      <label>Age (years)<span class="req" aria-hidden="true">*</span><input id="nAge" type="number" min="18" max="150" maxlength="3" inputmode="numeric" placeholder="18 - 150"></label>
       ${ddHtml('id="nSex"','dd:nSex','Sex<span class="req" aria-hidden="true">*</span>',lookup('patient.sex'),'','','',{req:'',msg:''})}
       ${ddHtml('id="nEtio"','dd:nEtio','HF etiology<span class="req" aria-hidden="true">*</span>',lookup('patient.etiology'),'','','',{req:'',msg:''})}
       <label>If other, specify<input id="nEtioO" maxlength="100" autocomplete="off" placeholder="Specify other etiology"></label>
