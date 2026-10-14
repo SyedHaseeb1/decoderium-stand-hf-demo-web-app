@@ -81,12 +81,34 @@
     .sort-opt{text-align:left;padding:8px 10px;border:0;border-radius:10px;background:none;font:inherit;font-size:14px;color:var(--ink);cursor:pointer}
     .sort-opt:hover{background:var(--soft)}
     .sort-opt.on{font-weight:600;color:var(--primary)}
-    /* GDMT pillars stay in one row, sharing the width; no scroll */
-    .pillars{display:flex;flex-wrap:nowrap;overflow:visible;gap:10px}
-    .pillars .pillar{flex:1 1 0;min-width:0}
-    .pillar-head{display:flex;align-items:center;gap:8px;min-width:0}
-    .pillar-head b{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* GDMT pillars: desktop side-by-side, tablet and mobile shift to vertical */
+    .pillars{display:flex;flex-wrap:nowrap;overflow:visible;gap:12px;margin-bottom:14px}
+    .pillars .pillar{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+    .pillar-head{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:10px}
+    .pillar-head b{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px;font-weight:600}
     .pillar-head .chip{flex:none}
+    .pillar label{display:block;margin-bottom:8px;font-size:13px;font-weight:500;color:var(--ink-2)}
+    .pillar label:last-child{margin-bottom:0}
+    .pillar .cb input[data-cb-input]{padding-left:10px;padding-right:32px;font-size:13.5px}
+    .pillar .cb .cb-ico{right:10px;font-size:18px}
+    /* Desktop: Strength & Frequency are side by side */
+    .pillar .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+    .pillar .g2 label{margin-bottom:0}
+    /* Tablet & Mobile (<= 1366px or any touch tablet): shift to vertical */
+    @media (max-width: 1366px), (hover: none) and (pointer: coarse){
+      .pillars{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(240px,1fr)) !important;gap:12px !important}
+      .pillars .pillar{flex:initial !important;min-width:0 !important}
+      .pillar .g2{display:flex !important;flex-direction:column !important;gap:8px !important}
+    }
+    @media (max-width: 640px){
+      .pillars{grid-template-columns:1fr !important}
+      .pillar .g2{display:flex !important;flex-direction:column !important;gap:8px !important}
+    }
+    .pillar .pillar-status{margin-top:4px;padding-top:8px;border-top:1px solid var(--line)}
+    .pillar .pillar-status label{font-weight:600;color:var(--ink);margin-bottom:0}
+    .pillar .cb-list{min-width:100%;width:max-content;max-width:min(320px,88vw);box-shadow:0 8px 24px rgba(0,0,0,.15),0 2px 6px rgba(0,0,0,.06);z-index:120}
+    .pillar .cb-list li{white-space:nowrap;padding:9px 12px;font-size:13.5px}
+    .pillars .pillar:nth-child(n+3) .cb-list,.pillars .pillar:last-child .cb-list{left:auto;right:0}
     /* Check rows inside the form grids: compact, so they sit level with the fields */
     .g label.check-row{min-height:42px;box-sizing:border-box;padding:0 12px;align-self:end;margin-bottom:6px;border-color:var(--line);background:var(--card)}
     .g label.check-row:has(input:checked){background:color-mix(in srgb,var(--primary-soft) 55%,var(--card));border-color:color-mix(in srgb,var(--primary) 45%,var(--line))}
@@ -147,11 +169,15 @@ const STOP=['','Chest pain','Presyncope / syncope','Intolerable dyspnea','Severe
 
 const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}};
 const cur=()=>DB.pts.find(p=>p.id===sel&&inScope(p));
-const contactOk=s=>/^\d{11}$/.test(String(s||'').replace(/[\s-]/g,''));
-/* Contact number: exactly 11 digits (e.g. 03001234567). Non-digits and non-separators dropped as typed */
-const contactClean=s=>String(s||'').replace(/[^0-9\s-]/g,'');
+// Canonical contactOk and contactClean are provided by access.js; provide fallback if access.js is absent
+if(typeof window.contactOk !== 'function'){
+  window.contactOk = s => { const d=String(s||'').replace(/\D/g,''); return d.length>=10&&d.length<=11; };
+}
+if(typeof window.contactClean !== 'function'){
+  window.contactClean = s => String(s||'').replace(/\D/g,'').slice(0,11);
+}
 /* Typing filters: characters that are never valid for a field are dropped as they are typed */
-const FILTER={contact:[/[^0-9\s-]/g,v=>v],person:[/[^\p{L}\s.'-]/gu,v=>v],ini:[/[^A-Za-z]/g,v=>v.toUpperCase()],drug:[/[^\p{L}\d\s()\/.,+-]/gu,v=>v],site:[/[^A-Za-z]/g,v=>v.toUpperCase()]};
+const FILTER={contact:[/\D/g,v=>v.slice(0,11)],person:[/[^\p{L}\s.'-]/gu,v=>v],ini:[/[^A-Za-z]/g,v=>v.toUpperCase()],drug:[/[^\p{L}\d\s()\/.,+-]/gu,v=>v],site:[/[^A-Za-z]/g,v=>v.toUpperCase()]};
 function filterKey(el){const d=el.dataset.p||'';
   if(el.id==='nContact'||d==='contact')return'contact';
   if(el.id==='nName'||d==='name'||d==='etioO')return'person';
@@ -163,6 +189,29 @@ function filterKey(el){const d=el.dataset.p||'';
 document.addEventListener('input',e=>{const el=e.target;if(el.closest&&el.closest('#fNew')){const lb=el.closest('label');if(lb){lb.querySelectorAll('.np-msg').forEach(x=>x.remove());lb.querySelectorAll('.fld-e').forEach(x=>{x.classList.remove('fld-e');x.removeAttribute('aria-invalid')})}}
 if(!el.matches||!el.matches('input'))return;const key=filterKey(el);if(!key)return;
   const [re,fn]=FILTER[key],c=fn(el.value.replace(re,''));if(c!==el.value)el.value=c});
+document.addEventListener('keydown',e=>{const el=e.target;if(!el.matches||!el.matches('input'))return;
+  const key=filterKey(el);
+  if(key==='contact'){
+    if(['Backspace','Delete','Tab','Enter','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','Escape'].includes(e.key))return;
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(!/^\d$/.test(e.key)){e.preventDefault();return;}
+    const selLen=(el.selectionEnd??0)-(el.selectionStart??0);
+    const digits=el.value.replace(/\D/g,'');
+    if(digits.length>=11&&selLen===0){e.preventDefault();}
+  }});
+document.addEventListener('paste',e=>{const el=e.target;if(!el.matches||!el.matches('input'))return;
+  const key=filterKey(el);
+  if(key==='contact'){
+    e.preventDefault();
+    const txt=(e.clipboardData||window.clipboardData)?.getData('text')||'';
+    const clean=txt.replace(/\D/g,'');
+    const start=el.selectionStart??el.value.length,end=el.selectionEnd??el.value.length;
+    const curVal=el.value;
+    const combined=(curVal.slice(0,start)+clean+curVal.slice(end)).replace(/\D/g,'').slice(0,11);
+    el.value=combined;
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    el.dispatchEvent(new Event('change',{bubbles:true}));
+  }});
 const num=x=>x===''||x==null?NaN:+x,day=s=>s?new Date(s+'T00:00:00'):null,addD=(s,n)=>{const d=day(s);d.setDate(d.getDate()+n);return d},fmt=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 
 function mk(site,inv,consent,age,sex,etio){const n=DB.pts.filter(p=>p.site===site).length+1;return{created:Date.now(),updated:Date.now(),owner:session().username,id:site+'-'+String(n).padStart(3,'0'),site,inv,consent,age,sex,etio,etioO:'',uid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:'',contact:'',sync:'Pending',audit:[],files:{b:[],m3:[],m6:[]},v:{b:{date:consent},m3:{},m6:{}}}}
@@ -180,7 +229,8 @@ function warns(p,k){const v=p.v[k],b=p.v.b,w=[],x=n=>num(v[n]);
  if(k==='b'&&p.age&&+p.age<18)w.push(['e','Age must be 18 or more']);
  if(v.lvef&&(+v.lvef<5||+v.lvef>80))w.push(['w','LVEF outside 5 to 80%']);
  if(k==='b'&&v.lvef&&+v.lvef>40)w.push(['w','LVEF above 40%: outside registry inclusion (LVEF 40% or less)']);
- if(k!=='b'&&v.date&&b.date&&day(v.date)<=day(b.date))w.push(['e','Visit date must be after the baseline date']);
+ if(k!=='b'&&v.date&&b.date&&day(v.date)<day(b.date))w.push(['e','Visit date cannot be before the baseline date']);
+ if(k!=='b'&&v.date&&b.date&&day(v.date).getTime()===day(b.date).getTime())w.push(['w','Visit date is on the same day as baseline (early submission)']);
  if(k!=='b'&&v.date&&b.date){const t=k==='m3'?90:180,wd=k==='m3'?14:21,d=(day(v.date)-day(b.date))/864e5;if(Math.abs(d-t)>wd)w.push(['w','Outside window (day '+t+' ±'+wd+'): this visit is on day '+Math.round(d)])}
  PL.forEach(([q,n])=>{const g=G(v,'g.'+q)||{};
    if(g.status==='Active'&&!g.strength&&!g.dose)w.push(['w',n+': strength missing']);
@@ -250,7 +300,13 @@ function fieldState(p,path){
   if(!isV){
     if(f==='name'||f==='inv'){if(txt.trim().length<2)set('e','Enter at least 2 characters');else if(!NAME_RE.test(txt.trim()))set('e',"Letters, spaces, . ' - only")}
     if(f==='etioO'&&txt.trim().length<2)set('e','Enter at least 2 characters');
-    if(f==='contact'&&!contactOk(val))set('e','Contact number must be exactly 11 digits');
+    if(f==='contact'){
+      const d=String(val||'').replace(/\D/g,'');
+      if(!val) set('e','Enter contact number');
+      else if(d.length>11) set('e','Contact number cannot exceed 11 digits');
+      else if(d.length<10) set('e','Contact number is too short (10–11 digits required)');
+      else if(!contactOk(val)) set('e','Contact number must be valid digits');
+    }
     if(f==='consent'){if(day(val)>t0)set('e','Consent date cannot be in the future');else if(day(val).getFullYear()<1990)set('e','Check the year');else if(bd&&day(val)>bd)set('e','After the baseline visit date')}
     if(f==='age'){if(!Number.isInteger(n))set('e','Whole years only');else if(n<18)set('e','Must be 18 or older');else if(n>150)set('e','Please check age')}
     return st;
@@ -296,7 +352,7 @@ function paintFields(){const p=cur();if(!p)return;
     el.classList.remove('fld-e','fld-w','fld-ok');const c=fcls(st);if(c)el.classList.add(c);
     if(el.type!=='checkbox')el.setAttribute('aria-invalid',String(st.lvl==='e'));
     const m=el.closest('label')&&el.closest('label').querySelector('.fmsg');if(m){m.textContent=st.msg;m.className=fmsgCls(st.msg?st.lvl:'')}})}
-const MAXLEN=[[/^name$/,100],[/^contact$/,15],[/^etioO$/,100],[/\.drug$/,80],[/\.strength$/,30],[/\.freq$/,10],[/\.dose$/,40],[/\.ev\.int$/,200],[/\.ini$/,5],[/\.rsO$/,100]];
+const MAXLEN=[[/^name$/,100],[/^contact$/,11],[/^etioO$/,100],[/\.drug$/,80],[/\.strength$/,30],[/\.freq$/,10],[/\.dose$/,40],[/\.ev\.int$/,200],[/\.ini$/,5],[/\.rsO$/,100]];
 const maxAttr=path=>{const r=MAXLEN.find(([re])=>re.test(path));return r?`maxlength="${r[1]}"`:''};
 const inp=(p,path,l,t,x='')=>{const st=fieldState(p,path);return `<label>${l}${freq(st)}<input data-p="${path}" type="${t||'text'}" value="${esc(G(p,path))}" ${maxAttr(path)} ${x} class="${fcls(st)}" ${st.lvl==='e'?'aria-invalid="true"':''}>${fmsg(st)}</label>`};
 /* Drugs offered under each GDMT pillar. Placeholder list, marked TBC until the client confirms it (Q-16) */
@@ -401,9 +457,9 @@ function pane(){saveView();
  if(tabLocked(p,tab))tab='b';
  const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info">Participant info</button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':''}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}${n}</button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum">Summary & audit</button></div>`;
  const readOnlyNotice=!editable?`<div class="lock-banner" style="background:var(--primary-soft);color:var(--primary);border-color:rgba(26,95,180,0.2);margin-bottom:14px"><i class="ms">visibility</i><span><b>Read-Only Mode:</b> You are viewing this record with oversight permissions. Clinical data entry and edits are restricted to authorized Site Investigators.</span></div>`:'';
- let h=`<div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs+readOnlyNotice;
- if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${editable&&(!p.name||!p.contact)?banner('Patient name and contact number are required. Add them below.'):''}<div class="sec">Participant</div><div class="g tint"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
- else if(tab==='sum')h+=summary(p);
+  let h=`<div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs+readOnlyNotice;
+  if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${editable&&(!p.name||!p.contact)?banner('Patient name and contact number are required. Add them below.'):''}<div class="sec">Participant</div><div class="g tint"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel','inputmode="numeric" placeholder="e.g. 03001234567"')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
+  else if(tab==='sum')h+=summary(p);
  else{const k=tab,v=p.v[k],name=VK.find(a=>a[0]===k)[1],b=p.v.b.date||p.consent;
   let win='';if(k!=='b'){const t=k==='m3'?90:180,w=k==='m3'?14:21;win=b?`Target day ${t} ±${w}: ${fmt(addD(b,t-w))} to ${fmt(addD(b,t+w))}`:'Enter baseline date first'}
   h+=`${v.done?okBanner(name+' is complete and locked.'+(editable?' Reopen the visit to make changes.':'')):''}<div class="visit-info">
@@ -450,7 +506,7 @@ document.addEventListener('change',e=>{const el=e.target;if(el.id==='off'){DB.of
  if(el.id==='fu'){handleUpload(el);return}
  if(!el.dataset.p)return;const p=cur();if(!p)return;
  if(!canEditPatient(p)){toast('You are in read-only mode. Only authorized Site Investigators can edit patient data.');paintFields();return}
- const old=G(p,el.dataset.p),nv=el.type==='checkbox'?el.checked:el.value;if(old===nv)return;
+ const old=G(p,el.dataset.p);let nv=el.type==='checkbox'?el.checked:el.value;if(el.dataset.p==='contact')nv=contactClean(nv);if(old===nv)return;
  S(p,el.dataset.p,nv);
  /* A dose belongs to one drug: clear it when the drug changes to one it does not fit */
  if(/\.drug$/.test(el.dataset.p)){
@@ -484,7 +540,7 @@ document.addEventListener('dragover',e=>{if(e.target.closest&&e.target.closest('
 document.addEventListener('drop',e=>{if(e.target.closest&&e.target.closest('.rx-drop')){e.preventDefault();const p=cur();if(!canEditPatient(p)){toast('Only authorized Site Investigators can upload prescriptions.');return}handleUpload({files:e.dataTransfer.files,value:''})}});
 document.addEventListener('click',e=>{const o=e.target.closest&&e.target.closest('[data-sortopt]');if(o){listSort=o.dataset.sortopt;saveView();dash();return}
  if(!(e.target.closest&&e.target.closest('.list-sort,.sort-menu')))document.querySelectorAll('#list .sort-menu').forEach(m=>m.hidden=true)});
-document.addEventListener('click',e=>{const t=e.target.closest('[data-id],[data-t],[data-a],[data-jump]');if(!t)return;
+document.addEventListener('click',async e=>{const t=e.target.closest('[data-id],[data-t],[data-a],[data-jump]');if(!t)return;
  if(t.dataset.jump){jumpTo(t.dataset.jump);return}
  if(t.dataset.id){sel=t.dataset.id;newMode=false;if(window.matchMedia('(max-width: 1000px)').matches)listOpen=false;pane();document.querySelectorAll('#list .pt').forEach(el=>el.classList.toggle('on',el.dataset.id===sel));keepSelectedVisible()}
  else if(t.dataset.t){tab=t.dataset.t;newMode=false;pane();dash()}
@@ -501,12 +557,76 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-id],[data-
  else{const p=cur(),v=p.v[tab];
   if(t.dataset.a==='done'){
     if(!canEditPatient(p)||!can('mark_complete')){toast('Only authorized Site Investigators can mark visits complete.');return}
-    if(!v.date) v.date=(tab==='b'&&p.consent)?p.consent:new Date().toISOString().slice(0,10);
+    // Any form on submit will take the current date, starting with baseline
+    const today=new Date().toISOString().slice(0,10);
+    const prevDate=v.date;
+    v.date=today;
+
     const m=missing(p,tab),er=warns(p,tab).filter(x=>x[0]==='e').map(x=>({msg:x[1]})).concat(fieldErrs(p,tab));
     TRIED.add((p.uid||p.id)+'|'+tab);
-    if(m.length||er.length){showIssues(p,tab,m,er);return}
-    v.done=true;p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'open',n:'completed'});
-    toast(VN_NAME(tab)+' marked complete and locked')
+    if(m.length||er.length){
+      v.date=prevDate;
+      showIssues(p,tab,m,er);
+      return;
+    }
+
+    // If submitting 3M or 6M before protocol timeline, alert user with early warning
+    if(tab==='m3'||tab==='m6'){
+      const bDateStr=p.v.b?.date||p.consent;
+      if(bDateStr){
+        const bD=day(bDateStr);
+        const todayD=day(today);
+        const dElapsed=Math.round((todayD-bD)/864e5);
+        const targetDays=tab==='m3'?90:180;
+        const windowTol=tab==='m3'?14:21;
+        const targetDate=addD(bDateStr,targetDays);
+        const isEarly=dElapsed<targetDays;
+
+        const suppressKey='standhf_early_dismiss_'+(p.uid||p.id);
+        const isSuppressed=sessionStorage.getItem(suppressKey)==='1'||sessionStorage.getItem('standhf_early_dismiss_all')==='1';
+
+        if(isEarly&&!isSuppressed){
+          const vTitle=VN_NAME(tab);
+          const timeLabel=tab==='m3'?'3-month (90 days)':'6-month (180 days)';
+          let dontAsk=false;
+
+          const allowed=await appDialog.confirm({
+            tone:'warning',
+            icon:'schedule',
+            title:`Early ${vTitle} Visit Submission Warning`,
+            message:`You are submitting and closing the ${vTitle} visit before the ${timeLabel} protocol timeline has been reached. Today's date (${fmt(todayD)}) will be recorded as the visit submission date.`,
+            items:[
+              `Baseline date: ${fmt(bD)}`,
+              `Current submission date: ${fmt(todayD)} (${dElapsed>=0?'Day '+dElapsed:Math.abs(dElapsed)+' days before baseline'} since Baseline)`,
+              `Scheduled protocol timeline: Day ${targetDays} (${fmt(targetDate)} ± ${windowTol} days)`,
+              dElapsed<targetDays?`${targetDays-dElapsed} days remaining until scheduled timeline`:''
+            ].filter(Boolean),
+            checkbox:{
+              label:"Allow and don't ask again for this patient",
+              checked:false,
+              onChange:val=>{dontAsk=!!val}
+            },
+            confirmText:'Allow & Complete',
+            cancelText:'Keep in Draft'
+          });
+
+          if(!allowed){
+            v.date=prevDate;
+            toast('Visit remains open in draft');
+            return;
+          }
+
+          if(dontAsk){
+            try{sessionStorage.setItem(suppressKey,'1')}catch(e){}
+          }
+        }
+      }
+    }
+
+    v.done=true;
+    p.updated=Date.now();
+    p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:tab+'.visit',o:'open',n:'completed'});
+    toast(VN_NAME(tab)+' marked complete and locked ('+today+')');
   }else{
     if(!canEditPatient(p)||!can('mark_complete')){toast('Only authorized Site Investigators can reopen visits.');return}
     const later=VK.slice(VK.findIndex(([x])=>x===tab)+1).find(([x])=>p.v[x].done);
@@ -527,14 +647,28 @@ function demoRx(label){const c=document.createElement('canvas');c.width=600;c.he
  x.fillStyle='#222';x.font='26px sans-serif';x.fillText(label,24,120);
  return new Promise(r=>c.toBlob(r,'image/png'))}
 const DEMO_NAMES=['Ali Raza','Sana Iqbal','Usman Tariq','Ayesha Noor','Bilal Ahmed','Hina Yousaf','Farhan Akhtar','Zainab Shah','Imran Hussain','Mariam Javed','Omar Farooq','Nadia Qureshi','Asad Mehmood','Sadia Rashid','Hamza Siddiqui','Kiran Abbas','Tariq Nawaz','Rabia Saleem','Waqar Younas','Fatima Zaidi','Danish Malik','Saima Bashir','Adnan Latif','Uzma Rehman','Kashif Iqbal','Maryam Ghani','Shahid Afridi','Noreen Akram','Faisal Mahmood','Lubna Pervaiz','Naveed Anwar','Huma Shafiq','Junaid Sheikh','Amna Hayat','Saad Karim','Rukhsana Bibi','Yasir Ali','Tahira Parveen','Zubair Ahmad','Khadija Nasir','Irfan Ullah','Sobia Riaz','Mudassar Rana','Rizwan Haider'];
-const loadDemo=async()=>{const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
- const team=accessStore().users.filter(u=>u.role==='investigator'&&u.active);
- const STRENGTH=['50mg','5mg','25mg','10mg'];
- const FREQ=['BD','OD','OD','OD'];
- const DRUG=[lookup('gdmt.arni')[0],lookup('gdmt.bb')[0],lookup('gdmt.mra')[0],lookup('gdmt.sg')[0]];
- const created=[];
- /* Audit entries use the same shape as a real change: who, when, field, before, after */
- const log=(p,by,n,h,f,o,nv)=>{const x=new Date(T);x.setDate(x.getDate()-n);x.setHours(h,0,0,0);p.audit.push({by,at:x.getTime(),t:x.toLocaleString('en-GB'),f,o,n:nv})};
+const loadDemo=async()=>{
+  try{
+    const res=await fetch('../data/dummy_data.json');
+    if(res.ok){
+      const data=await res.json();
+      if(Array.isArray(data?.pts)&&data.pts.length){
+        DB.pts=data.pts;persist();
+        if(DB.pts.length){sel=DB.pts[DB.pts.length-1].id}
+        tab='sum';pane();dash();
+        toast('Demo data loaded from verified dataset ('+DB.pts.length+' patients)');
+        return;
+      }
+    }
+  }catch(e){}
+  const T=new Date(),d=n=>{const x=new Date(T);x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
+  const team=accessStore().users.filter(u=>u.role==='investigator'&&u.active);
+  const STRENGTH=['50mg','5mg','25mg','10mg'];
+  const FREQ=['BD','OD','OD','OD'];
+  const DRUG=[lookup('gdmt.arni')[0],lookup('gdmt.bb')[0],lookup('gdmt.mra')[0],lookup('gdmt.sg')[0]];
+  const created=[];
+  /* Audit entries use the same shape as a real change: who, when, field, before, after */
+  const log=(p,by,n,h,f,o,nv)=>{const x=new Date(T);x.setDate(x.getDate()-n);x.setHours(h,0,0,0);p.audit.push({by,at:x.getTime(),t:x.toLocaleString('en-GB'),f,o,n:nv})};
  Array.from({length:44},(_,i)=>({ago:6+((i*37)%220),site:['RIC','LHR','KHI','ISB'][i%4]})).forEach(({ago,site},i)=>{
   const u=team.find(x=>x.sites.includes(site));if(!u)return;
   const p=mk(site,u.name,d(ago+3),30+(i*3)%100,i%3?'Male':'Female',i%2?'Ischemic':'Non-ischemic');
@@ -638,15 +772,17 @@ function combo(path,key,label,value,ph){
   return `<label>${label}<div class="cb" data-cb="${key}"><input ${path?`data-p="${path}"`:''} ${key==='site'?'maxlength="5" readonly':key==='inv'?'maxlength="100"':''} data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" value="${esc(value)}" placeholder="${ph||'Search or type a name'}"><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div></label>`;
 }
 function cbItems(key,q){const all=OPTS[key](),t=q.trim(),lo=t.toLowerCase();
-  const L=all.filter(o=>!lo||o.toLowerCase().includes(lo)).map(o=>({v:o}));
-  if(t&&!all.some(o=>o.toLowerCase()===lo))L.push({v:t,add:1});return L}
+  return all.filter(o=>!lo||o.toLowerCase().includes(lo)).map(o=>({v:o}))}
 function cbOpen(wrap,q){const inp=wrap.querySelector('[data-cb-input]');
   if(!inp||inp.disabled||inp.hasAttribute('disabled')||(wrap.closest('#pane')&&!canEditPatient(cur())&&inp.dataset.p))return;
   const ul=wrap.querySelector('.cb-list');
   const items=cbItems(wrap.dataset.cb,q||'');wrap._items=items;wrap._act=-1;
-  ul.innerHTML=items.length?items.map((it,i)=>`<li role="option" data-i="${i}" class="${it.add?'new':''}">${it.add?'<span class="ms">add</span>Use "'+esc(it.v)+'"':esc(it.v)}</li>`).join(''):'<li class="none">No matches. Keep typing to add a new name.</li>';
-  ul.hidden=false;inp.setAttribute('aria-expanded','true')}
-function cbClose(wrap){const ul=wrap.querySelector('.cb-list'),inp=wrap.querySelector('[data-cb-input]');ul.hidden=true;wrap._act=-1;inp.setAttribute('aria-expanded','false')}
+  ul.innerHTML=items.length?items.map((it,i)=>`<li role="option" data-i="${i}">${esc(it.v)}</li>`).join(''):'<li class="none" style="padding:10px 14px;color:var(--ink-3)">No matches found</li>';
+  ul.hidden=false;inp.setAttribute('aria-expanded','true');
+  const r=ul.getBoundingClientRect();
+  if(r.right>(window.innerWidth||document.documentElement.clientWidth)-10){ul.style.left='auto';ul.style.right='0'}
+  else if(r.left<10){ul.style.left='0';ul.style.right='auto'}}
+function cbClose(wrap){const ul=wrap.querySelector('.cb-list'),inp=wrap.querySelector('[data-cb-input]');ul.hidden=true;ul.style.left='';ul.style.right='';wrap._act=-1;inp.setAttribute('aria-expanded','false')}
 function cbOpenNow(wrap){return !wrap.querySelector('.cb-list').hidden}
 function cbChoose(wrap,i){const it=wrap._items&&wrap._items[i];if(!it)return;const inp=wrap.querySelector('[data-cb-input]');
   inp.value=it.v;cbClose(wrap);if(inp.dataset.p||inp.dataset.sort)inp.dispatchEvent(new Event('change',{bubbles:true}))}
@@ -716,7 +852,9 @@ function newErrors(site,nm,ct,inv){
   else if(nm.length<2) out.push({f:'name',msg:'Patient name: at least 2 characters.'});
   else if(!NAME_RE.test(nm)) out.push({f:'name',msg:"Patient name: letters, spaces, . ' - only."});
   if(!ct) out.push({f:'contact',msg:'Enter the contact number.'});
-  else if(!contactOk(ct)) out.push({f:'contact',msg:'Contact number must be exactly 11 digits.'});
+  else if(String(ct).replace(/\D/g,'').length>11) out.push({f:'contact',msg:'Contact number cannot exceed 11 digits.'});
+  else if(String(ct).replace(/\D/g,'').length<10) out.push({f:'contact',msg:'Contact number is too short (10–11 digits required).'});
+  else if(!contactOk(ct)) out.push({f:'contact',msg:'Contact number must be valid digits.'});
   if(!inv) out.push({f:'inv',msg:'Enter the investigator name.'});
   else if(inv.length<2) out.push({f:'inv',msg:'Investigator name: at least 2 characters.'});
   else if(!NAME_RE.test(inv)) out.push({f:'inv',msg:"Investigator name: letters, spaces, . ' - only."});
@@ -782,7 +920,7 @@ function paneNew(){
     <div class="g tint">
       <label>Study ID<input value="Assigned on save (e.g. RIC-001)" disabled></label>
       <label>Patient name<span class="req" aria-hidden="true">*</span><input id="nName" autocomplete="off" maxlength="100" placeholder="Full legal name" required></label>
-      <label>Contact number<span class="req" aria-hidden="true">*</span><input id="nContact" type="tel" maxlength="15" autocomplete="off" placeholder="e.g. 0300 1234567" required></label>
+      <label>Contact number<span class="req" aria-hidden="true">*</span><input id="nContact" type="tel" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="e.g. 03001234567" required></label>
       <label>Consent date<span class="req" aria-hidden="true">*</span><input id="nConsent" type="date" value="${new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}"></label>
       <label>Age (years)<span class="req" aria-hidden="true">*</span><input id="nAge" type="number" min="18" max="150" placeholder="18 - 150"></label>
       ${ddHtml('id="nSex"','dd:nSex','Sex<span class="req" aria-hidden="true">*</span>',lookup('patient.sex'),'','','',{req:'',msg:''})}
@@ -842,7 +980,7 @@ document.addEventListener('submit',e=>{
   e.preventDefault();
   const f=e.target;
   const site=f.querySelector('[data-cb="site"] input').value.toUpperCase().trim(),inv=f.querySelector('[data-cb="inv"] input').value.trim();
-  const nm=f.querySelector('#nName').value.trim(),ct=f.querySelector('#nContact').value.trim();
+  const nm=f.querySelector('#nName').value.trim(),ct=contactClean(f.querySelector('#nContact').value.trim());
   const errs=newErrors(site,nm,ct,inv);if(errs.length){showNewErrors(errs);return}
   const v={consent:f.querySelector('#nConsent').value,age:f.querySelector('#nAge').value.trim(),sex:f.querySelector('#nSex').value,etio:f.querySelector('#nEtio').value,etioO:f.querySelector('#nEtioO').value.trim()};
   const pe=personalErrors(v);if(pe.length){showNewErrors(pe);return}

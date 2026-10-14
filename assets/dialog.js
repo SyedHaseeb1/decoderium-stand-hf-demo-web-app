@@ -20,13 +20,23 @@
           '<span class="ad-icon ad-'+tone+'"><i class="ms">'+esc(o.icon||(tone==='danger'?'warning':'info'))+'</i></span>'+
           '<div class="ad-text"><b class="ad-title" id="'+labelled+'">'+esc(o.title||'')+'</b>'+
             (o.message?'<p class="ad-msg">'+esc(o.message)+'</p>':'')+
-            (o.items&&o.items.length?'<ul class="ad-list">'+o.items.map(function(i){return '<li>'+esc(i)+'</li>'}).join('')+'</ul>':'')+'</div>'+
+            (o.items&&o.items.length?'<ul class="ad-list">'+o.items.map(function(i){return '<li>'+esc(i)+'</li>'}).join('')+'</ul>':'')+
+            (o.checkbox?'<label class="check-row" style="margin-top:12px;font-size:12.5px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--ink-2)"><input type="checkbox" id="adCheck" '+(o.checkbox.checked?'checked':'')+'><span>'+esc(o.checkbox.label||'')+'</span></label>':'')+'</div>'+
         '</div>'+
         '<div class="ad-actions">'+
           (kind==='confirm'?'<button type="button" class="ad-cancel" data-r="0">'+esc(o.cancelText||'Cancel')+'</button>':'')+
           '<button type="button" class="'+okClass+'" data-r="1">'+esc(okText)+'</button>'+
         '</div>';
-      var finish=function(v){if(done)return;done=true;if(d.open)d.close();resolve(v)};
+      var finish=function(v){
+        if(done)return;
+        done=true;
+        if(o.checkbox&&typeof o.checkbox.onChange==='function'){
+          var cb=d.querySelector('#adCheck');
+          try{o.checkbox.onChange(cb?cb.checked:false)}catch(e){}
+        }
+        if(d.open)d.close();
+        resolve(v);
+      };
       d.onclick=function(e){
         var b=e.target.closest('[data-r]');
         if(b){finish(b.dataset.r==='1');return}

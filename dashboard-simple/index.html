@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    try {
+      if (sessionStorage.getItem('standhf_auth') !== '1') location.replace('../login/');
+    } catch(e) {
+      location.replace('../login/');
+    }
+  </script>
+  <meta charset="utf-8">
+  <title>STAND-HF Doctor Dashboard (Simplified)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a5fb4">
+  <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="../assets/base.css?v=20261015g">
+  <style>
+    /* Simplified doctor view: page-only layout. Colours come from base.css tokens. */
+    .simple-attn, .simple-pt {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--line);
+      color: inherit; text-decoration: none;
+    }
+    .simple-attn:last-child, .simple-pt:last-child { border-bottom: 0; }
+    .simple-attn:hover, .simple-pt:hover { background: var(--soft-2); }
+    .simple-body { flex: 1; min-width: 0; }
+    .simple-body b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .simple-body small { color: var(--ink-3); font-size: 12px; }
+    .simple-side { text-align: right; font-size: 12px; white-space: nowrap; }
+    .simple-scroll { max-height: 460px; overflow-y: auto; }
+    .simple-banner {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
+      padding: 4px 10px; border-radius: 12px; font-size: 12px;
+      background: var(--primary-soft); color: var(--primary);
+    }
+    .simple-banner .ms { font-size: 16px; }
+    .simple-card-note { color: var(--ink-3); font-size: 12px; margin-top: 8px; }
+    @media (max-width: 820px) {
+      .simple-cols { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body data-page="doctor">
+<div class="app">
+
+  <!-- Side navigation -->
+  <aside class="side" id="side" aria-label="Main navigation"></aside>
+
+  <main class="main">
+
+    <!-- Global App Header -->
+    <div id="app-header" data-page="dashboard" data-search="Search your patients"></div>
+
+    <!-- Simplified doctor view content -->
+    <div id="dashRoot"></div>
+
+  </main>
+</div>
+
+<!-- Notification Snack / Toast -->
+<div class="snack" id="snack" role="status" aria-live="polite"></div>
+
+<!-- Shared infrastructure, same order as the main dashboard -->
+<script src="../assets/access.js?v=20261015b"></script>
+<script src="../assets/notifications-data.js?v=20261015b"></script>
+<script src="../assets/lookups.js?v=20261015b"></script>
+<script src="../assets/file-card.js?v=20261015b"></script>
+<script src="../assets/dialog.js?v=20261015c"></script>
+<script src="../assets/header.js?v=20261015c" data-root="../"></script>
+<script src="../assets/nav.js?v=20261015c"></script>
+<script src="../assets/dash-components.js?v=20261015d"></script>
+
+<script>
+(function(){
+'use strict';
+
+/* --- Configuration --- */
+const RECORDS = '../records/', DASH = '../dashboard/';
+const KEY = 'standhf_ecrf_v1';
+const PL = ['arni', 'bb', 'mra', 'sg'];
+const VK = [['b', 'Baseline'], ['m3', '3 Months'], ['m6', '6 Months']];
+const DAY = 864e5;
+
+const sess = session();
+const ROLE = sess.role;
+const USER_NAME = sess.name;
+const USER_HANDLE = sess.username;
+
+/* --- Helpers --- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const G = (o, p) => p.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
+const day = s => new Date(s + 'T00:00:00');
+const addD = (s, n) => { const d = day(s); d.setDate(d.getDate() + n); return d; };
+const fmtShortD = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+const initials = s => String(s || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+const pct = (a, b) => (b ? Math.round(100 * a / b) : null);
+const visitName = k => VK.find(v => v[0] === k)?.[1] || '';
+const chipCls = s => s === 'Missed' ? 'Overdue' : s === 'In Progress' ? 'In' : s === 'Not Started' ? 'Not' : s.split(' ')[0];
+
+function loadPatients(){
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (Array.isArray(d?.pts)) return d.pts;
+  } catch(e){}
+  return [];
+}
+
+/* --- Clinical logic (mirrors the main dashboard so both views agree) --- */
+function hasEntry(v){
+  return Object.keys(v || {}).some(k => k !== 'done' && v[k] !== '' && v[k] != null && typeof v[k] !== 'object') ||
+    (v.g && Object.values(v.g).some(x => x.status));
+}
+
+function activePillars(v){
+  return PL.filter(q => G(v, 'g.' + q + '.status') === 'Active').length;
+}
+
+function visitWindow(p, k){
+  const b = p.v?.b?.date;
+  if (k === 'b' || !b) return null;
+  const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21;
+  return [addD(b, t - w), addD(b, t + w)];
+}
+
+function visitStatus(p, k){
+  const v = p.v?.[k] || {};
+  if (v.done) return 'Completed';
+  const b = p.v?.b?.done ? p.v.b.date : null;
+  let late = false, due = false, missed = false;
+  if (k !== 'b' && b) {
+    const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21, now = new Date();
+    late = now > addD(b, t + w);
+    due = now >= addD(b, t - w);
+    missed = now > addD(b, t + w + 30) && !hasEntry(v);
+  }
+  return missed ? 'Missed' : late ? 'Overdue' : hasEntry(v) ? 'In Progress' : due ? 'Due' : 'Not Started';
+}
+
+function nextVisit(p){
+  return VK.map(v => v[0]).find(k => !p.v?.[k]?.done) || null;
+}
+
+function onTime(p, k){
+  if (k === 'b' || !p.v?.b?.date || !p.v?.[k]?.done || !p.v?.[k]?.date) return null;
+  const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21;
+  const d = Math.round((day(p.v[k].date) - day(p.v.b.date)) / DAY);
+  return Math.abs(d - t) <= w;
+}
+
+/* One row per patient: their next visit still to complete, sorted by urgency */
+function nextVisitRows(mine){
+  const rank = { Missed: 0, Overdue: 0, Due: 1, 'In Progress': 2, 'Not Started': 3, Completed: 4 };
+  return mine.map(p => {
+    const k = nextVisit(p);
+    if (!k) return { p, k: null, s: 'Completed', win: null };
+    return { p, k, s: visitStatus(p, k), win: visitWindow(p, k) };
+  }).sort((a, b) => (rank[a.s] - rank[b.s]) || ((a.win ? a.win[0] : 0) - (b.win ? b.win[0] : 0)));
+}
+
+/* --- Links --- */
+function recordLink(row){
+  const q = new URLSearchParams({ patient: row.p.id });
+  if (row.k) q.set('tab', row.k);
+  return RECORDS + '?' + q.toString();
+}
+
+function windowText(win){
+  return win ? `${fmtShortD(win[0])} – ${fmtShortD(win[1])}` : '';
+}
+
+/* --- Views --- */
+function renderNotInvestigator(){
+  return `
+    <section class="card" style="max-width:640px;margin:24px auto">
+      <div class="card-head"><h2>Doctor view</h2></div>
+      <p class="muted">This simplified view is for site investigators. Your role is shown in the main dashboard.</p>
+      <p><a class="btn" href="${DASH}"><i class="ms">dashboard</i>Open main dashboard</a></p>
+    </section>`;
+}
+
+function renderDoctorView(allPts){
+  // Only this investigator's own patients, and only from sites they are assigned to
+  const mine = allPts.filter(p => recordVisible(p) && (p.owner === USER_HANDLE || p.inv === USER_NAME));
+  const rows = nextVisitRows(mine);
+  const attention = rows.filter(r => ['Missed', 'Overdue', 'Due'].includes(r.s));
+  const overdue = attention.filter(r => r.s === 'Overdue' || r.s === 'Missed').length;
+  const due = attention.length - overdue;
+
+  const n = mine.length;
+  const sites = [...new Set(mine.map(p => p.site).filter(Boolean))].sort();
+  const pending = mine.filter(p => p.sync === 'Pending').length;
+  const baselineDone = mine.filter(p => p.v?.b?.done).length;
+
+  const doneVisits = mine.reduce((c, p) => c + VK.filter(([k]) => p.v?.[k]?.done).length, 0);
+  const totalVisits = n * VK.length;
+  const visitPct = pct(doneVisits, totalVisits);
+
+  // Clinical summary, same definitions as the main dashboard
+  const fu = mine.flatMap(p => ['m3', 'm6'].map(k => onTime(p, k))).filter(x => x !== null);
+  const adherence = fu.length ? Math.round(100 * fu.filter(Boolean).length / fu.length) : null;
+  const latest = mine.map(p => {
+    const last = ['m6', 'm3', 'b'].find(k => p.v?.[k]?.done);
+    return last ? activePillars(p.v[last]) : null;
+  }).filter(x => x !== null);
+  const fourPillars = latest.filter(x => x === 4).length;
+  const gdmtRate = pct(fourPillars, latest.length);
+
+  const greet = `Welcome, Dr. ${esc((USER_NAME || '').split(/\s+/)[0])}`;
+
+  const headerHtml = `
+    <div class="hello">
+      <div>
+        <h1 id="welcome">${greet}</h1>
+        <p id="meta">Sites: ${esc(sites.join(', ') || 'No site assigned')} · Clinical Outpatient HF Registry</p>
+        ${pending ? `<span class="simple-banner"><i class="ms">cloud_sync</i>${pending} saved on this device, not yet synced</span>` : ''}
+      </div>
+      <div class="actions">
+        <a class="btn" href="${RECORDS}"><i class="ms">edit_note</i>Patient records</a>
+        <a class="btn primary" href="${RECORDS}?new=1"><i class="ms">person_add</i>Add patient</a>
+      </div>
+    </div>`;
+
+  const kpisHtml = DashUI.kpiGrid([
+    { icon: 'group', value: n, label: 'My patients', sub: `${baselineDone} of ${n} with baseline complete`, iconBg: 'brand', href: RECORDS },
+    {
+      icon: 'event_upcoming',
+      value: attention.length,
+      label: 'Visits due or overdue',
+      sub: attention.length ? `${overdue} overdue · ${due} due now` : 'Nothing outstanding',
+      tag: overdue ? 'Action' : attention.length ? 'Due' : 'Clear',
+      tagType: overdue ? 'warn' : attention.length ? '' : 'good',
+      alert: overdue > 0,
+      iconBg: overdue ? 'error' : 'warn'
+    },
+    { icon: 'task_alt', value: visitPct == null ? '–' : `${visitPct}%`, label: 'Visits completed', sub: `${doneVisits} of ${totalVisits} across Baseline, 3M and 6M`, iconBg: 'success' }
+  ]);
+
+  const attentionHtml = attention.length
+    ? attention.map(r => `
+        <a class="simple-attn" href="${esc(recordLink(r))}">
+          <span class="avatar">${initials(r.p.name || r.p.id)}</span>
+          <span class="simple-body">
+            <b>${esc(r.p.id)}${r.p.name ? ' · ' + esc(r.p.name) : ''}</b>
+            <small>${esc(r.p.site)} · ${esc(visitName(r.k))} · window ${windowText(r.win)}</small>
+          </span>
+          <span class="simple-side"><span class="chip ${chipCls(r.s)}">${r.s}</span></span>
+        </a>`).join('')
+    : '<div class="empty"><i class="ms">task_alt</i>No visits are due or overdue.</div>';
+
+  const patientsHtml = rows.length
+    ? rows.map(r => `
+        <a class="simple-pt" href="${esc(recordLink(r))}">
+          <span class="avatar">${initials(r.p.name || r.p.id)}</span>
+          <span class="simple-body">
+            <b>${esc(r.p.name || r.p.id)}</b>
+            <small>${esc(r.p.id)} · ${esc(r.p.site)}</small>
+          </span>
+          <span class="simple-side"><span class="chip ${chipCls(r.s)}">${r.s}</span><br><small class="muted">${r.k ? esc(visitName(r.k)) : 'All visits done'}</small></span>
+        </a>`).join('')
+    : '<div class="empty"><i class="ms">groups</i>No patients yet. Add one to start.</div>';
+
+  const bodyHtml = `
+    <div class="dash-fade-in">
+      ${kpisHtml}
+
+      <section class="row simple-cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+        <div class="card">
+          <div class="card-head"><h2>Needs attention</h2><small>${attention.length} visit${attention.length === 1 ? '' : 's'}</small></div>
+          <div class="simple-scroll">${attentionHtml}</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>My patients</h2><small>${n} total, most urgent first</small></div>
+          <div class="simple-scroll">${patientsHtml}</div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:20px">
+        <div class="card-head"><h2>Clinical summary</h2><small>From your verified patient data</small></div>
+        <div class="metric"><span>Follow-up visits within protocol window</span><b class="${adherence >= 80 ? 'good' : 'warn'}">${adherence != null ? adherence + '%' : '–'}</b></div>
+        <div class="metric"><span>Patients on all 4 GDMT pillars (latest visit)</span><b class="${gdmtRate >= 70 ? 'good' : ''}">${fourPillars} / ${latest.length}${gdmtRate != null ? ' (' + gdmtRate + '%)' : ''}</b></div>
+        <p class="simple-card-note">Protocol targets: follow-up within window, and at least 70% on all four pillars.</p>
+      </section>
+    </div>`;
+
+  return headerHtml + bodyHtml;
+}
+
+function render(){
+  const root = $('dashRoot');
+  if (!root) return;
+  root.innerHTML = ROLE === 'investigator' ? renderDoctorView(loadPatients()) : renderNotInvestigator();
+}
+
+render();
+window.addEventListener('storage', e => { if (e.key === KEY) render(); });
+
+})();
+</script>
+</body>
+</html>

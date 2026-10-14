@@ -1,0 +1,104 @@
+{
+  "zones": [
+    "North",
+    "Central",
+    "South"
+  ],
+  "sites": [
+    {
+      "code": "RIC",
+      "name": "Riverside Cardiac Centre",
+      "zone": "North",
+      "city": "Rawalpindi"
+    },
+    {
+      "code": "LHR",
+      "name": "Lakeview Heart Clinic",
+      "zone": "Central",
+      "city": "Lahore"
+    },
+    {
+      "code": "KHI",
+      "name": "Harbor Heart Institute",
+      "zone": "South",
+      "city": "Karachi"
+    },
+    {
+      "code": "ISB",
+      "name": "Highland Cardiology",
+      "zone": "North",
+      "city": "Islamabad"
+    }
+  ],
+  "users": [
+    {
+      "username": "michael.johnson",
+      "name": "Michael Johnson",
+      "role": "superadmin",
+      "sites": [],
+      "zones": [],
+      "active": true
+    },
+    {
+      "username": "emily.carter",
+      "name": "Emily Carter",
+      "role": "investigator",
+      "sites": [
+        "RIC",
+        "LHR"
+      ],
+      "zones": [
+        "North",
+        "Central"
+      ],
+      "active": true
+    },
+    {
+      "username": "robert.wilson",
+      "name": "Robert Wilson",
+      "role": "central",
+      "sites": [],
+      "zones": [
+        "North",
+        "Central",
+        "South"
+      ],
+      "active": true
+    },
+    {
+      "username": "adnan.khan",
+      "name": "Adnan Khan",
+      "role": "investigator",
+      "sites": [
+        "KHI",
+        "ISB"
+      ],
+      "zones": [
+        "South",
+        "North"
+      ],
+      "active": true
+    }
+  ],
+  "perms": {
+    "superadmin": {
+      "view_all_sites": true,
+      "export_data": true,
+      "assign_investigators": true,
+      "manage_users": true,
+      "manage_sites": true
+    },
+    "investigator": {
+      "add_patient": true,
+      "enter_data": true,
+      "mark_complete": true,
+      "load_demo": true,
+      "clear_all": true,
+      "export_data": true
+    },
+    "central": {
+      "view_all_sites": true,
+      "export_data": true
+    }
+  }
+}

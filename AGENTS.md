@@ -161,7 +161,7 @@ Follow clinical validation specifications in [`docs/06-validation-rules.md`](fil
    - Non-active GDMT pillars require at least one documented reason.
 3. **Visit Schedule & Form Structure**:
    - **Section B (Clinical & Functional)**: Single card containing Weight, Heart rate, Systolic BP, Diastolic BP, NYHA class, LVEF (%) [N/A at 3M], 1MSTS repetitions, and 1MSTS stop reason. Visit date, Echo date, and 1MSTS repeated are removed from UI.
-   - **Section C (Foundational GDMT)**: 4 pillars with Generic drug, Strength dropdown, Frequency dropdown (`OD`, `BD`, `TDS`), and Status dropdown. Choosing a generic drug automatically marks Status as `'Active'`. Start date is removed.
+   - **Section C (Foundational GDMT)**: 4 pillars with Generic drug, Strength dropdown, Frequency dropdown (`OD`, `BD`, `TDS`), and Status dropdown. Choosing a generic drug automatically marks Status as `'Active'`. Start date is removed. On large desktop monitors (>1366px without touch), Strength and Frequency dropdowns sit side-by-side; on tablet and mobile (<=1366px or touch tablets), they shift to vertical stacking so each dropdown expands across 100% of the card width.
    - **Baseline (B)**: Enrollment visit (auto-defaults date to consent date).
    - **Month 3 (M3)**: 90 days ± 14 days from Baseline.
    - **Month 6 (M6)**: 180 days ± 14 days from Baseline.

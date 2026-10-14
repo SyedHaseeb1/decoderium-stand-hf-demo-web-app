@@ -1647,6 +1647,15 @@ if (!window._cbGlobalClickBound) {
       });
     }
   });
+  window.addEventListener('scroll', () => {
+    document.querySelectorAll('.custom-cb.is-open').forEach(cb => {
+      cb.classList.remove('is-open');
+      const ul = cb.querySelector('.cb-list');
+      if (ul) ul.hidden = true;
+      const inp = cb.querySelector('[data-cb-input]');
+      if (inp) inp.setAttribute('aria-expanded', 'false');
+    });
+  }, { passive: true });
 }
 
 // --- Main Section Generator: Data Export Hub & Filter Studio ---
@@ -2437,6 +2446,22 @@ function attachEvents(){
 // Initial Render with Hash Routing
 applyHash();
 renderDashboard();
+
+// Auto-seed from verified dataset if local storage is fresh/empty
+(async function ensurePreloadedData(){
+  if (!localStorage.getItem(KEY)) {
+    try {
+      const res = await fetch('../data/dummy_data.json');
+      if (res.ok) {
+        const d = await res.json();
+        if (Array.isArray(d?.pts) && d.pts.length) {
+          localStorage.setItem(KEY, JSON.stringify(d));
+          renderDashboard();
+        }
+      }
+    } catch(e){}
+  }
+})();
 
 // Listen to hash changes (from sidebar or links anywhere)
 window.addEventListener('hashchange', () => {

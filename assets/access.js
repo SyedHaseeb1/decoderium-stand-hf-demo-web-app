@@ -124,13 +124,28 @@ function can(perm){
   return !!perms[perm];
 }
 
+/* Helper: resolve all hospital centres under a user's assigned zones and explicit sites */
+function userAssignedSites(u, s){
+  if(!u) return [];
+  s = s || accessStore();
+  const explicit = Array.isArray(u.sites) ? u.sites : [];
+  const uZones = Array.isArray(u.zones) ? u.zones : [];
+  const fromZones = s.sites.filter(st => {
+    const z = (st.zone || 'Central').toLowerCase();
+    return uZones.some(uz => {
+      const uLo = uz.toLowerCase();
+      return uLo === z || z.includes(uLo) || uLo.includes(z);
+    });
+  }).map(st => st.code);
+  return [...new Set([...explicit, ...fromZones])];
+}
+
 /* Check if the current user is an authorized Site Investigator for adding patients */
 function canAddPatient(siteCode){
   const r=session().role;
   if(r!=='investigator')return false;
   if(!can('add_patient'))return false;
-  const u=currentUser();
-  const allowed=u&&Array.isArray(u.sites)?u.sites:[];
+  const allowed=userAssignedSites(currentUser());
   if(!siteCode)return allowed.length>0;
   return allowed.includes(siteCode);
 }
@@ -141,26 +156,24 @@ function canEditPatient(p){
   if(r!=='investigator')return false;
   if(!can('enter_data'))return false;
   if(!p)return true;
-  const u=currentUser();
-  const allowed=u&&Array.isArray(u.sites)?u.sites:[];
+  const allowed=userAssignedSites(currentUser());
   if(p.site&&!allowed.includes(p.site))return false;
   return true;
 }
 
-/* Sites the signed-in user may see and enter data for */
+/* Sites the signed-in user may see and enter data for (includes all hospitals in their assigned zones) */
 function mySites(){
   const s=accessStore();
   if(can('view_all_sites'))return s.sites.map(x=>x.code);
-  const u=currentUser();
-  return u?u.sites.slice():[];
+  return userAssignedSites(currentUser(), s);
 }
-/* Which records a user may see: Super Admin & Central see all (oversight); Site Investigators see their assigned sites */
+
+/* Which records a user may see: Super Admin & Central see all (oversight); Site Investigators see their assigned zones */
 function recordVisible(p){
   const r=session().role;
   if(r==='superadmin'||r==='central')return true;
   if(r==='investigator'){
-    const u=currentUser();
-    const allowed=u&&Array.isArray(u.sites)?u.sites:[];
+    const allowed=userAssignedSites(currentUser());
     if(p.site&&allowed.includes(p.site))return true;
     if(p.owner&&p.owner===session().username)return true;
     return false;
@@ -168,3 +181,76 @@ function recordVisible(p){
   return mySites().includes(p.site);
 }
 const inScope=p=>recordVisible(p);
+
+/* =========================================================
+   STAND-HF Canonical Contact / Phone Number Standards
+   - Max 11 digits (e.g. 03001234567). Non-digits dropped.
+   - Valid Pakistani phone number: 10 to 11 digits.
+   - Enforced uniformly across all forms, patients, and users.
+   ========================================================= */
+function contactClean(s){
+  return String(s || '').replace(/\D/g, '').slice(0, 11);
+}
+function contactOk(s){
+  var d = String(s || '').replace(/\D/g, '');
+  return d.length >= 10 && d.length <= 11;
+}
+function contactError(val, required){
+  var raw = String(val || '').trim();
+  if(!raw){
+    return required ? 'Enter contact number' : '';
+  }
+  var d = raw.replace(/\D/g, '');
+  if(d.length > 11) return 'Contact number cannot exceed 11 digits';
+  if(d.length < 10) return 'Contact number is too short (10–11 digits required)';
+  if(!contactOk(raw)) return 'Contact number must be valid digits';
+  return '';
+}
+
+function isContactField(el){
+  if(!el || !el.matches || !el.matches('input')) return false;
+  if(el.type === 'tel') return true;
+  var p = el.dataset ? el.dataset.p : '';
+  if(p === 'contact' || el.id === 'nContact' || el.id === 'nuPhone' || el.id === 'euPhone') return true;
+  var n = el.name || '';
+  if(n === 'phone' || n === 'contact' || n === 'mobile') return true;
+  if(el.hasAttribute('data-contact')) return true;
+  return false;
+}
+
+// Global uniform contact number typing and paste restrictions
+document.addEventListener('input', function(e){
+  var el = e.target;
+  if(isContactField(el)){
+    var clean = contactClean(el.value);
+    if(clean !== el.value) el.value = clean;
+  }
+});
+
+document.addEventListener('keydown', function(e){
+  var el = e.target;
+  if(isContactField(el)){
+    if(['Backspace','Delete','Tab','Enter','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','Escape'].includes(e.key)) return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    if(!/^\d$/.test(e.key)){ e.preventDefault(); return; }
+    var selLen = (el.selectionEnd != null && el.selectionStart != null) ? (el.selectionEnd - el.selectionStart) : 0;
+    var digits = el.value.replace(/\D/g, '');
+    if(digits.length >= 11 && selLen === 0){ e.preventDefault(); }
+  }
+});
+
+document.addEventListener('paste', function(e){
+  var el = e.target;
+  if(isContactField(el)){
+    e.preventDefault();
+    var txt = (e.clipboardData || window.clipboardData) ? (e.clipboardData || window.clipboardData).getData('text') : '';
+    var clean = String(txt || '').replace(/\D/g, '');
+    var start = el.selectionStart != null ? el.selectionStart : el.value.length;
+    var end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+    var curVal = el.value;
+    var combined = (curVal.slice(0, start) + clean + curVal.slice(end)).replace(/\D/g, '').slice(0, 11);
+    el.value = combined;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+});

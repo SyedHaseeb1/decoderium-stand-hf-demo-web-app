@@ -9,11 +9,14 @@
   const isInv=ss('standhf_role')==='investigator';
   const DASH='../dashboard/', ECRF='../records/', LOGIN='../login/', ADMIN='../admin/';
   const isSuper=ss('standhf_role')==='superadmin';
+  /* Pages with data-nav="compact" (the reduced doctor dashboard) hide the Reports group */
+  const compact=document.body.dataset.nav==='compact';
   const isCentral=ss('standhf_role')==='central';
   const onNew=/[?&]new=1/.test(location.search);
   const page=document.body.dataset.page;
   /* Which nav item is active: admin and dashboard sections follow the URL hash */
   const pageKey=()=>{
+    if(page==='doctor')return 'doctor';
     if(page==='admin'){const h=location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:'adm-users'}
     if(page==='dashboard'){
       const h=location.hash.slice(1).toLowerCase();
@@ -32,14 +35,15 @@
   const groups=[
     {label:'General',items:[
       {key:'dashboard',label:'Dashboard',href:DASH,icon:'space_dashboard',show:true},
+      {key:'doctor',label:'Doctor view',href:'../dashboard-detailed/',icon:'stethoscope',show:isInv},
       {key:'add',label:'Add new patient',href:ECRF+'?new=1',icon:'person_add',show:isInv},
       {key:'records',label:'Participant records',href:ECRF,icon:'folder_shared',show:true}
     ]},
     {label:'Reports',items:[
-      {key:'performance',label:'Performance',href:DASH+'#performance',icon:'monitoring',show:true},
-      {key:'sites',label:'Sites & League',href:DASH+'#sites',icon:'leaderboard',show:true},
-      {key:'gdmt',label:'GDMT Coverage',href:DASH+'#gdmt',icon:'medication',show:true},
-      {key:'export',label:'Data Export',href:DASH+'#export',icon:'file_download',show:true}
+      {key:'performance',label:'Performance',href:DASH+'#performance',icon:'monitoring',show:!compact},
+      {key:'sites',label:'Sites & League',href:DASH+'#sites',icon:'leaderboard',show:!compact},
+      {key:'gdmt',label:'GDMT Coverage',href:DASH+'#gdmt',icon:'medication',show:!compact},
+      {key:'export',label:'Data Export',href:DASH+'#export',icon:'file_download',show:!compact}
     ]},
     {label:'Administration',items:[
       {key:'adm-users',label:'Users & Teams',href:ADMIN+'#users',icon:'group',show:isSuper},
