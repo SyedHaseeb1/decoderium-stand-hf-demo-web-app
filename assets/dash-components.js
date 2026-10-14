@@ -115,9 +115,10 @@
       return `
         <nav class="dash-tabs" aria-label="Dashboard views">
           ${(tabs || []).map(t => `
-            <button type="button" class="dash-tab ${t.id === activeId ? 'active' : ''}" data-dashtab="${t.id}">
+            <button type="button" class="dash-tab ${t.id === activeId ? 'active' : ''}" data-dashtab="${t.id}" title="${esc(t.label)}">
               <i class="ms" style="font-size:18px">${t.icon}</i>
-              <span>${t.label}</span>
+              <span class="tab-full">${esc(t.label)}</span>
+              <span class="tab-short">${esc(t.shortLabel || t.label)}</span>
               ${t.badge !== undefined && t.badge !== null ? `<span class="tab-badge">${t.badge}</span>` : ''}
             </button>
           `).join('')}
@@ -360,15 +361,22 @@
       return `
         <section class="teams-grid">
           <!-- Team 1: Central Monitoring Directorate -->
-          <div class="card">
+          <div class="card" id="cardCentralTeam">
             <div class="card-head">
               <div>
                 <h2>Central Monitoring Directorate</h2>
                 <small>Study leadership &amp; research export authority ("The boss after super admin")</small>
               </div>
-              <a class="btn btn-sm" href="../admin/#users">
-                <i class="ms">manage_accounts</i>Manage
-              </a>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="search-expandable" title="Search officers...">
+                  <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
+                  <input id="centralTeamSearchInput" type="search" placeholder="Search monitor officer or zone..." autocomplete="off" maxlength="70">
+                  <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+                </div>
+                <a class="btn btn-sm" href="../admin/#users">
+                  <i class="ms">manage_accounts</i>Manage
+                </a>
+              </div>
             </div>
             <div class="table-wrap">
               <table>
@@ -389,12 +397,19 @@
             </div>
 
             <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
-              <div style="font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:8px">
-                <i class="ms" style="font-size:14px;vertical-align:-2px">receipt_long</i> Central Team Monitoring &amp; Export Audit Log (Latest 5 Events):
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                <div style="font-size:12px;font-weight:600;color:var(--ink-2)">
+                  <i class="ms" style="font-size:14px;vertical-align:-2px">receipt_long</i> Central Monitoring &amp; Export Audit Log:
+                </div>
+                <div class="search-expandable" title="Search monitoring audit">
+                  <button type="button" class="search-icon" aria-label="Search audit"><i class="ms">search</i></button>
+                  <input id="centralAuditSearchInput" type="search" placeholder="Search monitoring event..." autocomplete="off" maxlength="70">
+                  <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+                </div>
               </div>
-              <div style="font-size:12px;color:var(--ink-2)">
-                ${auditLogs.slice(0, 5).map(a => `
-                  <div style="padding:6px 0;border-bottom:1px dashed var(--line);display:flex;justify-content:space-between;align-items:center">
+              <div id="centralAuditList" style="font-size:12px;color:var(--ink-2)">
+                ${auditLogs.slice(0, 10).map(a => `
+                  <div class="central-audit-row" style="padding:6px 0;border-bottom:1px dashed var(--line);display:flex;justify-content:space-between;align-items:center">
                     <span><b>${esc(a.name)}:</b> <span class="tag info" style="font-size:10px;padding:1px 6px">${esc(a.action)}</span> ${esc(a.details)}</span>
                     <span class="muted" style="font-size:11px;white-space:nowrap">${esc(a.t)}</span>
                   </div>
@@ -404,13 +419,18 @@
           </div>
 
           <!-- Team 2: Clinical Site Investigators -->
-          <div class="card">
+          <div class="card" id="cardInvestigatorsTeam">
             <div class="card-head">
               <div>
                 <h2>Site Investigators Team</h2>
                 <small>Frontline cardiologists entering patient visits at hospital sites · Click to drill into profile</small>
               </div>
-              <div style="display:flex;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <div class="search-expandable" title="Search investigators...">
+                  <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
+                  <input id="invTeamSearchInput" type="search" placeholder="Search cardiologist or centre..." autocomplete="off" maxlength="70">
+                  <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+                </div>
                 <button type="button" class="btn btn-sm" id="btnExportAllInvs">
                   <i class="ms">download</i>CSV
                 </button>
@@ -554,10 +574,17 @@
           </section>
 
           <!-- Investigator Patient List -->
-          <section class="card">
+          <section class="card" id="cardInvestigatorPatients">
           <div class="card-head">
-            <h2>Patients Entered (${mine.length})</h2>
-            <small>Visit status and record modification count</small>
+            <div>
+              <h2>Patients Entered (${mine.length})</h2>
+              <small>Visit status and record modification count</small>
+            </div>
+            <div class="search-expandable" title="Search patients...">
+              <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
+              <input id="profPtsSearchInput" type="search" placeholder="Search patient by ID, site, or visit..." autocomplete="off" maxlength="70">
+              <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+            </div>
           </div>
           <div class="table-wrap">
             <table>
@@ -572,10 +599,17 @@
         </section>
 
         <!-- Investigator Overdue Follow-ups -->
-        <section class="card">
+        <section class="card" id="cardInvestigatorOverdue">
           <div class="card-head">
-            <h2>Overdue Follow-ups (${overdueList.length})</h2>
-            <small>3 and 6 month visits past protocol window</small>
+            <div>
+              <h2>Overdue Follow-ups (${overdueList.length})</h2>
+              <small>3 and 6 month visits past protocol window</small>
+            </div>
+            <div class="search-expandable" title="Search overdue follow-ups...">
+              <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
+              <input id="profOverdueSearchInput" type="search" placeholder="Search overdue follow-up..." autocomplete="off" maxlength="70">
+              <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+            </div>
           </div>
           <div class="table-wrap">
             <table>
@@ -604,10 +638,17 @@
         </section>
 
         <!-- Recent Change Activity Audit -->
-        <section class="card">
+        <section class="card" id="cardInvestigatorAudit">
           <div class="card-head">
-            <h2>Recent Clinical Activity Audit</h2>
-            <small>Last 10 field modifications recorded for this investigator's patients</small>
+            <div>
+              <h2>Recent Clinical Activity Audit</h2>
+              <small>Last 10 field modifications recorded for this investigator's patients</small>
+            </div>
+            <div class="search-expandable" title="Search audit changes">
+              <button type="button" class="search-icon" aria-label="Search audit"><i class="ms">search</i></button>
+              <input id="profAuditSearchInput" type="search" placeholder="Search audit changes or patient..." autocomplete="off" maxlength="70">
+              <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+            </div>
           </div>
           ${activity.length ? `
             <div class="table-wrap">

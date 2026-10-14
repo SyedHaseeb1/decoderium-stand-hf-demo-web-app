@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261015c">
+  <link rel="stylesheet" href="../assets/base.css?v=20261016i">
   <style>
     .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
     .tint{background:var(--soft);border-radius:14px;padding:16px}
@@ -81,9 +81,14 @@
     .sort-opt{text-align:left;padding:8px 10px;border:0;border-radius:10px;background:none;font:inherit;font-size:14px;color:var(--ink);cursor:pointer}
     .sort-opt:hover{background:var(--soft)}
     .sort-opt.on{font-weight:600;color:var(--primary)}
-    /* GDMT pillars: desktop side-by-side, tablet and mobile shift to vertical */
-    .pillars{display:flex;flex-wrap:nowrap;overflow:visible;gap:12px;margin-bottom:14px}
-    .pillars .pillar{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+    /* In-section patient search bar */
+    .pl-search-wrap{flex:none;padding:0 12px 8px 12px}
+    /* GDMT pillars size to the space they actually get, not to the viewport:
+       4 across only when every card has room for its dropdown text, otherwise they wrap;
+       Strength and Frequency sit side by side only inside a wide enough card. */
+    .pillars-wrap{container:pillars / inline-size}
+    .pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:14px}
+    .pillars .pillar{min-width:0;display:flex;flex-direction:column;container:pillar / inline-size}
     .pillar-head{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:10px}
     .pillar-head b{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px;font-weight:600}
     .pillar-head .chip{flex:none}
@@ -91,18 +96,16 @@
     .pillar label:last-child{margin-bottom:0}
     .pillar .cb input[data-cb-input]{padding-left:10px;padding-right:32px;font-size:13.5px}
     .pillar .cb .cb-ico{right:10px;font-size:18px}
-    /* Desktop: Strength & Frequency are side by side */
-    .pillar .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+    /* Strength & Frequency stack by default, side by side once the card is at least 240px wide */
+    .pillar .g2{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
     .pillar .g2 label{margin-bottom:0}
-    /* Tablet & Mobile (<= 1366px or any touch tablet): shift to vertical */
-    @media (max-width: 1366px), (hover: none) and (pointer: coarse){
-      .pillars{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(240px,1fr)) !important;gap:12px !important}
-      .pillars .pillar{flex:initial !important;min-width:0 !important}
-      .pillar .g2{display:flex !important;flex-direction:column !important;gap:8px !important}
+    @container pillar (min-width: 240px){
+      .pillar .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     }
-    @media (max-width: 640px){
-      .pillars{grid-template-columns:1fr !important}
-      .pillar .g2{display:flex !important;flex-direction:column !important;gap:8px !important}
+    /* Four across once the form is at least 260px wide */
+    @container pillars (min-width: 260px){
+      .pillars{display:flex;flex-wrap:nowrap;gap:12px}
+      .pillars .pillar{flex:1 1 0}
     }
     .pillar .pillar-status{margin-top:4px;padding-top:8px;border-top:1px solid var(--line)}
     .pillar .pillar-status label{font-weight:600;color:var(--ink);margin-bottom:0}
@@ -126,7 +129,7 @@
   <aside class="side" id="side" aria-label="Main navigation"></aside>
 
   <div class="main">
-    <div id="app-header" data-page="records" data-search="Search patients, sites or users"></div>
+    <div id="app-header" data-page="records"></div>
 
     <div class="hello">
       <div><h1>Patient records <span id="syncChip" class="sync-chip" hidden></span></h1><p id="pageSubtitle">Enter visit data, check it, and mark each visit complete.</p></div>
@@ -159,7 +162,7 @@
 <script src="../assets/nav.js?v=20261016d"></script>
 <script>
 const KEY='standhf_ecrf_v1';
-let DB={pts:[],off:false},sel=null,tab='info',newMode=false,listOpen=!window.matchMedia('(max-width: 1000px)').matches;
+let DB={pts:[],off:false},sel=null,tab='info',newMode=false,listOpen=!window.matchMedia('(max-width: 1000px)').matches,ptSearchQuery='';
 try{const s=localStorage.getItem(KEY);if(s)DB=JSON.parse(s)}catch(e){}
 
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -357,14 +360,14 @@ function paintFields(){const p=cur();if(!p)return;
     el.classList.remove('fld-e','fld-w','fld-ok');const c=fcls(st);if(c)el.classList.add(c);
     if(el.type!=='checkbox')el.setAttribute('aria-invalid',String(st.lvl==='e'));
     const m=el.closest('label')&&el.closest('label').querySelector('.fmsg');if(m){m.textContent=st.msg;m.className=fmsgCls(st.msg?st.lvl:'')}})}
-const MAXLEN=[[/^name$/,100],[/^contact$/,11],[/^etioO$/,100],[/\.drug$/,80],[/\.strength$/,30],[/\.freq$/,10],[/\.dose$/,40],[/\.ev\.int$/,200],[/\.ini$/,5],[/\.rsO$/,100]];
+const MAXLEN=[[/^name$/,70],[/^contact$/,11],[/^etioO$/,70],[/\.drug$/,80],[/\.strength$/,30],[/\.freq$/,10],[/\.dose$/,40],[/\.ev\.int$/,100],[/\.ini$/,5],[/\.rsO$/,70]];
 const maxAttr=path=>{
   if(window.STANDHF_VALIDATOR){
     const s=window.STANDHF_VALIDATOR.matchSchema(path);
     if(s&&s.maxLength)return `maxlength="${s.maxLength}"`;
   }
   const r=MAXLEN.find(([re])=>re.test(path));
-  return r?`maxlength="${r[1]}"`:'maxlength="100"';
+  return r?`maxlength="${r[1]}"`:'maxlength="70"';
 };
 const inp=(p,path,l,t,x='')=>{
   const st=fieldState(p,path);
@@ -423,8 +426,11 @@ function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).len
     ['Mean 1MSTS',mean('b')+' → '+mean('m3')+' → '+mean('m6'),'performance']
   ].map(t=>`<div class="kpi kpi-clickable" style="cursor:pointer" onclick="${t[2]==='records'?'window.standhfOpenRecords()':`location.href='../dashboard/#${t[2]}'`}" title="Click to view ${t[0]} ${t[2]==='records'?'records':'report'}" role="link" tabindex="0"><b>${t[1]}</b><span>${t[0]}</span></div>`).join('');
     const keepScroll=(document.querySelector('#list .pl-scroll')||{scrollTop:0}).scrollTop;
-  $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patients</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?`<button type="button" class="icon-btn list-sort" data-a="sortMenu" aria-label="Sort patients" title="Sort: ${esc(listSort)}"><i class="ms">sort</i></button><div class="sort-menu" hidden>${SORT_LABELS.map(l=>`<button type="button" class="sort-opt${l===listSort?' on':''}" data-sortopt="${esc(l)}">${esc(l)}</button>`).join('')}</div>`:'')+(P.length?'':'<div class="empty"><i class="ms">groups</i>No patients yet. Create one or load the demo data.</div>')+'<div class="pl-scroll">'+sortPts(P).map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.name||'Name missing')}</span><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><span class="pt-updated">Updated ${updatedTxt(p)}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('')+'</div>';
+  const searchBarHtml=P.length?`<div class="pl-search-wrap"><label class="search"><i class="ms">search</i><input type="search" id="ptSearchInput" placeholder="Search patients by name, ID or phone" value="${esc(ptSearchQuery)}" autocomplete="off" maxlength="70"></label></div>`:'';
+  const noMatchHtml=`<div id="plNoMatch" class="empty" hidden style="padding:24px 12px"><i class="ms">search_off</i>No matching patients.</div>`;
+  $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patients</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?`<button type="button" class="icon-btn list-sort" data-a="sortMenu" aria-label="Sort patients" title="Sort: ${esc(listSort)}"><i class="ms">sort</i></button><div class="sort-menu" hidden>${SORT_LABELS.map(l=>`<button type="button" class="sort-opt${l===listSort?' on':''}" data-sortopt="${esc(l)}">${esc(l)}</button>`).join('')}</div>`:'')+searchBarHtml+(P.length?'':'<div class="empty"><i class="ms">groups</i>No patients yet. Create one or load the demo data.</div>')+'<div class="pl-scroll">'+noMatchHtml+sortPts(P).map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.name||'Name missing')}</span><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><span class="pt-updated">Updated ${updatedTxt(p)}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('')+'</div>';
   const scrollBox=document.querySelector('#list .pl-scroll');if(scrollBox)scrollBox.scrollTop=keepScroll;keepSelectedVisible();
+  if(ptSearchQuery)filterPatientList(ptSearchQuery);
   $('list').classList.toggle('collapsed',!listOpen);const p=cur();if(p){const pc=$('pc');if(pc&&tab in p.v)pc.textContent=act(p.v[tab])+' / 4';const st=$('vs');if(st&&tab in p.v)st.textContent=vstat(p,tab)}}
 
 /* Human labels for the names used in "missing" lists */
@@ -475,7 +481,7 @@ function pane(){saveView();
  if(p&&!p.inv&&signedIn()&&editable){p.inv=signedIn();p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:'inv',o:'',n:p.inv});persist()}
  if(!p){el.innerHTML='<p class="mut">Select a participant or create a new one to get started.</p>';return}
  if(tabLocked(p,tab))tab='b';
- const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info">Participant info</button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':''}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}${n}</button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum">Summary & audit</button></div>`;
+ const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info" title="Participant Info"><span class="tab-full">Participant info</span><span class="tab-short">Info</span></button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);const shortN=k==='b'?'Baseline':k==='m3'?'3M':'6M';return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':`title="${n}"`}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}<span class="tab-full">${n}</span><span class="tab-short">${shortN}</span></button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum" title="Summary & Audit"><span class="tab-full">Summary & audit</span><span class="tab-short">Audit</span></button></div>`;
  const readOnlyNotice=!editable?`<div class="lock-banner" style="background:var(--primary-soft);color:var(--primary);border-color:rgba(26,95,180,0.2);margin-bottom:14px"><i class="ms">visibility</i><span><b>Read-Only Mode:</b> You are viewing this record with oversight permissions. Clinical data entry and edits are restricted to authorized Site Investigators.</span></div>`:'';
   let h=`<div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs+readOnlyNotice;
   if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${editable&&(!p.name||!p.contact)?banner('Patient name and contact number are required. Add them below.'):''}<div class="sec">Participant</div><div class="g tint"><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel','inputmode="numeric" placeholder="e.g. 03001234567"')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
@@ -489,7 +495,7 @@ function pane(){saveView();
     <div class="sec">B. Clinical & Functional Assessment</div>
   <div class="g tint" style="margin-bottom:12px">${inp(p,'v.'+k+'.wt','Weight (kg)','number','step=0.1')}${inp(p,'v.'+k+'.hr','Heart rate (bpm)','number')}${inp(p,'v.'+k+'.sbp','Systolic BP (mmHg)','number')}${inp(p,'v.'+k+'.dbp','Diastolic BP (mmHg)','number')}${sel_(p,'v.'+k+'.nyha','NYHA class',['','I','II','III','IV'])}${k==='m3'?'<label>LVEF (%)<input value="N/A at 3 months" disabled></label>':inp(p,'v.'+k+'.lvef','LVEF (%)','number','min=5 max=80')}${inp(p,'v.'+k+'.msts','1MSTS: repetitions in 60 sec','number','min=0')}${sel_(p,'v.'+k+'.stop','1MSTS stopped early? reason',STOP)}</div>
   <div class="sec">C. Foundational GDMT <span style="float:right">Active: <b id="pc">${act(v)} / 4</b></span></div>
-  <div class="pillars tint">${PL.map(([q,n])=>pillar(p,k,q,n)).join('')}</div>
+  <div class="pillars-wrap"><div class="pillars tint">${PL.map(([q,n])=>pillar(p,k,q,n)).join('')}</div></div>
   <div class="reasons tint"><div class="pillar-head"><b>Reason(s) GDMT not initiated or stopped</b></div><div class="checks">${RS.map(([r,l])=>opt(p,`v.${k}.rs.${r}`,l)).join('')}</div><div class="g2 reasons-other">${inp(p,'v.'+k+'.rsO','Other reason')}</div></div>
   <div class="sec">D. Clinical Events ${k==='b'?'(prior history)':'(since previous visit)'}</div>
   <div class="g tint">${ck(p,`v.${k}.ev.hf`,'HF hospitalization')}${ck(p,`v.${k}.ev.all`,'All-cause (other) hospitalization')}${k==='b'?'':ck(p,`v.${k}.ev.death`,'Death')}</div>
@@ -520,7 +526,10 @@ function summary(p){const r=(f)=>VK.map(([k])=>`<td>${f(p.v[k],k)||'–'}</td>`)
  <p>Δ 1MSTS baseline → 6M: <b>${d(p.v.b.msts,p.v.m6.msts)} reps</b><br>
  Δ LVEF baseline → 6M: <b>${d(p.v.b.lvef,p.v.m6.lvef)} points</b></p>
  <p><b>Onboarding speed:</b> ${sp}</p>
- <div class="sec" style="margin-top:20px">Audit trail <span class="mut" style="font-weight:400">(latest ${Math.min(p.audit.length,20)} of ${p.audit.length})</span></div><div class="wrap"><table><tr><th>When</th><th>Editor</th><th>Field</th><th>Before</th><th>After</th></tr>${p.audit.slice(-20).reverse().map(a=>`<tr><td style="font-size:12px;white-space:nowrap">${esc(a.t)}</td><td style="font-size:12px">${esc(a.by||'—')}</td><td style="font-size:12px">${esc(auditLabel(a.f))}</td><td style="font-size:12px;color:var(--ink-3)">${esc(a.o)||'—'}</td><td style="font-size:12px;font-weight:600">${esc(a.n)||'—'}</td></tr>`).join('')||'<tr><td colspan=5 class="mut">No changes yet</td></tr>'}</table></div>`}
+ <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;flex-wrap:wrap">
+  <div class="sec" style="margin:0">Audit trail <span class="mut" style="font-weight:400">(latest ${Math.min(p.audit.length,50)} of ${p.audit.length})</span></div>
+  <div class="search-expandable" title="Search clinical audit trail"><button type="button" class="search-icon" aria-label="Search audit trail"><i class="ms">search</i></button><input id="auditSearchInput" type="search" placeholder="Search clinical audit changes..." autocomplete="off" maxlength="70"><button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button></div>
+ </div><div class="wrap"><table id="auditTable"><thead><tr><th>When</th><th>Editor</th><th>Field</th><th>Before</th><th>After</th></tr></thead><tbody>${p.audit.slice(-50).reverse().map(a=>`<tr class="audit-row"><td style="font-size:12px;white-space:nowrap">${esc(a.t)}</td><td style="font-size:12px">${esc(a.by||'—')}</td><td style="font-size:12px">${esc(auditLabel(a.f))}</td><td style="font-size:12px;color:var(--ink-3)">${esc(a.o)||'—'}</td><td style="font-size:12px;font-weight:600">${esc(a.n)||'—'}</td></tr>`).join('')||'<tr><td colspan=5 class="mut">No changes yet</td></tr>'}</tbody></table></div>`}
 
 document.addEventListener('change',e=>{const el=e.target;if(el.id==='off'){DB.off=el.checked;persist();if(!DB.off)DB.pts.forEach(q=>{if(q.sync==='Pending')q.sync='Synced'});persist();dash();return}
  if(el.id==='fu'){handleUpload(el);return}
@@ -789,7 +798,7 @@ function ddHtml(attrs,key,label,opts,value,stateClass,ariaInvalid,fm){
   return `<label>${label}${fm.req}<div class="cb" data-cb="${esc(key)}"><input ${attrs} value="${esc(value||'')}" placeholder="Select" readonly data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" class="${stateClass}" ${ariaInvalid}><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div>${fm.msg}</label>`}
 
 function combo(path,key,label,value,ph){
-  return `<label>${label}<div class="cb" data-cb="${key}"><input ${path?`data-p="${path}"`:''} ${key==='site'?'maxlength="5" readonly':key==='inv'?'maxlength="100"':''} data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" value="${esc(value)}" placeholder="${ph||'Search or type a name'}"><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div></label>`;
+  return `<label>${label}<div class="cb" data-cb="${key}"><input ${path?`data-p="${path}"`:''} ${key==='site'?'maxlength="5" readonly':key==='inv'?'maxlength="70"':''} data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" value="${esc(value)}" placeholder="${ph||'Search or type a name'}"><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div></label>`;
 }
 function cbItems(key,q){const all=OPTS[key](),t=q.trim(),lo=t.toLowerCase();
   return all.filter(o=>!lo||o.toLowerCase().includes(lo)).map(o=>({v:o}))}
@@ -959,13 +968,13 @@ function paneNew(){
     <div class="sec">Patient Information</div>
     <div class="g tint">
       <label>Study ID<input value="Assigned on save (e.g. RIC-001)" disabled></label>
-      <label>Patient name<span class="req" aria-hidden="true">*</span><input id="nName" autocomplete="off" maxlength="100" placeholder="Full legal name" required></label>
+      <label>Patient name<span class="req" aria-hidden="true">*</span><input id="nName" autocomplete="off" maxlength="70" placeholder="Full legal name" required></label>
       <label>Contact number<span class="req" aria-hidden="true">*</span><input id="nContact" type="tel" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="e.g. 03001234567" required></label>
       <label>Consent date<span class="req" aria-hidden="true">*</span><input id="nConsent" type="date" value="${new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}"></label>
       <label>Age (years)<span class="req" aria-hidden="true">*</span><input id="nAge" type="number" min="18" max="150" maxlength="3" inputmode="numeric" placeholder="18 - 150"></label>
       ${ddHtml('id="nSex"','dd:nSex','Sex<span class="req" aria-hidden="true">*</span>',lookup('patient.sex'),'','','',{req:'',msg:''})}
       ${ddHtml('id="nEtio"','dd:nEtio','HF etiology<span class="req" aria-hidden="true">*</span>',lookup('patient.etiology'),'','','',{req:'',msg:''})}
-      <label>If other, specify<input id="nEtioO" maxlength="100" autocomplete="off" placeholder="Specify other etiology"></label>
+      <label>If other, specify<input id="nEtioO" maxlength="70" autocomplete="off" placeholder="Specify other etiology"></label>
     </div>
     <div class="foot-actions">
       <button type="button" id="cNew" class="btn"><i class="ms">close</i> Cancel</button>
@@ -1095,9 +1104,35 @@ function listChevron(){
 /* Patient list: show or hide */
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#listToggle')){listOpen=!listOpen;dash();}});
 
-/* Search filters the patient list */
-$('search').addEventListener('input',()=>{const q=$('search').value.trim().toLowerCase();
-  document.querySelectorAll('#list .pt').forEach(el=>{el.hidden=!!q&&!el.textContent.toLowerCase().includes(q)})});
+/* Search filters the patient list: synchronized between in-section search and topbar search */
+function filterPatientList(q){
+  ptSearchQuery = q || '';
+  const lo = ptSearchQuery.trim().toLowerCase();
+  let visible = 0;
+  const P = DB.pts.filter(inScope);
+  document.querySelectorAll('#list .pt').forEach(el => {
+    const hit = !lo || el.textContent.toLowerCase().includes(lo);
+    el.hidden = !hit;
+    if(hit) visible++;
+  });
+  const cnt = document.querySelector('#list .list-count');
+  if(cnt) cnt.textContent = lo ? `${visible} / ${P.length}` : P.length;
+  const noMatch = $('plNoMatch');
+  if(noMatch) noMatch.hidden = (visible > 0 || !lo);
+  const ptInp = $('ptSearchInput');
+  if(ptInp && ptInp.value !== ptSearchQuery) ptInp.value = ptSearchQuery;
+}
+
+document.addEventListener('input', e => {
+  if(e.target && e.target.id === 'ptSearchInput'){
+    filterPatientList(e.target.value);
+  } else if(e.target && e.target.id === 'auditSearchInput'){
+    const q = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('#auditTable tbody tr.audit-row').forEach(tr => {
+      tr.style.display = (!q || tr.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  }
+});
 </script>
 </body>
 </html>

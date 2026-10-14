@@ -34,7 +34,7 @@
   host.innerHTML=
     '<div class="warn offline-bar" id="offBar" role="status" '+(initOn?'hidden':'')+'><i class="ms">cloud_off</i><span>You are offline. Changes are saved on this device and will sync when the connection returns.</span><button type="button" class="off-retry-btn" id="offRetry" title="Check connection">Check connection</button></div>'+
     '<header class="topbar">'+
-      '<label class="search"><i class="ms">search</i><input id="search" type="search" placeholder="'+esc(ds.search||'Search')+'" autocomplete="off" maxlength="100"></label>'+
+      (ds.search ? '<label class="search"><i class="ms">search</i><input id="search" type="search" placeholder="'+esc(ds.search)+'" autocomplete="off" maxlength="70"></label>' : '')+
       segment+
       '<button type="button" class="'+initPillClass+'" id="sync" role="button" aria-live="polite" title="'+initPillTitle+'"'+(ds.own!==undefined?' data-own="1"':'')+'>'+initPillText+'</button>'+
       '<div class="notify"><button type="button" class="bell" id="bell" aria-label="Notifications" title="Notifications"><i class="ms">notifications</i><span class="badge" id="bellCount" hidden>0</span></button><div class="notify-panel" id="notifyPanel" role="dialog" aria-label="Notifications" hidden></div></div>'+
@@ -163,13 +163,29 @@
     panel.innerHTML=
       '<div class="np-head"><b>Notifications</b>'+(unread?'<span class="tag info">'+unread+' new</span>':'')+
         (unread?'<button type="button" class="link np-all" id="notesAll">Mark all read</button>':'')+'</div>'+
-      (list.length?rows:'<div class="np-empty"><i class="ms">notifications_none</i><span>No notifications for your sites.</span></div>');
+      (list.length > 2 ?
+        '<div style="padding:6px 12px 8px 12px;border-bottom:1px solid var(--border)">'+
+          '<label class="search" style="margin:0;width:100%;max-width:none;padding:4px 8px;min-height:30px;background:var(--soft);border:1.5px solid transparent;display:flex;align-items:center;gap:6px;border-radius:8px;transition:all 0.2s ease">'+
+            '<i class="ms" style="font-size:16px;color:var(--ink-2)">search</i>'+
+            '<input id="notifySearchInput" type="search" placeholder="Search alerts or site updates..." autocomplete="off" maxlength="70" style="font-size:12px;border:none;background:transparent;outline:none;width:100%;color:var(--ink)">'+
+          '</label>'+
+        '</div>' : '')+
+      '<div id="npItemsWrap">'+(list.length?rows:'<div class="np-empty"><i class="ms">notifications_none</i><span>No notifications for your sites.</span></div>')+'</div>';
   };
   var openNote=function(n){
     var url=root+(n.link.page==='admin'?'admin/index.html':'records/index.html');
     if(n.link.patient)url+='?patient='+encodeURIComponent(n.link.patient)+(n.link.tab?'&tab='+encodeURIComponent(n.link.tab):'');
     location.href=url};
   bell.addEventListener('click',function(e){e.stopPropagation();panel.hidden=!panel.hidden;if(!panel.hidden)paintNotes()});
+  panel.addEventListener('input',function(e){
+    if(e.target&&e.target.id==='notifySearchInput'){
+      var q=e.target.value.toLowerCase().trim();
+      panel.querySelectorAll('.np-item').forEach(function(el){
+        var match=!q||el.textContent.toLowerCase().includes(q);
+        el.style.display=match?'':'none';
+      });
+    }
+  });
   panel.addEventListener('click',function(e){
     var all=e.target.closest('#notesAll');
     if(all){var ids=notesFor().map(function(n){return n.id});writeRead(readSet().concat(ids.filter(function(i){return readSet().indexOf(i)<0})));paintNotes();return}
@@ -184,11 +200,69 @@
   document.addEventListener('keydown',function(e){if(e.key==='Escape')panel.hidden=true});
   paintNotes();
 
-  /* Tablet: the search collapses to an icon and expands on tap */
-  var sb=host.querySelector('.topbar .search'), si=document.getElementById('search');
-  if(sb&&si){
-    sb.addEventListener('click',function(){if(!sb.classList.contains('open')){sb.classList.add('open');si.focus()}});
-    si.addEventListener('blur',function(){if(!si.value)sb.classList.remove('open')});
-    si.addEventListener('keydown',function(e){if(e.key==='Escape'){si.value='';si.blur();sb.classList.remove('open')}});
-  }
+  /* Universal Expandable Search Component Handler (Doctor UX) */
+  document.addEventListener('click', function(e){
+    var icon = e.target.closest('.search-expandable .search-icon');
+    if(icon){
+      var wrap = icon.closest('.search-expandable');
+      if(wrap){
+        var inp = wrap.querySelector('input[type="search"]');
+        if(inp){
+          wrap.classList.add('is-expanded');
+          inp.focus();
+        }
+      }
+      return;
+    }
+
+    var clr = e.target.closest('.search-expandable .search-clear');
+    if(clr){
+      var wrap = clr.closest('.search-expandable');
+      if(wrap){
+        var inp = wrap.querySelector('input[type="search"]');
+        if(inp){
+          inp.value = '';
+          wrap.classList.remove('has-value');
+          inp.dispatchEvent(new Event('input', { bubbles: true }));
+          inp.focus();
+        }
+      }
+      return;
+    }
+
+    document.querySelectorAll('.search-expandable.is-expanded').forEach(function(wrap){
+      if(!wrap.contains(e.target)){
+        var inp = wrap.querySelector('input[type="search"]');
+        if(inp && !inp.value.trim()){
+          wrap.classList.remove('is-expanded');
+          wrap.classList.remove('has-value');
+        }
+      }
+    });
+  });
+
+  document.addEventListener('input', function(e){
+    if(e.target && e.target.matches && e.target.matches('.search-expandable input[type="search"]')){
+      var wrap = e.target.closest('.search-expandable');
+      if(wrap){
+        wrap.classList.toggle('has-value', !!e.target.value.trim());
+        wrap.classList.add('is-expanded');
+      }
+    }
+  }, true);
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && e.target && e.target.matches && e.target.matches('.search-expandable input[type="search"]')){
+      var wrap = e.target.closest('.search-expandable');
+      if(wrap){
+        if(e.target.value){
+          e.target.value = '';
+          wrap.classList.remove('has-value');
+          e.target.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        wrap.classList.remove('is-expanded');
+        e.target.blur();
+      }
+    }
+  });
 })();

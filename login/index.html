@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261015b">
+  <link rel="stylesheet" href="../assets/base.css?v=20261016i">
 <script>
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
@@ -40,7 +40,7 @@
 
       <div class="segment seg-anim auth-tabs" role="tablist" aria-label="Sign in as">
         <span class="seg-thumb" aria-hidden="true"></span>
-        <button type="button" role="tab" data-tab="investigator" aria-selected="true" class="on">Site investigator</button>
+        <button type="button" role="tab" data-tab="investigator" aria-selected="true" class="on" title="Site investigator"><span class="tab-full">Site investigator</span><span class="tab-short">Investigator</span></button>
         <button type="button" role="tab" data-tab="admin" aria-selected="false">Admin</button>
       </div>
 

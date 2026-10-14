@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261015q">
+  <link rel="stylesheet" href="../assets/base.css?v=20261016i">
 <script>
   /* Register the service worker so the browser can install the app */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
@@ -25,7 +25,7 @@
   <aside class="side" id="side" aria-label="Main navigation"></aside>
 
   <div class="main">
-    <div id="app-header" data-page="admin" data-search="Search patients, sites or users"></div>
+    <div id="app-header" data-page="admin"></div>
 
     <div class="hello">
       <div>
@@ -66,7 +66,7 @@
         <div class="form-grid-2">
           <div class="form-field">
             <label for="nuName">Full Name <span class="req">*</span></label>
-            <input id="nuName" name="name" required autocomplete="name" maxlength="100">
+            <input id="nuName" name="name" required autocomplete="name" maxlength="70">
             <span class="muted" style="font-size:12px">As shown on official records</span>
             <span class="fmsg" data-for="nuName"></span>
           </div>
@@ -96,7 +96,7 @@
         <div class="form-field" style="margin-top:10px">
           <label for="nuDesig">Clinical Designation</label>
           <div class="cb" data-cb="designation">
-            <input id="nuDesig" name="designation" placeholder="Search or select title" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
+            <input id="nuDesig" name="designation" placeholder="Search or select title" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="60">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -121,7 +121,7 @@
         <div class="form-field" id="nuZonePickerField">
           <label for="nuZoneInput">Add zone</label>
           <div class="cb" data-cb="user-zone" data-prefix="nu">
-            <input id="nuZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
+            <input id="nuZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="50">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -185,12 +185,12 @@
       <div class="form-grid-2">
         <div class="form-field">
           <label for="euName">Full Name <span class="req">*</span></label>
-          <input id="euName" name="name" required maxlength="100">
+          <input id="euName" name="name" required maxlength="70">
         </div>
         <div class="form-field">
           <label for="euDesig">Clinical Designation</label>
           <div class="cb" data-cb="designation">
-            <input id="euDesig" name="designation" placeholder="Search or select title" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
+            <input id="euDesig" name="designation" placeholder="Search or select title" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="60">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -233,7 +233,7 @@
         <div class="form-field" id="euZonePickerField">
           <label for="euZoneInput">Add zone</label>
           <div class="cb" data-cb="user-zone" data-prefix="eu">
-            <input id="euZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
+            <input id="euZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="50">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -293,7 +293,7 @@
         <div class="form-field">
           <label for="nsZone">Geographic Zone <span class="req">*</span></label>
           <div class="cb" data-cb="zone">
-            <input id="nsZone" name="zone" required placeholder="Search or select zone (e.g. Lahore, Karachi, North...)" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
+            <input id="nsZone" name="zone" required placeholder="Search or select zone (e.g. Lahore, Karachi, North...)" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="50">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -303,7 +303,7 @@
 
       <div class="form-field">
         <label for="nsName">Hospital Centre Name <span class="req">*</span></label>
-        <input id="nsName" name="name" required placeholder="e.g. Rawalpindi Institute of Cardiology" maxlength="150">
+        <input id="nsName" name="name" required placeholder="e.g. Rawalpindi Institute of Cardiology" maxlength="100">
         <span class="fmsg" data-for="nsName"></span>
       </div>
     </div>
@@ -341,7 +341,7 @@
         <div class="form-field">
           <label for="esZone">Geographic Zone <span class="req">*</span></label>
           <div class="cb" data-cb="zone">
-            <input id="esZone" name="zone" required placeholder="Search or select zone" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
+            <input id="esZone" name="zone" required placeholder="Search or select zone" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="50">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
@@ -351,7 +351,7 @@
 
       <div class="form-field">
         <label for="esName">Hospital Centre Name <span class="req">*</span></label>
-        <input id="esName" name="name" required maxlength="150">
+        <input id="esName" name="name" required maxlength="100">
         <span class="fmsg" data-for="esName"></span>
       </div>
     </div>
@@ -652,14 +652,14 @@ function adminTabsNav(){
   const sCount=s.sites.length;
   return `
     <nav class="admin-tabs-nav" aria-label="Administration Sections">
-      <a href="#users" class="admin-tab ${currentTab==='users'?'active':''}">
-        <i class="ms">group</i> Users &amp; Roles <span class="tab-badge">${uCount}</span>
+      <a href="#users" class="admin-tab ${currentTab==='users'?'active':''}" title="Users &amp; Roles">
+        <i class="ms">group</i> <span class="tab-full">Users &amp; Roles</span><span class="tab-short">Users</span> <span class="tab-badge">${uCount}</span>
       </a>
-      <a href="#sites" class="admin-tab ${currentTab==='sites'?'active':''}">
-        <i class="ms">local_hospital</i> Medical Centres &amp; Zones <span class="tab-badge">${sCount}</span>
+      <a href="#sites" class="admin-tab ${currentTab==='sites'?'active':''}" title="Medical Centres &amp; Zones">
+        <i class="ms">local_hospital</i> <span class="tab-full">Medical Centres &amp; Zones</span><span class="tab-short">Centres</span> <span class="tab-badge">${sCount}</span>
       </a>
-      <a href="#perms" class="admin-tab ${currentTab==='perms'?'active':''}">
-        <i class="ms">shield</i> Role Permissions
+      <a href="#perms" class="admin-tab ${currentTab==='perms'?'active':''}" title="Role Permissions">
+        <i class="ms">shield</i> <span class="tab-full">Role Permissions</span><span class="tab-short">Permissions</span>
       </a>
     </nav>
   `;
@@ -856,9 +856,10 @@ function usersView(){
     <!-- Action Toolbar -->
     <div class="admin-toolbar">
       <div class="admin-toolbar-left">
-        <div class="admin-search-box">
-          <i class="ms">search</i>
-          <input type="search" id="usrSearchInput" placeholder="Search by name, handle, hospital, or zone..." value="${esc(userSearchQuery)}" maxlength="100">
+        <div class="search-expandable ${userSearchQuery ? 'is-expanded has-value' : ''}" title="Search users...">
+          <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
+          <input type="search" id="usrSearchInput" placeholder="Search doctor, coordinator, or officer..." value="${esc(userSearchQuery)}" maxlength="70">
+          <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
         </div>
         <div class="filter-pills" id="usrFilterPills">
           <button type="button" class="filter-pill ${userRoleFilter==='all'?'active':''}" data-role-filter="all">
@@ -940,16 +941,23 @@ function usersView(){
     </section>
 
     <!-- Central Monitoring Governance & Audit Trail -->
-    <section class="card" style="margin-bottom:20px">
+    <section class="card" id="cardGovLog" style="margin-bottom:20px">
       <div class="card-head">
         <div>
           <h2 style="font-size:15px;font-weight:700">Central Team Export &amp; Monitoring Governance Log</h2>
           <small>Audit trail of all study inspections and CSV data exports performed by Central Directorate officers</small>
         </div>
-        <span class="tag info">${auditLogs.length} Events</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="search-expandable" title="Search governance logs...">
+            <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
+            <input type="search" id="govLogSearchInput" placeholder="Search data export or monitoring event..." autocomplete="off" maxlength="70">
+            <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+          </div>
+          <span class="tag info">${auditLogs.length} Events</span>
+        </div>
       </div>
       <div class="table-wrap">
-        <table>
+        <table id="tblGovLog">
           <thead>
             <tr>
               <th>Timestamp</th>
@@ -1028,9 +1036,10 @@ function sitesView(){
     <!-- Toolbar -->
     <div class="admin-toolbar">
       <div class="admin-toolbar-left">
-        <div class="admin-search-box">
-          <i class="ms">search</i>
-          <input type="search" id="siteSearchInput" placeholder="Search by hospital code, name, or zone..." value="${esc(siteSearchQuery)}" maxlength="100">
+        <div class="search-expandable ${siteSearchQuery ? 'is-expanded has-value' : ''}" title="Search hospital centres...">
+          <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
+          <input type="search" id="siteSearchInput" placeholder="Search hospital, centre code, or zone..." value="${esc(siteSearchQuery)}" maxlength="70">
+          <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
         </div>
         <div class="filter-pills" id="siteFilterPills">
           <button type="button" class="filter-pill ${siteZoneFilter==='all'?'active':''}" data-zone-filter="all">All Zones (${s.sites.length})</button>
@@ -1110,14 +1119,19 @@ function permsView(){
 
   return `
     ${adminTabsNav()}
-    <section class="card">
+    <section class="card" id="cardPermsMatrix">
       <div class="card-head">
         <div>
           <h2>Role Permissions Matrix</h2>
           <small>Governance of actions allowed per user tier. Super Admin and Central oversee; clinical entries belong to Site Investigators.</small>
         </div>
+        <div class="search-expandable" title="Search permissions...">
+          <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
+          <input type="search" id="permSearchInput" placeholder="Search clinical permission..." autocomplete="off" maxlength="70">
+          <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+        </div>
       </div>
-      <div class="table-wrap"><table>${head}${rows}</table></div>
+      <div class="table-wrap"><table id="tblPermsMatrix">${head}${rows}</table></div>
     </section>
   `;
 }
@@ -1137,19 +1151,6 @@ function render(){
   }
 }
 
-/* Sync Header Search */
-const hdrSearch=$('search');
-if(hdrSearch){
-  hdrSearch.addEventListener('input',()=>{
-    if(currentTab==='users'){
-      userSearchQuery=hdrSearch.value;
-      render();
-    } else if(currentTab==='sites'){
-      siteSearchQuery=hdrSearch.value;
-      render();
-    }
-  });
-}
 
 /* Hash Navigation */
 window.addEventListener('hashchange',()=>{
@@ -1849,6 +1850,22 @@ $('view')?.addEventListener('input', e => {
     render();
     const inp = $('siteSearchInput');
     if(inp){ inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
+  } else if(e.target.id === 'govLogSearchInput'){
+    const q = e.target.value.toLowerCase().trim();
+    const tbl = $('tblGovLog');
+    if(tbl){
+      tbl.querySelectorAll('tbody tr').forEach(tr => {
+        tr.style.display = (!q || tr.textContent.toLowerCase().includes(q)) ? '' : 'none';
+      });
+    }
+  } else if(e.target.id === 'permSearchInput'){
+    const q = e.target.value.toLowerCase().trim();
+    const tbl = $('tblPermsMatrix');
+    if(tbl){
+      tbl.querySelectorAll('tr:not(:first-child)').forEach(tr => {
+        tr.style.display = (!q || tr.textContent.toLowerCase().includes(q)) ? '' : 'none';
+      });
+    }
   }
 });
 

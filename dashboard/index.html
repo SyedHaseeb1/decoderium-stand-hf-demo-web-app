@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261015g">
+  <link rel="stylesheet" href="../assets/base.css?v=20261016i">
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
   </script>
@@ -27,8 +27,7 @@
 
   <main class="main">
 
-    <!-- Global App Header -->
-    <div id="app-header" data-page="dashboard" data-timeline data-search="Search patients, sites, zones or investigators"></div>
+    <div id="app-header" data-page="dashboard" data-timeline></div>
 
     <!-- Role-Aware Dashboard Content Shell -->
     <div id="dashRoot"></div>
@@ -258,8 +257,8 @@ function matchesPeriod(p){
   return (now - d) / DAY < periodDays;
 }
 
-/* Global search query from top bar */
-let searchQuery = '';
+/* In-section search query for Investigator patients */
+let invSearchQuery = '';
 
 /* Filter states for Central & Super Admin */
 let filterZone = 'all';
@@ -374,11 +373,11 @@ function renderInvestigatorView(allPts){
   const upcoming = invPatientRows(allPts);
 
   const tabs = [
-    { id: 'all', label: 'Overview', icon: 'dashboard' },
-    { id: 'upcoming', label: 'Upcoming Visits', icon: 'event_upcoming', badge: upcoming.length },
-    { id: 'clinical', label: 'Clinical Performance', icon: 'monitoring' },
-    { id: 'sites', label: 'Assigned Sites', icon: 'local_hospital', badge: sites.length },
-    { id: 'export', label: 'Data Export & Reports', icon: 'file_download' }
+    { id: 'all', label: 'Overview', shortLabel: 'Overview', icon: 'dashboard' },
+    { id: 'upcoming', label: 'Upcoming Visits', shortLabel: 'Visits', icon: 'event_upcoming', badge: upcoming.length },
+    { id: 'clinical', label: 'Clinical Performance', shortLabel: 'Performance', icon: 'monitoring' },
+    { id: 'sites', label: 'Assigned Sites', shortLabel: 'Sites', icon: 'local_hospital', badge: sites.length },
+    { id: 'export', label: 'Data Export & Reports', shortLabel: 'Export', icon: 'file_download' }
   ];
 
   const headerHtml = `
@@ -405,8 +404,15 @@ function renderInvestigatorView(allPts){
           <div class="rings">${DashCharts.phaseDials(mine)}</div>
           <div class="legend"><span><i style="background:var(--success)"></i>Complete</span><span><i style="background:var(--primary)"></i>In progress</span><span><i style="background:var(--warning)"></i>Due</span><span><i style="background:var(--error)"></i>Overdue</span></div>
         </div>
-        <div class="card">
-          <div class="card-head"><h2>Upcoming Visits Schedule</h2><small>Next visit window per patient</small></div>
+        <div class="card" id="cardInvUpcomingSchedule">
+          <div class="card-head">
+            <div><h2>Upcoming Visits Schedule</h2><small>Next visit window per patient</small></div>
+            <div class="search-expandable" title="Search upcoming visits">
+              <button type="button" class="search-icon" aria-label="Search visits"><i class="ms">search</i></button>
+              <input id="upcSearchInput" type="search" placeholder="Search visit (e.g. Month 3, Due)..." autocomplete="off" maxlength="70">
+              <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+            </div>
+          </div>
           <div class="upc" id="invUpcoming">${renderInvestigatorUpcoming(upcoming)}</div>
         </div>
       </div>
@@ -445,9 +451,16 @@ function renderInvestigatorView(allPts){
   } else if (currentInvTab === 'sites') {
     bodyHtml = `
       <section class="card dash-fade-in" id="cardSitesReport">
-        <div class="card-head"><h2>My Assigned Sites</h2><small>Cardiology centres assigned to you</small></div>
+        <div class="card-head">
+          <div><h2>My Assigned Sites</h2><small>Cardiology centres assigned to you</small></div>
+          <div class="search-expandable" title="Search assigned centres">
+            <button type="button" class="search-icon" aria-label="Search centres"><i class="ms">search</i></button>
+            <input id="mySitesSearchInput" type="search" placeholder="Search hospital centre or zone..." autocomplete="off" maxlength="70">
+            <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+          </div>
+        </div>
         <div class="table-wrap">
-          <table>
+          <table id="tblMySites">
             <tr><th>Site</th><th class="num">Patients</th><th class="num">Baseline</th><th class="num">3M</th><th class="num">6M</th><th class="num">All Complete</th></tr>
             ${sites.map(s => {
               const ps = mine.filter(p => p.site === s);
@@ -496,12 +509,26 @@ function renderInvestigatorView(allPts){
 
         <section class="row three">
           <div class="card">
-            <div class="card-head"><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
+            <div class="card-head">
+              <div><h2>My patients</h2><small id="invPtCount">${mine.length} total</small></div>
+              <div class="search-expandable" title="Search enrolled patients">
+                <button type="button" class="search-icon" aria-label="Search patients"><i class="ms">search</i></button>
+                <input id="invSearchInput" type="search" placeholder="Search patient by name or ID..." value="${esc(invSearchQuery)}" autocomplete="off" maxlength="70">
+                <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+              </div>
+            </div>
             <div class="plist" id="invPlist">${renderInvestigatorList(upcoming)}</div>
           </div>
           <div class="card" id="invDetail">${renderInvestigatorDetail(upcoming.find(u => u.p.id === invSelectedId) || upcoming[0])}</div>
-          <div class="card">
-            <div class="card-head"><h2>Upcoming visits</h2><small>Next visit window per patient</small></div>
+          <div class="card" id="cardInvUpcoming">
+            <div class="card-head">
+              <div><h2>Upcoming visits</h2><small>Next visit window per patient</small></div>
+              <div class="search-expandable" title="Search upcoming visits">
+                <button type="button" class="search-icon" aria-label="Search visits"><i class="ms">search</i></button>
+                <input id="upcSearchInput" type="search" placeholder="Search visit (e.g. Month 3, Due)..." autocomplete="off" maxlength="70">
+                <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+              </div>
+            </div>
             <div class="upc" id="invUpcoming">${renderInvestigatorUpcoming(upcoming)}</div>
           </div>
         </section>
@@ -517,21 +544,32 @@ function renderInvestigatorView(allPts){
             </div>
           </div>
           <div class="card">
-            <div class="card-head"><h2>My Assigned Sites</h2><small>Cardiology centres assigned to you</small></div>
+            <div class="card-head">
+              <div><h2>My Assigned Sites</h2><small>Cardiology centres assigned to you</small></div>
+              <div class="search-expandable" title="Search assigned centres">
+                <button type="button" class="search-icon" aria-label="Search centres"><i class="ms">search</i></button>
+                <input id="mySitesSearchInput" type="search" placeholder="Search hospital centre or zone..." autocomplete="off" maxlength="70">
+                <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+              </div>
+            </div>
             <div class="table-wrap">
-              <table>
-                <tr><th>Site</th><th class="num">Patients</th><th class="num">Baseline</th><th class="num">3M</th><th class="num">6M</th><th class="num">All Complete</th></tr>
-                ${sites.map(s => {
-                  const ps = mine.filter(p => p.site === s);
-                  return `<tr>
-                    <td><b>${esc(s)}</b><div class="muted">${esc(getSiteZone(s))} Zone</div></td>
-                    <td class="num">${ps.length}</td>
-                    <td class="num">${ps.filter(p=>p.v?.b?.done).length}</td>
-                    <td class="num">${ps.filter(p=>p.v?.m3?.done).length}</td>
-                    <td class="num">${ps.filter(p=>p.v?.m6?.done).length}</td>
-                    <td class="num">${ps.filter(p=>p.v?.b?.done && p.v?.m3?.done && p.v?.m6?.done).length}</td>
-                  </tr>`;
-                }).join('') || '<tr><td colspan="6" class="muted">No sites assigned yet.</td></tr>'}
+              <table id="tblMySites">
+                <thead>
+                  <tr><th>Site</th><th class="num">Patients</th><th class="num">Baseline</th><th class="num">3M</th><th class="num">6M</th><th class="num">All Complete</th></tr>
+                </thead>
+                <tbody>
+                  ${sites.map(s => {
+                    const ps = mine.filter(p => p.site === s);
+                    return `<tr>
+                      <td><b>${esc(s)}</b><div class="muted">${esc(getSiteZone(s))} Zone</div></td>
+                      <td class="num">${ps.length}</td>
+                      <td class="num">${ps.filter(p=>p.v?.b?.done).length}</td>
+                      <td class="num">${ps.filter(p=>p.v?.m3?.done).length}</td>
+                      <td class="num">${ps.filter(p=>p.v?.m6?.done).length}</td>
+                      <td class="num">${ps.filter(p=>p.v?.b?.done && p.v?.m3?.done && p.v?.m6?.done).length}</td>
+                    </tr>`;
+                  }).join('') || '<tr><td colspan="6" class="muted">No sites assigned yet.</td></tr>'}
+                </tbody>
               </table>
             </div>
           </div>
@@ -581,10 +619,9 @@ function invPatientRows(allPts){
 
 function renderInvestigatorList(upcoming){
   if (!upcoming.length) return '<div class="empty"><i class="ms">groups</i>No patients yet. Add one to start.</div>';
-  const q = searchQuery.toLowerCase();
+  const q = invSearchQuery.toLowerCase();
   const rows = upcoming.filter(u => !q || (u.p.id + ' ' + u.p.site + ' ' + (u.p.name||'')).toLowerCase().includes(q));
   if (!rows.length) return '<div class="empty"><i class="ms">search_off</i>No matching patients.</div>';
-  if (!rows.some(u => u.p.id === invSelectedId)) invSelectedId = rows[0].p.id;
   return rows.map(u => `<button type="button" class="pitem ${u.p.id === invSelectedId ? 'on' : ''}" data-invid="${esc(u.p.id)}">
     <span class="avatar">${initials(u.p.name || u.p.id)}</span>
     <span class="pitem-body"><b>${esc(u.p.id)}</b><small>${esc(u.p.site)} · ${u.k ? visitName(u.k) : 'Complete'}</small></span>
@@ -659,11 +696,6 @@ function renderCentralView(allPts){
     });
   }
 
-  // Global search filtering
-  if (searchQuery.trim()) {
-    const q = searchQuery.toLowerCase();
-    filtered = filtered.filter(p => (p.id + ' ' + p.site + ' ' + (p.inv||'') + ' ' + (p.name||'')).toLowerCase().includes(q));
-  }
 
   const st = aggregateStats(filtered);
   const totalAll = aggregateStats(allPts);
@@ -673,11 +705,11 @@ function renderCentralView(allPts){
   const totalSitesInScope = zoneSites.length;
 
   const tabs = [
-    { id: 'all', label: 'Full Oversight', icon: 'dashboard' },
-    { id: 'league', label: 'Site League Table', icon: 'leaderboard', badge: zoneSites.length },
-    { id: 'analytics', label: 'Trajectories & GDMT', icon: 'monitoring' },
-    { id: 'queue', label: 'Overdue Follow-up Queue', icon: 'warning', badge: st.overdueCount },
-    { id: 'export', label: 'Data Export & Reports', icon: 'file_download' }
+    { id: 'all', label: 'Full Oversight', shortLabel: 'Oversight', icon: 'dashboard' },
+    { id: 'league', label: 'Site League Table', shortLabel: 'League', icon: 'leaderboard', badge: zoneSites.length },
+    { id: 'analytics', label: 'Trajectories & GDMT', shortLabel: 'Analytics', icon: 'monitoring' },
+    { id: 'queue', label: 'Overdue Follow-up Queue', shortLabel: 'Overdue', icon: 'warning', badge: st.overdueCount },
+    { id: 'export', label: 'Data Export & Reports', shortLabel: 'Export', icon: 'file_download' }
   ];
 
   const headerHtml = `
@@ -735,7 +767,12 @@ function renderCentralView(allPts){
           <h2>Site Performance &amp; League Table</h2>
           <small>Longitudinal completion, follow-up timing, and GDMT compliance across sites</small>
         </div>
-        <div style="display:flex;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="search-expandable" title="Search cardiology centres">
+            <button type="button" class="search-icon" aria-label="Search centres"><i class="ms">search</i></button>
+            <input id="leagueSearchInput" type="search" placeholder="Search centre, code or investigator..." autocomplete="off" maxlength="70">
+            <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+          </div>
           <button type="button" class="btn btn-sm" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
         </div>
       </div>
@@ -784,13 +821,20 @@ function renderCentralView(allPts){
   `;
 
   const queueHtml = `
-    <section class="card">
+    <section class="card" id="cardOverdueReport">
       <div class="card-head">
         <div>
           <h2>Registry Overdue &amp; At-Risk Follow-up Queue</h2>
           <small>Patients currently outside their visit window requiring monitoring contact</small>
         </div>
-        <span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount} Action Required</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="search-expandable" title="Search overdue follow-ups">
+            <button type="button" class="search-icon" aria-label="Search overdue"><i class="ms">search</i></button>
+            <input id="queueSearchInput" type="search" placeholder="Search overdue patient, phone, or centre..." autocomplete="off" maxlength="70">
+            <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+          </div>
+          <span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount} Action Required</span>
+        </div>
       </div>
       ${DashUI.overdueQueueTable(filtered, getSiteZone)}
     </section>
@@ -906,12 +950,12 @@ function renderSuperAdminView(allPts){
   });
 
   const tabs = [
-    { id: 'all', label: 'Executive Overview', icon: 'space_dashboard' },
-    { id: 'teams', label: 'Teams & Oversight', icon: 'diversity_3', badge: `${invUsers.length + centralUsers.length}` },
-    { id: 'analytics', label: 'Visual Analytics', icon: 'analytics' },
-    { id: 'league', label: 'Site League Table', icon: 'leaderboard', badge: s.sites.length },
-    { id: 'queue', label: 'Overdue Queue', icon: 'warning', badge: st.overdueCount },
-    { id: 'export', label: 'Data Export & Reports', icon: 'file_download' }
+    { id: 'all', label: 'Executive Overview', shortLabel: 'Overview', icon: 'space_dashboard' },
+    { id: 'teams', label: 'Teams & Oversight', shortLabel: 'Teams', icon: 'diversity_3', badge: `${invUsers.length + centralUsers.length}` },
+    { id: 'analytics', label: 'Visual Analytics', shortLabel: 'Analytics', icon: 'analytics' },
+    { id: 'league', label: 'Site League Table', shortLabel: 'League', icon: 'leaderboard', badge: s.sites.length },
+    { id: 'queue', label: 'Overdue Queue', shortLabel: 'Overdue', icon: 'warning', badge: st.overdueCount },
+    { id: 'export', label: 'Data Export & Reports', shortLabel: 'Export', icon: 'file_download' }
   ];
 
   const headerHtml = `
@@ -991,10 +1035,17 @@ function renderSuperAdminView(allPts){
       </section>
 
       <!-- 4. Patients by investigator (Horizontal ranking bars) -->
-      <section class="card">
+      <section class="card" id="cardTeamRanking">
         <div class="card-head">
-          <h2>Patients by Investigator</h2>
-          <small>Volume and on-time compliance across team members</small>
+          <div>
+            <h2>Patients by Investigator</h2>
+            <small>Volume and on-time compliance across team members</small>
+          </div>
+          <div class="search-expandable" title="Search investigators">
+            <button type="button" class="search-icon" aria-label="Search investigators"><i class="ms">search</i></button>
+            <input id="invBarSearchInput" type="search" placeholder="Search cardiologist or centre..." autocomplete="off" maxlength="70">
+            <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+          </div>
         </div>
         ${DashCharts.hbars(teamBars)}
       </section>
@@ -1020,7 +1071,12 @@ function renderSuperAdminView(allPts){
           <h2>Multi-Site Performance League Table</h2>
           <small>Comprehensive performance across all ${s.sites.length} participating cardiology centres</small>
         </div>
-        <div style="display:flex;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="search-expandable" title="Search cardiology centres">
+            <button type="button" class="search-icon" aria-label="Search centres"><i class="ms">search</i></button>
+            <input id="leagueSearchInput" type="search" placeholder="Search centre, code or investigator..." autocomplete="off" maxlength="70">
+            <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+          </div>
           <button type="button" class="btn btn-sm" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
         </div>
       </div>
@@ -1029,13 +1085,20 @@ function renderSuperAdminView(allPts){
   `;
 
   const queueHtml = `
-    <section class="card">
+    <section class="card" id="cardOverdueReport">
       <div class="card-head">
         <div>
           <h2>Study-wide Overdue &amp; At-Risk Follow-up Queue</h2>
           <small>Patients across all sites currently outside their visit window</small>
         </div>
-        <span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount} Alerts</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="search-expandable" title="Search overdue follow-ups">
+            <button type="button" class="search-icon" aria-label="Search overdue"><i class="ms">search</i></button>
+            <input id="queueSearchInput" type="search" placeholder="Search overdue patient, phone, or centre..." autocomplete="off" maxlength="70">
+            <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+          </div>
+          <span class="tag ${st.overdueCount?'warn':'good'}">${st.overdueCount} Alerts</span>
+        </div>
       </div>
       ${DashUI.overdueQueueTable(allPts, getSiteZone)}
     </section>
@@ -1484,7 +1547,7 @@ function renderExportPreviewTable(cohort){
   if (!cohort.length) {
     return `<div class="empty" style="padding:32px"><i class="ms" style="font-size:32px">filter_list_off</i><br>No patients match the current filter selection. Adjust filters to broaden your cohort.</div>`;
   }
-  const sample = cohort.slice(0, 5);
+  const sample = cohort.slice(0, 25);
   const deid = exportFilterState.deidentify;
 
   return `
@@ -1960,9 +2023,16 @@ function renderExportStudioSection(ptsPool, scopeTitle){
             <div class="card-head">
               <div>
                 <h2>Live Cohort Preview</h2>
-                <small id="expPreviewSub">Showing first 5 matching patient records in real-time. Exported files will include all ${nPts} records.</small>
+                <small id="expPreviewSub">Showing matching patient records in real-time. Exported files will include all ${nPts} records.</small>
               </div>
-              <span class="tag info" id="expPreviewTag">${nPts} Matching Patients</span>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <div class="search-expandable" title="Search preview cohort">
+                  <button type="button" class="search-icon" aria-label="Search cohort"><i class="ms">search</i></button>
+                  <input id="exportCohortSearchInput" type="search" placeholder="Search cohort patient, ID, or centre..." autocomplete="off" maxlength="70">
+                  <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
+                </div>
+                <span class="tag info" id="expPreviewTag">${nPts} Matching Patients</span>
+              </div>
             </div>
             <div class="export-preview-table-wrap" id="exportPreviewWrap">
               ${renderExportPreviewTable(cohort)}
@@ -1984,7 +2054,7 @@ function updateExportStudioUI(ptsPool){
   if (previewWrap) previewWrap.innerHTML = renderExportPreviewTable(cohort);
 
   const previewSub = $('expPreviewSub');
-  if (previewSub) previewSub.textContent = `Showing first 5 matching patient records in real-time. Exported files will include all ${cohort.length} records.`;
+  if (previewSub) previewSub.textContent = `Showing matching patient records in real-time. Exported files will include all ${cohort.length} records.`;
 
   const previewTag = $('expPreviewTag');
   if (previewTag) previewTag.textContent = `${cohort.length} Matching Patients`;
@@ -2073,14 +2143,132 @@ function attachEvents(){
     };
   });
 
-  // Topbar global search input
-  const searchInput = $('search');
-  if (searchInput) {
-    searchInput.oninput = () => {
-      searchQuery = searchInput.value;
-      renderDashboard();
-    };
-  }
+  // In-section search handlers for all relatable sections
+  document.addEventListener('input', e => {
+    if (!e.target) return;
+    if (e.target.id === 'invSearchInput') {
+      invSearchQuery = e.target.value;
+      const plistEl = $('invPlist');
+      if (plistEl) {
+        // Investigator view: filter list only, keep detail view open (Decision A2)
+        const allPts = loadData();
+        const upcoming = invPatientRows(allPts);
+        plistEl.innerHTML = renderInvestigatorList(upcoming);
+        const q = invSearchQuery.toLowerCase();
+        const countEl = $('invPtCount');
+        const mine = allPts.filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME);
+        if (countEl) {
+          const matchCount = upcoming.filter(u => !q || (u.p.id + ' ' + u.p.site + ' ' + (u.p.name||'')).toLowerCase().includes(q)).length;
+          countEl.textContent = q ? `${matchCount} of ${mine.length}` : `${mine.length} total`;
+        }
+      }
+    } else if (e.target.id === 'leagueSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const tbody = document.querySelector('#cardSitesReport tbody');
+      if (tbody) {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const match = !q || tr.textContent.toLowerCase().includes(q);
+          tr.style.display = match ? '' : 'none';
+        });
+      }
+    } else if (e.target.id === 'queueSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const tbody = document.querySelector('#cardOverdueReport tbody');
+      if (tbody) {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const match = !q || tr.textContent.toLowerCase().includes(q);
+          tr.style.display = match ? '' : 'none';
+        });
+      }
+    } else if (e.target.id === 'upcSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const upcEl = $('invUpcoming');
+      if (upcEl) {
+        upcEl.querySelectorAll('.upc-item').forEach(el => {
+          const match = !q || el.textContent.toLowerCase().includes(q);
+          el.style.display = match ? '' : 'none';
+        });
+      }
+    } else if (e.target.id === 'mySitesSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const tbl = $('tblMySites');
+      if (tbl) {
+        tbl.querySelectorAll('tbody tr').forEach(tr => {
+          if (tr.querySelector('th')) return;
+          const match = !q || tr.textContent.toLowerCase().includes(q);
+          tr.style.display = match ? '' : 'none';
+        });
+      }
+    } else if (e.target.id === 'invBarSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const rows = document.querySelectorAll('#cardTeamRanking .hbar-row');
+      rows.forEach(r => {
+        const match = !q || r.textContent.toLowerCase().includes(q);
+        r.style.display = match ? '' : 'none';
+      });
+    } else if (e.target.id === 'exportCohortSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const tbody = document.querySelector('#exportPreviewSection tbody');
+      if (tbody) {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const match = !q || tr.textContent.toLowerCase().includes(q);
+          tr.style.display = match ? '' : 'none';
+        });
+      }
+    } else if (e.target.id === 'centralAuditSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const rows = document.querySelectorAll('#centralAuditList .central-audit-row');
+      rows.forEach(r => {
+        const match = !q || r.textContent.toLowerCase().includes(q);
+        r.style.display = match ? '' : 'none';
+      });
+    } else if (e.target.id === 'profAuditSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const tbody = document.querySelector('#cardInvestigatorAudit tbody');
+      if (tbody) {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const match = !q || tr.textContent.toLowerCase().includes(q);
+          tr.style.display = match ? '' : 'none';
+        });
+      }
+    } else if (e.target.id === 'invTeamSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const tbody = document.querySelector('#cardInvestigatorsTeam tbody');
+      if (tbody) {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const match = !q || tr.textContent.toLowerCase().includes(q);
+          tr.style.display = match ? '' : 'none';
+        });
+      }
+    } else if (e.target.id === 'centralTeamSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const tbody = document.querySelector('#cardCentralTeam tbody');
+      if (tbody) {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const match = !q || tr.textContent.toLowerCase().includes(q);
+          tr.style.display = match ? '' : 'none';
+        });
+      }
+    } else if (e.target.id === 'profPtsSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const tbody = document.querySelector('#cardInvestigatorPatients tbody');
+      if (tbody) {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const match = !q || tr.textContent.toLowerCase().includes(q);
+          tr.style.display = match ? '' : 'none';
+        });
+      }
+    } else if (e.target.id === 'profOverdueSearchInput') {
+      const q = e.target.value.toLowerCase().trim();
+      const tbody = document.querySelector('#cardInvestigatorOverdue tbody');
+      if (tbody) {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const match = !q || tr.textContent.toLowerCase().includes(q);
+          tr.style.display = match ? '' : 'none';
+        });
+      }
+    }
+  });
 
   // Investigator patient selection (delegated on the persistent #dashRoot, since
   // the list rows are re-rendered on every selection and lose direct handlers)

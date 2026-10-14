@@ -30,20 +30,20 @@
      1. FIELD SCHEMAS & HARD LIMITS (Never leave fields open for infinite length)
      ------------------------------------------------------------------------ */
   const SCHEMAS = {
-    // Person Names (Patient, Doctor, User, Investigator)
+    // Person Names (Patient, Doctor, User, Investigator - Pakistani standard)
     person_name: {
       type: 'text',
-      maxLength: 100,
+      maxLength: 70,
       minLength: 2,
       inputmode: 'text',
       placeholder: 'Full legal name',
       filterRe: /[^\p{L}\s.'-]/gu,
-      clean: s => String(s || '').replace(/[^\p{L}\s.'-]/gu, '').replace(/\s+/g, ' ').slice(0, 100),
+      clean: s => String(s || '').replace(/[^\p{L}\s.'-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 70),
       validate: (val, req) => {
         const raw = String(val || '').trim();
         if(!raw) return { ok: !req, lvl: req ? 'e' : '', msg: req ? 'Enter full name' : '' };
         if(raw.length < 2) return { ok: false, lvl: 'e', msg: 'Enter at least 2 characters' };
-        if(raw.length > 100) return { ok: false, lvl: 'e', msg: 'Name cannot exceed 100 characters' };
+        if(raw.length > 70) return { ok: false, lvl: 'e', msg: 'Name cannot exceed 70 characters' };
         if(!NAME_RE.test(raw)) return { ok: false, lvl: 'e', msg: "Letters, spaces, . ' - only" };
         return { ok: true, lvl: '', msg: '' };
       }
@@ -142,17 +142,17 @@
     // Hospital / Medical Centre Name
     site_name: {
       type: 'text',
-      maxLength: 150,
+      maxLength: 100,
       minLength: 3,
       inputmode: 'text',
       placeholder: 'e.g. Rawalpindi Institute of Cardiology',
       filterRe: /[^\p{L}\d\s().,'&/+-]/gu,
-      clean: s => String(s || '').replace(/[^\p{L}\d\s().,'&/+-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 150),
+      clean: s => String(s || '').replace(/[^\p{L}\d\s().,'&/+-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 100),
       validate: (val, req) => {
         const raw = String(val || '').trim();
         if(!raw) return { ok: !req, lvl: req ? 'e' : '', msg: req ? 'Enter hospital centre name' : '' };
         if(raw.length < 3) return { ok: false, lvl: 'e', msg: 'Enter at least 3 characters' };
-        if(raw.length > 150) return { ok: false, lvl: 'e', msg: 'Hospital name cannot exceed 150 characters' };
+        if(raw.length > 100) return { ok: false, lvl: 'e', msg: 'Hospital name cannot exceed 100 characters' };
         return { ok: true, lvl: '', msg: '' };
       }
     },
@@ -160,12 +160,13 @@
     // Geographic Zone
     zone: {
       type: 'text',
-      maxLength: 100,
+      maxLength: 50,
       minLength: 2,
-      clean: s => String(s || '').replace(/[^\p{L}\d\s().,'&/+-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 100),
+      clean: s => String(s || '').replace(/[^\p{L}\d\s().,'&/+-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 50),
       validate: (val, req) => {
         const raw = String(val || '').trim();
         if(!raw) return { ok: !req, lvl: req ? 'e' : '', msg: req ? 'Select geographic zone' : '' };
+        if(raw.length > 50) return { ok: false, lvl: 'e', msg: 'Zone cannot exceed 50 characters' };
         return { ok: true, lvl: '', msg: '' };
       }
     },
@@ -173,11 +174,11 @@
     // Clinical Designation / Title
     designation: {
       type: 'text',
-      maxLength: 100,
-      clean: s => String(s || '').replace(/[^\p{L}\d\s().,'&/+-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 100),
+      maxLength: 60,
+      clean: s => String(s || '').replace(/[^\p{L}\d\s().,'&/+-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 60),
       validate: (val) => {
         const raw = String(val || '').trim();
-        if(raw.length > 100) return { ok: false, lvl: 'e', msg: 'Designation cannot exceed 100 characters' };
+        if(raw.length > 60) return { ok: false, lvl: 'e', msg: 'Designation cannot exceed 60 characters' };
         return { ok: true, lvl: '', msg: '' };
       }
     },
@@ -387,12 +388,12 @@
     // Free Text / Reason / Other Specify
     notes: {
       type: 'text',
-      maxLength: 150,
-      clean: s => String(s || '').slice(0, 150),
+      maxLength: 70,
+      clean: s => String(s || '').slice(0, 70),
       validate: (val, req) => {
         const raw = String(val || '').trim();
         if(!raw && req) return { ok: false, lvl: 'e', msg: 'Required' };
-        if(raw.length > 150) return { ok: false, lvl: 'e', msg: 'Cannot exceed 150 characters' };
+        if(raw.length > 70) return { ok: false, lvl: 'e', msg: 'Cannot exceed 70 characters' };
         return { ok: true, lvl: '', msg: '' };
       }
     },
@@ -413,8 +414,8 @@
     // Search Box
     search: {
       type: 'search',
-      maxLength: 100,
-      clean: s => String(s || '').slice(0, 100),
+      maxLength: 70,
+      clean: s => String(s || '').slice(0, 70),
       validate: () => ({ ok: true, lvl: '', msg: '' })
     }
   };
@@ -490,7 +491,7 @@
     // Notes / Initials / Search
     if(/etioO|rsO|\.ev\.int/.test(key) || key === 'nEtioO') return SCHEMAS.notes;
     if(/\.ini$/.test(key)) return SCHEMAS.ini;
-    if(key === 'search' || key === 'siteSearchInput' || key === 'usrSearchInput') return SCHEMAS.search;
+    if(key === 'search' || key === 'siteSearchInput' || key === 'usrSearchInput' || key === 'ptSearchInput' || key === 'invSearchInput') return SCHEMAS.search;
 
     return null;
   }
@@ -519,84 +520,86 @@
     }
   }
 
-  // Global Input Sanitization (drops forbidden chars, caps length on the fly)
-  document.addEventListener('input', function(e){
-    const el = e.target;
-    if(!el || !el.matches || !el.matches('input, textarea')) return;
-    const schema = matchSchema(el);
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    // Global Input Sanitization (drops forbidden chars, caps length on the fly)
+    document.addEventListener('input', function(e){
+      const el = e.target;
+      if(!el || !el.matches || !el.matches('input, textarea')) return;
+      const schema = matchSchema(el);
 
-    enforceInput(el);
+      enforceInput(el);
 
-    if(schema && typeof schema.clean === 'function'){
-      const cleaned = schema.clean(el.value);
-      if(cleaned !== el.value){
-        el.value = cleaned;
+      if(schema && typeof schema.clean === 'function'){
+        const cleaned = schema.clean(el.value);
+        if(cleaned !== el.value){
+          el.value = cleaned;
+        }
       }
-    }
-  }, true);
+    }, true);
 
-  // Global Keydown Restriction (prevents entering non-numeric chars or exceeding limits)
-  document.addEventListener('keydown', function(e){
-    const el = e.target;
-    if(!el || !el.matches || !el.matches('input, textarea')) return;
-    if(el.type === 'date') return;
-    const schema = matchSchema(el);
-    if(!schema) return;
+    // Global Keydown Restriction (prevents entering non-numeric chars or exceeding limits)
+    document.addEventListener('keydown', function(e){
+      const el = e.target;
+      if(!el || !el.matches || !el.matches('input, textarea')) return;
+      if(el.type === 'date') return;
+      const schema = matchSchema(el);
+      if(!schema) return;
 
-    // Standard navigation and control keys are always allowed
-    if(['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)){
-      return;
-    }
-    if(e.ctrlKey || e.metaKey || e.altKey) return;
-
-    // Numeric schema restriction
-    if(schema.inputmode === 'decimal'){
-      if(!/^[\d.]$/.test(e.key) || (e.key === '.' && el.value.includes('.'))){
-        e.preventDefault();
+      // Standard navigation and control keys are always allowed
+      if(['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)){
         return;
       }
-    } else if(schema.type === 'number' || schema.type === 'tel' || schema.inputmode === 'numeric'){
-      if(!/^\d$/.test(e.key)){
-        e.preventDefault();
-        return;
+      if(e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Numeric schema restriction
+      if(schema.inputmode === 'decimal'){
+        if(!/^[\d.]$/.test(e.key) || (e.key === '.' && el.value.includes('.'))){
+          e.preventDefault();
+          return;
+        }
+      } else if(schema.type === 'number' || schema.type === 'tel' || schema.inputmode === 'numeric'){
+        if(!/^\d$/.test(e.key)){
+          e.preventDefault();
+          return;
+        }
       }
-    }
 
-    // Hard length limit guard
-    if(schema.maxLength){
-      const selLen = (el.selectionEnd != null && el.selectionStart != null) ? (el.selectionEnd - el.selectionStart) : 0;
-      if(el.value.length >= schema.maxLength && selLen === 0){
-        e.preventDefault();
+      // Hard length limit guard
+      if(schema.maxLength){
+        const selLen = (el.selectionEnd != null && el.selectionStart != null) ? (el.selectionEnd - el.selectionStart) : 0;
+        if(el.value.length >= schema.maxLength && selLen === 0){
+          e.preventDefault();
+        }
       }
-    }
-  }, true);
+    }, true);
 
-  // Global Paste Restriction (cleans and slices pasted content safely)
-  document.addEventListener('paste', function(e){
-    const el = e.target;
-    if(!el || !el.matches || !el.matches('input, textarea')) return;
-    const schema = matchSchema(el);
+    // Global Paste Restriction (cleans and slices pasted content safely)
+    document.addEventListener('paste', function(e){
+      const el = e.target;
+      if(!el || !el.matches || !el.matches('input, textarea')) return;
+      const schema = matchSchema(el);
 
-    e.preventDefault();
-    const clip = (e.clipboardData || window.clipboardData)?.getData('text') || '';
-    const start = el.selectionStart ?? el.value.length;
-    const end = el.selectionEnd ?? el.value.length;
-    const curVal = el.value;
+      e.preventDefault();
+      const clip = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+      const start = el.selectionStart ?? el.value.length;
+      const end = el.selectionEnd ?? el.value.length;
+      const curVal = el.value;
 
-    const combined = curVal.slice(0, start) + clip + curVal.slice(end);
-    const cleaned = (schema && typeof schema.clean === 'function')
-      ? schema.clean(combined)
-      : combined.slice(0, (schema && schema.maxLength) ? schema.maxLength : 150);
+      const combined = curVal.slice(0, start) + clip + curVal.slice(end);
+      const cleaned = (schema && typeof schema.clean === 'function')
+        ? schema.clean(combined)
+        : combined.slice(0, (schema && schema.maxLength) ? schema.maxLength : 150);
 
-    el.value = cleaned;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  }, true);
+      el.value = cleaned;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }, true);
 
-  // Auto-scan on focusin
-  document.addEventListener('focusin', function(e){
-    enforceInput(e.target);
-  }, true);
+    // Auto-scan on focusin
+    document.addEventListener('focusin', function(e){
+      enforceInput(e.target);
+    }, true);
+  }
 
   /* ------------------------------------------------------------------------
      4. PUBLIC API EXPORTS
