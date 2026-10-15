@@ -207,6 +207,11 @@
       var wrap = icon.closest('.search-expandable');
       if(wrap){
         var inp = wrap.querySelector('input[type="search"]');
+        if(wrap.classList.contains('is-expanded') && (!inp || !inp.value.trim())){
+          wrap.classList.remove('is-expanded');
+          if(inp) inp.blur();
+          return;
+        }
         if(inp){
           wrap.classList.add('is-expanded');
           inp.focus();
@@ -221,10 +226,16 @@
       if(wrap){
         var inp = wrap.querySelector('input[type="search"]');
         if(inp){
+          var wasEmpty = !inp.value.trim();
           inp.value = '';
           wrap.classList.remove('has-value');
           inp.dispatchEvent(new Event('input', { bubbles: true }));
-          inp.focus();
+          if(wasEmpty){
+            wrap.classList.remove('is-expanded');
+            inp.blur();
+          } else {
+            inp.focus();
+          }
         }
       }
       return;

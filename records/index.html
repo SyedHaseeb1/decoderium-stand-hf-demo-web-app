@@ -319,7 +319,7 @@ async function removePatient(){
   sel=DB.pts.length?DB.pts[0].id:null;tab='info';
   persist();pane();dash();toast('Patient '+p.id+' removed')}
 /* Online saves are Synced at once; only saves made while offline stay Pending until the connection returns */
-function save(p){p.updated=Date.now();if(tab!=='info'&&tab!=='sum'&&!p.v[tab].date){p.v[tab].date=(tab==='b'&&p.consent)?p.consent:new Date().toISOString().slice(0,10)}p.sync=DB.off?'Pending':'Synced';persist();dash()}
+function save(p){if(!canEditPatient(p))return;p.updated=Date.now();if(tab!=='info'&&tab!=='sum'&&!p.v[tab].date){p.v[tab].date=(tab==='b'&&p.consent)?p.consent:new Date().toISOString().slice(0,10)}p.sync=DB.off?'Pending':'Synced';persist();dash()}
 
 /* Validation rules: fieldState gives the level ('e' error, 'w' warning or '') and message for one field */
 const VREQ=['wt','hr','sbp','dbp','nyha','msts','lvef'], IREQ={name:1,contact:1,consent:1,age:1,sex:1,etio:1};
@@ -532,7 +532,7 @@ function pane(){saveView();
  const p=cur(),el=$('pane');
  const editable=canEditPatient(p);
  if(p&&!p.inv&&signedIn()&&editable){p.inv=signedIn();p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:'inv',o:'',n:p.inv});persist()}
- if(!p){el.innerHTML='<p class="mut">Select a participant or create a new one to get started.</p>';return}
+ if(!p){el.innerHTML=canAddPatient()?'<p class="mut">Select a participant or create a new one to get started.</p>':'<p class="mut">Select a participant from the list to view clinical records.</p>';return}
  if(tabLocked(p,tab))tab='b';
  const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info" title="Participant Info"><span class="tab-full">Participant info</span><span class="tab-short">Info</span></button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);const shortN=k==='b'?'Baseline':k==='m3'?'3M':'6M';return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':`title="${n}"`}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}<span class="tab-full">${n}</span><span class="tab-short">${shortN}</span></button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum" title="Summary & Audit"><span class="tab-full">Summary & audit</span><span class="tab-short">Audit</span></button></div>`;
  const readOnlyNotice=!editable?`<div class="lock-banner" style="background:var(--primary-soft);color:var(--primary);border-color:rgba(26,95,180,0.2);margin-bottom:14px"><i class="ms">visibility</i><span><b>Read-Only Mode:</b> You are viewing this record with oversight permissions. Clinical data entry and edits are restricted to authorized Site Investigators.</span></div>`:'';
@@ -574,8 +574,8 @@ function summary(p){const r=(f)=>VK.map(([k])=>`<td>${f(p.v[k],k)||'–'}</td>`)
  <p>Δ 1MSTS baseline → 6M: <b>${d(p.v.b.msts,p.v.m6.msts)} reps</b><br>
  Δ LVEF baseline → 6M: <b>${d(p.v.b.lvef,p.v.m6.lvef)} points</b></p>
  <p><b>Onboarding speed:</b> ${sp}</p></div>
- <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;flex-wrap:wrap">
-  <div style="flex:1 1 300px">${secHeader('sum-audit',`Audit trail <span class="mut" style="font-weight:400">(latest ${Math.min(p.audit.length,50)} of ${p.audit.length})</span>`,'','margin:0')}</div>
+ <div class="audit-head-bar">
+  <div class="audit-head-title">${secHeader('sum-audit',`Audit trail <span class="mut" style="font-weight:400">(latest ${Math.min(p.audit.length,50)} of ${p.audit.length})</span>`,'','margin:0')}</div>
   <div class="search-expandable" title="Search clinical audit trail"><button type="button" class="search-icon" aria-label="Search audit trail"><i class="ms">search</i></button><input id="auditSearchInput" type="search" placeholder="Search clinical audit changes..." autocomplete="off" maxlength="70"><button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button></div>
  </div><div class="wrap" ${secBodyAttrs('sum-audit')}><table id="auditTable"><thead><tr><th>When</th><th>Editor</th><th>Field</th><th>Before</th><th>After</th></tr></thead><tbody>${p.audit.slice(-50).reverse().map(a=>`<tr class="audit-row"><td style="font-size:12px;white-space:nowrap">${esc(a.t)}</td><td style="font-size:12px">${esc(a.by||'—')}</td><td style="font-size:12px">${esc(auditLabel(a.f))}</td><td style="font-size:12px;color:var(--ink-3)">${esc(a.o)||'—'}</td><td style="font-size:12px;font-weight:600">${esc(a.n)||'—'}</td></tr>`).join('')||'<tr><td colspan=5 class="mut">No changes yet</td></tr>'}</tbody></table></div>`}
 
@@ -713,7 +713,11 @@ document.addEventListener('click',async e=>{const t=e.target.closest('[data-id],
   const navOld=document.querySelector('#pane .step-nav'),oldTop=navOld?navOld.getBoundingClientRect().top:null;save(p);pane();dash();const navNew=document.querySelector('#pane .step-nav');if(oldTop!==null&&navNew)window.scrollBy(0,navNew.getBoundingClientRect().top-oldTop)}});
 
 $('bClr').onclick=async()=>{if(!can('clear_all')){toast('Permission denied.');return}if(await appDialog.confirm({tone:'danger',icon:'delete_sweep',title:'Delete all participants?',message:'Every patient in this browser will be removed.',confirmText:'Delete all'})){DB.pts=[];sel=null;persist();pane();dash()}};
-$('bCsv').onclick=()=>{const H=['study_id','site','investigator','consent','age','sex','etiology'];VK.forEach(([k])=>['status','date','wt','hr','sbp','dbp','nyha','msts','lvef','pillars','hf_hosp','all_hosp','death'].forEach(f=>H.push(k+'_'+f)));
+$('bCsv').onclick=()=>{
+  if(session().role==='central'&&typeof logCentralAction==='function'){
+    logCentralAction('Export CSV', `Exported study records dataset (${DB.pts.length} patients across all centres)`, 'Study Registry');
+  }
+  const H=['study_id','site','investigator','consent','age','sex','etiology'];VK.forEach(([k])=>['status','date','wt','hr','sbp','dbp','nyha','msts','lvef','pillars','hf_hosp','all_hosp','death'].forEach(f=>H.push(k+'_'+f)));
  const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"',rows=DB.pts.map(p=>{const a=[p.id,p.site,p.inv,p.consent,p.age,p.sex,p.etio];VK.forEach(([k])=>{const v=p.v[k];a.push(vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act(v),G(v,'ev.hf')?1:0,G(v,'ev.all')?1:0,G(v,'ev.death')?1:0)});return a.map(q).join(',')});
  const b=new Blob([[H.join(','),...rows].join('\n')],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='stand_hf_export.csv';a.click()};
 
@@ -1090,6 +1094,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('submit',e=>{
   if(e.target.id!=='fNew')return;
   e.preventDefault();
+  if(!canAddPatient()){toast('Access Denied: Only authorized Site Investigators can enroll new patients.');return}
   const f=e.target;
   const site=f.querySelector('[data-cb="site"] input').value.toUpperCase().trim(),inv=f.querySelector('[data-cb="inv"] input').value.trim();
   const nm=f.querySelector('#nName').value.trim(),ct=contactClean(f.querySelector('#nContact').value.trim());

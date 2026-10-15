@@ -117,7 +117,8 @@ function can(perm){
     return true;
   }
   if(r==='central'){
-    if(perm==='view_all_sites'||perm==='export_data')return true;
+    /* Read-only super admins: can see everything and export, but cannot edit or create */
+    if(perm==='view_all_sites'||perm==='export_data'||perm==='view_admin')return true;
     return false;
   }
   const perms=accessStore().perms[r]||{};

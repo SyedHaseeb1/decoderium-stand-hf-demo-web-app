@@ -43,9 +43,9 @@
       {key:'export',label:'Data Export',href:DASH+'#export',icon:'file_download',show:!compact}
     ]},
     {label:'Administration',items:[
-      {key:'adm-users',label:'Users & Teams',href:ADMIN+'#users',icon:'group',show:isSuper},
-      {key:'adm-sites',label:'Sites',href:ADMIN+'#sites',icon:'location_on',show:isSuper},
-      {key:'adm-perms',label:'Permissions',href:ADMIN+'#perms',icon:'shield_person',show:isSuper}
+      {key:'adm-users',label:'Users & Teams',href:ADMIN+'#users',icon:'group',show:isSuper||isCentral},
+      {key:'adm-sites',label:'Sites',href:ADMIN+'#sites',icon:'location_on',show:isSuper||isCentral},
+      {key:'adm-perms',label:'Permissions',href:ADMIN+'#perms',icon:'shield_person',show:isSuper||isCentral}
     ]}
   ];
   const link=i=>`<a class="nav${i.key===current?' active':''}" data-key="${i.key}" href="${i.href}"${i.key===current?' aria-current="true"':''} title="${i.label}"><i class="ms">${i.icon}</i><span class="side-text">${i.label}</span></a>`;

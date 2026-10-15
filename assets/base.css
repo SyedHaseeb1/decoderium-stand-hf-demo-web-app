@@ -456,6 +456,31 @@ button .ms {
   transition: opacity 0.2s ease;
 }
 
+/* Suppress native browser search cancel / clear buttons to prevent duplicate cross/clear icons */
+.search-expandable input[type="search"]::-webkit-search-cancel-button,
+.search-expandable input[type="search"]::-webkit-search-decoration,
+.search-expandable input[type="search"]::-webkit-search-results-button,
+.search-expandable input[type="search"]::-webkit-search-results-decoration,
+label.search input[type="search"]::-webkit-search-cancel-button,
+label.search input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.search-expandable input[type="search"]::-ms-clear,
+.search-expandable input[type="search"]::-ms-reveal,
+label.search input[type="search"]::-ms-clear,
+input[type="search"]::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 .search-expandable .search-clear {
   display: none;
   width: 26px;
@@ -483,8 +508,10 @@ button .ms {
 .search-expandable:focus-within,
 .search-expandable.has-value,
 .search-expandable:has(input:not(:placeholder-shown)) {
-  width: 280px;
-  max-width: calc(100vw - 40px);
+  width: clamp(140px, 18vw, 220px);
+  max-width: 100%;
+  flex-shrink: 1;
+  min-width: 44px;
   cursor: default;
   background: var(--card);
   border-color: var(--primary);
@@ -825,6 +852,9 @@ label.search input {
   box-shadow: var(--shadow);
   padding: 22px 24px;
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   border: 1px solid var(--line);
   margin: 0;
 }
@@ -833,12 +863,24 @@ label.search input {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 18px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.card-head h2 {
+.card-head > div:first-child:not(.card-head-actions),
+.card-title-group {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card-head h2,
+.card-title-group h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
@@ -849,7 +891,8 @@ label.search input {
   max-width: 100%;
 }
 
-.card-head small {
+.card-head small,
+.card-title-group small {
   display: block;
   color: var(--ink-3);
   font-size: 13px;
@@ -858,6 +901,116 @@ label.search input {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+}
+
+.card-head-actions,
+.card-head > div[style*="display:flex"],
+.card-head > div:last-child:not(:first-child) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-wrap: nowrap !important;
+}
+
+.card-head-actions > .btn,
+.card-head-actions > a.btn,
+.card-head-actions > button,
+.card-head-actions > .tag,
+.card-head-actions > .badge {
+  flex-shrink: 0;
+}
+
+.card-head-actions .search-expandable.is-expanded,
+.card-head-actions .search-expandable:focus-within,
+.card-head-actions .search-expandable.has-value,
+.card-head-actions .search-expandable:has(input:not(:placeholder-shown)) {
+  flex: 1 1 auto;
+  min-width: 110px;
+  width: clamp(130px, 18vw, 210px);
+  max-width: 100%;
+  flex-shrink: 1;
+}
+
+.audit-head-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: nowrap;
+  position: relative;
+  min-width: 0;
+}
+
+.audit-head-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dash-subhead-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: nowrap;
+  gap: 8px;
+  position: relative;
+  min-width: 0;
+}
+
+.dash-subhead-bar > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tight Spaces & Mobile: Search expands as an overlay over the header text with ZERO layout shift */
+@media (max-width: 680px) {
+  .card-head,
+  .audit-head-bar,
+  .dash-subhead-bar {
+    position: relative !important;
+  }
+
+  .card-head-actions {
+    position: static;
+  }
+
+  .card-head .search-expandable.is-expanded,
+  .card-head .search-expandable:focus-within,
+  .card-head-actions .search-expandable.is-expanded,
+  .card-head-actions .search-expandable:focus-within,
+  .audit-head-bar .search-expandable.is-expanded,
+  .audit-head-bar .search-expandable:focus-within,
+  .dash-subhead-bar .search-expandable.is-expanded,
+  .dash-subhead-bar .search-expandable:focus-within {
+    position: absolute !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    margin: auto 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 38px !important;
+    z-index: 30 !important;
+    background: var(--card) !important;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14), 0 0 0 2px var(--brand-soft) !important;
+    border-radius: 12px !important;
+    border-color: var(--primary) !important;
+  }
+
+  .search-expandable.has-value .search-clear,
+  .search-expandable:has(input:not(:placeholder-shown)) .search-clear {
+    display: flex !important;
+  }
 }
 
 .kpis {
@@ -2354,11 +2507,20 @@ td label.ck {
 
 .cb input:disabled,
 .cb[data-disabled="true"] input {
-  background: var(--soft-2);
-  color: var(--ink-3);
-  border-color: var(--line);
-  cursor: not-allowed;
-  opacity: 0.75;
+  background: var(--soft-2) !important;
+  color: var(--ink-2) !important;
+  border-color: var(--line) !important;
+  cursor: default !important;
+  opacity: 0.85;
+}
+
+.cb input:disabled ~ .cb-ico,
+.cb[data-disabled="true"] .cb-ico {
+  display: none !important;
+}
+
+.cb[data-disabled="true"] {
+  pointer-events: none !important;
 }
 
 .cb .cb-ico {
@@ -4001,17 +4163,19 @@ td label.check-row input {
 
 .auth-form-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
   margin: auto;
-  padding: 36px 32px;
-  background: rgba(255, 255, 255, 0.88);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  padding: 34px 30px;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border-radius: 24px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .auth-form-card h2 {
-  margin: 0 0 18px;
+  margin: 0 0 16px;
   font-size: 24px;
   font-weight: 600;
   color: var(--ink);
@@ -4019,11 +4183,54 @@ td label.check-row input {
 
 .auth-tabs {
   display: flex;
-  margin-bottom: 18px;
+  background: var(--soft);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 12px;
+  position: relative;
 }
 
 .auth-tabs button {
-  flex: 1;
+  flex: 1 1 0;
+  border: 0;
+  background: transparent;
+  padding: 8px 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  border-radius: 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  position: relative;
+  z-index: 1;
+  transition: color 0.18s ease;
+}
+
+.auth-role-desc {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.auth-role-desc i.ms {
+  font-size: 16px;
+  color: var(--brand-magenta);
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .auth-form-card .error {
@@ -4092,7 +4299,14 @@ td label.check-row input {
 }
 
 .auth-tabs .seg-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 9px;
   background: var(--brand-magenta);
+  transition: left 0.2s cubic-bezier(0.2, 0, 0, 1), width 0.2s cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .auth-row .link-btn {
@@ -5079,7 +5293,7 @@ dialog.export-dialog::backdrop {
   margin: 0;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .teams-grid {
     grid-template-columns: 1fr;
   }
@@ -5319,8 +5533,10 @@ dialog.export-dialog::backdrop {
   }
 
   .export-studio-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 16px;
+    width: 100%;
+    max-width: 100%;
   }
 
   .export-filter-panel {
@@ -5720,19 +5936,40 @@ dialog.export-dialog::backdrop {
 }
 
 /* Custom Live Preview */
+.export-studio-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+#exportPreviewSection {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
 .export-preview-table-wrap {
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
   border: 1px solid var(--line);
   border-radius: 12px;
+  box-sizing: border-box;
+  display: block;
 }
 
 .export-preview-table {
   width: 100%;
+  min-width: 880px;
   border-collapse: collapse;
   font-size: 12.5px;
 }
@@ -5754,6 +5991,58 @@ dialog.export-dialog::backdrop {
 
 .export-preview-table tr:last-child td {
   border-bottom: none;
+}
+
+.export-preview-foot {
+  padding: 10px 14px;
+  background: var(--soft);
+  font-size: 12px;
+  color: var(--ink-2);
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 820px) {
+  #exportPreviewSection .card-head {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+  }
+
+  #exportPreviewSection .card-head > div:first-child {
+    width: 100% !important;
+  }
+
+  #exportPreviewSection .card-head-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  #exportPreviewSection .card-head-actions .tag {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  #exportPreviewSection .card-head-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  #exportPreviewSection .card-head-actions .tag {
+    align-self: flex-start !important;
+  }
 }
 
 /* ==========================================================================
@@ -5828,8 +6117,43 @@ dialog.export-dialog::backdrop {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .admin-toolbar-left {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 10px;
+  }
+  .admin-toolbar-left .search-expandable {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 12px;
+    background: var(--card);
+    border-color: var(--line);
+    box-shadow: none;
+    cursor: default;
+  }
+  .admin-toolbar-left .search-expandable input[type="search"] {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  .admin-toolbar-left .filter-pills {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .admin-search-box {
@@ -7058,13 +7382,26 @@ label.search input[type="search"]:focus-visible {
 }
 
 @media (max-width: 1024px) {
-  .tab-full {
+  .dash-tabs .tab-full,
+  .admin-tabs-nav .tab-full {
     display: none !important;
   }
 
-  .tab-short {
+  .dash-tabs .tab-short,
+  .admin-tabs-nav .tab-short {
     display: inline !important;
   }
+}
+
+@media (max-width: 520px) {
+  .auth-tabs .tab-full {
+    display: none !important;
+  }
+
+  .auth-tabs .tab-short {
+    display: inline !important;
+  }
+}
 
   .dash-tabs {
     gap: 4px;

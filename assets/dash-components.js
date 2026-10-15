@@ -367,14 +367,14 @@
                 <h2>Central Monitoring Directorate</h2>
                 <small>Study leadership &amp; research export authority ("The boss after super admin")</small>
               </div>
-              <div style="display:flex;align-items:center;gap:8px">
+              <div class="card-head-actions">
                 <div class="search-expandable" title="Search officers...">
                   <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
                   <input id="centralTeamSearchInput" type="search" placeholder="Search monitor officer or zone..." autocomplete="off" maxlength="70">
                   <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
                 </div>
                 <a class="btn btn-sm" href="../admin/#users">
-                  <i class="ms">manage_accounts</i>Manage
+                  <i class="ms">${can('manage_users') ? 'manage_accounts' : 'visibility'}</i>${can('manage_users') ? 'Manage' : 'View Directory'}
                 </a>
               </div>
             </div>
@@ -397,7 +397,7 @@
             </div>
 
             <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+              <div class="dash-subhead-bar">
                 <div style="font-size:12px;font-weight:600;color:var(--ink-2)">
                   <i class="ms" style="font-size:14px;vertical-align:-2px">receipt_long</i> Central Monitoring &amp; Export Audit Log:
                 </div>
@@ -425,7 +425,7 @@
                 <h2>Site Investigators Team</h2>
                 <small>Frontline cardiologists entering patient visits at hospital sites · Click to drill into profile</small>
               </div>
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div class="card-head-actions">
                 <div class="search-expandable" title="Search investigators...">
                   <button type="button" class="search-icon" aria-label="Search"><i class="ms">search</i></button>
                   <input id="invTeamSearchInput" type="search" placeholder="Search cardiologist or centre..." autocomplete="off" maxlength="70">
@@ -435,7 +435,7 @@
                   <i class="ms">download</i>CSV
                 </button>
                 <a class="btn btn-sm" href="../admin/#users">
-                  <i class="ms">add</i>Add
+                  <i class="ms">${can('manage_users') ? 'add' : 'visibility'}</i>${can('manage_users') ? 'Add' : 'Directory'}
                 </a>
               </div>
             </div>
@@ -545,7 +545,7 @@
               <div style="display:flex;align-items:center;gap:10px">
                 <span class="chip ${pu.active ? 'In' : 'Not'}">${pu.active ? 'Active Clinician' : 'Inactive'}</span>
                 <a class="btn btn-sm" href="../admin/?user=${encodeURIComponent(pu.username)}#users">
-                  <i class="ms">manage_accounts</i>Edit user
+                  <i class="ms">${typeof can === 'function' && can('manage_users') ? 'manage_accounts' : 'visibility'}</i>${typeof can === 'function' && can('manage_users') ? 'Edit user' : 'View user'}
                 </a>
                 <button type="button" class="btn btn-sm" data-export-inv="${esc(pu.username)}">
                   <i class="ms">download</i>Export CSV

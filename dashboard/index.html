@@ -302,12 +302,13 @@ function applyHash(h){
     } else if (clean === 'all' || clean === 'overview') {
       if (currentInvTab !== 'all') { currentInvTab = 'all'; changed = true; }
     }
-  } else if (ROLE === 'superadmin') {
+  } else {
+    // Both Super Admin and Central Team share the Executive Dashboard
     if (['performance', 'analytics', 'gdmt', 'report', 'reports'].includes(clean)) {
       if (currentSuperTab !== 'analytics') { currentSuperTab = 'analytics'; changed = true; }
     } else if (['sites', 'league'].includes(clean)) {
       if (currentSuperTab !== 'league') { currentSuperTab = 'league'; changed = true; }
-    } else if (['teams', 'team', 'oversight', 'users'].includes(clean)) {
+    } else if (['teams', 'team', 'oversight', 'users', 'investigators', 'invs'].includes(clean)) {
       if (currentSuperTab !== 'teams') { currentSuperTab = 'teams'; changed = true; }
     } else if (['queue', 'overdue', 'alerts'].includes(clean)) {
       if (currentSuperTab !== 'queue') { currentSuperTab = 'queue'; changed = true; }
@@ -315,19 +316,6 @@ function applyHash(h){
       if (currentSuperTab !== 'export') { currentSuperTab = 'export'; changed = true; }
     } else if (clean === 'all' || clean === 'overview') {
       if (currentSuperTab !== 'all') { currentSuperTab = 'all'; changed = true; }
-    }
-  } else {
-    // central
-    if (['performance', 'analytics', 'gdmt', 'report', 'reports'].includes(clean)) {
-      if (currentCentralTab !== 'analytics') { currentCentralTab = 'analytics'; changed = true; }
-    } else if (['sites', 'league'].includes(clean)) {
-      if (currentCentralTab !== 'league') { currentCentralTab = 'league'; changed = true; }
-    } else if (['queue', 'overdue', 'alerts'].includes(clean)) {
-      if (currentCentralTab !== 'queue') { currentCentralTab = 'queue'; changed = true; }
-    } else if (['export', 'exports', 'download', 'downloads'].includes(clean)) {
-      if (currentCentralTab !== 'export') { currentCentralTab = 'export'; changed = true; }
-    } else if (clean === 'all' || clean === 'overview') {
-      if (currentCentralTab !== 'all') { currentCentralTab = 'all'; changed = true; }
     }
   }
 
@@ -349,8 +337,7 @@ function applyHash(h){
 
 window.standhfSelectTab = (tabId) => {
   if (ROLE === 'investigator') currentInvTab = tabId;
-  else if (ROLE === 'superadmin') currentSuperTab = tabId;
-  else currentCentralTab = tabId;
+  else currentSuperTab = tabId;
   renderDashboard();
   if (typeof window.standhfUpdateNav === 'function') window.standhfUpdateNav();
 };
@@ -670,6 +657,11 @@ function renderInvestigatorUpcoming(upcoming){
    ========================================================================== */
 function renderCentralView(allPts){
   const s = accessStore();
+  if (adminProfileUsername) {
+    const pu = s.users.find(u => u.username === adminProfileUsername);
+    if (pu) return DashUI.investigatorProfile(pu, allPts, aggregateStats);
+    adminProfileUsername = null;
+  }
   const allSites = s.sites;
   const zones = s.zones || ['North','Central','South'];
 
@@ -709,6 +701,7 @@ function renderCentralView(allPts){
     { id: 'league', label: 'Site League Table', shortLabel: 'League', icon: 'leaderboard', badge: zoneSites.length },
     { id: 'analytics', label: 'Trajectories & GDMT', shortLabel: 'Analytics', icon: 'monitoring' },
     { id: 'queue', label: 'Overdue Follow-up Queue', shortLabel: 'Overdue', icon: 'warning', badge: st.overdueCount },
+    { id: 'teams', label: 'Investigator Profiles', shortLabel: 'Teams', icon: 'groups' },
     { id: 'export', label: 'Data Export & Reports', shortLabel: 'Export', icon: 'file_download' }
   ];
 
@@ -767,7 +760,7 @@ function renderCentralView(allPts){
           <h2>Site Performance &amp; League Table</h2>
           <small>Longitudinal completion, follow-up timing, and GDMT compliance across sites</small>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="card-head-actions">
           <div class="search-expandable" title="Search cardiology centres">
             <button type="button" class="search-icon" aria-label="Search centres"><i class="ms">search</i></button>
             <input id="leagueSearchInput" type="search" placeholder="Search centre, code or investigator..." autocomplete="off" maxlength="70">
@@ -827,7 +820,7 @@ function renderCentralView(allPts){
           <h2>Registry Overdue &amp; At-Risk Follow-up Queue</h2>
           <small>Patients currently outside their visit window requiring monitoring contact</small>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="card-head-actions">
           <div class="search-expandable" title="Search overdue follow-ups">
             <button type="button" class="search-icon" aria-label="Search overdue"><i class="ms">search</i></button>
             <input id="queueSearchInput" type="search" placeholder="Search overdue patient, phone, or centre..." autocomplete="off" maxlength="70">
@@ -840,6 +833,17 @@ function renderCentralView(allPts){
     </section>
   `;
 
+  const centralUsers = s.users.filter(u => u.role === 'central');
+  const invUsers = s.users.filter(u => u.role === 'investigator');
+  const auditLogs = centralAuditLog();
+  const teamsHtml = DashUI.twoTeamsGrid({
+    centralUsers,
+    invUsers,
+    allPts,
+    auditLogs,
+    aggregateStatsFn: aggregateStats
+  });
+
   let bodyHtml = '';
   if (currentCentralTab === 'league') {
     bodyHtml = `<div class="dash-fade-in">${leagueHtml}</div>`;
@@ -847,6 +851,8 @@ function renderCentralView(allPts){
     bodyHtml = `<div class="dash-fade-in">${analyticsHtml}</div>`;
   } else if (currentCentralTab === 'queue') {
     bodyHtml = `<div class="dash-fade-in">${queueHtml}</div>`;
+  } else if (currentCentralTab === 'teams') {
+    bodyHtml = `<div class="dash-fade-in">${teamsHtml}</div>`;
   } else if (currentCentralTab === 'export') {
     bodyHtml = `<div class="dash-fade-in">${renderExportStudioSection(allPts, 'National Registry Oversight (All Centres)')}</div>`;
   } else {
@@ -857,6 +863,7 @@ function renderCentralView(allPts){
         ${leagueHtml}
         ${analyticsHtml}
         ${queueHtml}
+        ${teamsHtml}
       </div>
     `;
   }
@@ -958,7 +965,24 @@ function renderSuperAdminView(allPts){
     { id: 'export', label: 'Data Export & Reports', shortLabel: 'Export', icon: 'file_download' }
   ];
 
-  const headerHtml = `
+  const isCentral = ROLE === 'central';
+  const headerHtml = isCentral ? `
+    <div class="hello">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <h1 id="welcome">Central Directorate Executive Dashboard</h1>
+          <span class="tag info" style="background:var(--primary-soft);color:var(--primary);font-size:12px;padding:3px 10px;font-weight:600"><i class="ms" style="font-size:14px;vertical-align:-2px">verified_user</i> Central Directorate · Read-Only</span>
+        </div>
+        <p id="meta">Unified read-only executive oversight &amp; export across ${s.sites.length} Cardiology Centres in Pakistan</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btnExportModal"><i class="ms">download</i>Export All Data</button>
+        <a class="btn" href="../records/"><i class="ms">visibility</i>View Patient Records</a>
+        <a class="btn" href="${ADMIN}#users"><i class="ms">visibility</i>View Teams &amp; Scoping</a>
+      </div>
+    </div>
+    ${DashUI.viewTabs(tabs, currentSuperTab)}
+  ` : `
     <div class="hello">
       <div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
@@ -1071,7 +1095,7 @@ function renderSuperAdminView(allPts){
           <h2>Multi-Site Performance League Table</h2>
           <small>Comprehensive performance across all ${s.sites.length} participating cardiology centres</small>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="card-head-actions">
           <div class="search-expandable" title="Search cardiology centres">
             <button type="button" class="search-icon" aria-label="Search centres"><i class="ms">search</i></button>
             <input id="leagueSearchInput" type="search" placeholder="Search centre, code or investigator..." autocomplete="off" maxlength="70">
@@ -1091,7 +1115,7 @@ function renderSuperAdminView(allPts){
           <h2>Study-wide Overdue &amp; At-Risk Follow-up Queue</h2>
           <small>Patients across all sites currently outside their visit window</small>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="card-head-actions">
           <div class="search-expandable" title="Search overdue follow-ups">
             <button type="button" class="search-icon" aria-label="Search overdue"><i class="ms">search</i></button>
             <input id="queueSearchInput" type="search" placeholder="Search overdue patient, phone, or centre..." autocomplete="off" maxlength="70">
@@ -1114,7 +1138,10 @@ function renderSuperAdminView(allPts){
   } else if (currentSuperTab === 'queue') {
     bodyHtml = `<div class="dash-fade-in">${queueHtml}</div>`;
   } else if (currentSuperTab === 'export') {
-    bodyHtml = `<div class="dash-fade-in">${renderExportStudioSection(allPts, 'Super Admin Global Scope (All Centres & Teams)')}</div>`;
+    const scopeTitle = isCentral
+      ? 'Central Directorate National Scope (All Centres & Teams)'
+      : 'Super Admin Global Scope (All Centres & Teams)';
+    bodyHtml = `<div class="dash-fade-in">${renderExportStudioSection(allPts, scopeTitle)}</div>`;
   } else {
     // 'all'
     bodyHtml = `
@@ -1594,7 +1621,7 @@ function renderExportPreviewTable(cohort){
         }).join('')}
       </tbody>
     </table>
-    <div style="padding:10px 14px;background:var(--soft);font-size:12px;color:var(--ink-2);border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+    <div class="export-preview-foot">
       <span>Showing preview of first ${sample.length} of ${cohort.length} matching patients</span>
       <span>Format: <b>${exportFilterState.format.toUpperCase()}</b> · PII: <b>${deid ? 'Masked' : 'Real'}</b></span>
     </div>
@@ -1911,7 +1938,7 @@ function renderExportStudioSection(ptsPool, scopeTitle){
         </div>
 
         <!-- RIGHT COLUMN: Live Cohort Status Strip, 6 Presets, Live Preview Table -->
-        <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="export-studio-main">
           <!-- Live Cohort Status Strip -->
           <div class="export-cohort-strip" id="exportCohortStrip">
             ${renderExportCohortStatsHtml(cohort)}
@@ -2025,7 +2052,7 @@ function renderExportStudioSection(ptsPool, scopeTitle){
                 <h2>Live Cohort Preview</h2>
                 <small id="expPreviewSub">Showing matching patient records in real-time. Exported files will include all ${nPts} records.</small>
               </div>
-              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div class="card-head-actions">
                 <div class="search-expandable" title="Search preview cohort">
                   <button type="button" class="search-icon" aria-label="Search cohort"><i class="ms">search</i></button>
                   <input id="exportCohortSearchInput" type="search" placeholder="Search cohort patient, ID, or centre..." autocomplete="off" maxlength="70">
@@ -2078,13 +2105,13 @@ function updateExportStudioUI(ptsPool){
 /* Sidebar item that matches each tab, per role (tabs with no sidebar item fall back to Dashboard) */
 const NAV_KEY_BY_TAB = {
   investigator: { all: 'dashboard', upcoming: 'dashboard', clinical: 'performance', sites: 'sites', export: 'export' },
-  central:      { all: 'dashboard', queue: 'dashboard', analytics: 'performance', league: 'sites', export: 'export' },
+  central:      { all: 'dashboard', teams: 'dashboard', queue: 'dashboard', analytics: 'performance', league: 'sites', export: 'export' },
   superadmin:   { all: 'dashboard', teams: 'dashboard', queue: 'dashboard', analytics: 'performance', league: 'sites', export: 'export' }
 };
 
 /* Keeps the sidebar highlight and the URL hash on the open tab */
 function syncNavToTab(){
-  const tab = ROLE === 'investigator' ? currentInvTab : ROLE === 'superadmin' ? currentSuperTab : currentCentralTab;
+  const tab = ROLE === 'investigator' ? currentInvTab : currentSuperTab;
   const key = (NAV_KEY_BY_TAB[ROLE] || {})[tab] || 'dashboard';
   window.standhfDashNavKey = key;
   const want = location.pathname + location.search + (key === 'dashboard' ? '' : '#' + key);
@@ -2099,11 +2126,9 @@ function renderDashboard(){
 
   if (ROLE === 'investigator') {
     root.innerHTML = renderInvestigatorView(allPts);
-  } else if (ROLE === 'superadmin') {
-    root.innerHTML = renderSuperAdminView(allPts);
   } else {
-    // Default to Central Team Monitoring Dashboard
-    root.innerHTML = renderCentralView(allPts);
+    // Both Super Admin and Central Directorate share the exact same Executive Dashboard
+    root.innerHTML = renderSuperAdminView(allPts);
   }
 
   attachEvents();
@@ -2117,8 +2142,7 @@ function attachEvents(){
     btn.onclick = () => {
       const tabId = btn.dataset.dashtab;
       if (ROLE === 'investigator') currentInvTab = tabId;
-      else if (ROLE === 'superadmin') currentSuperTab = tabId;
-      else currentCentralTab = tabId;
+      else currentSuperTab = tabId;
       renderDashboard();
     };
   });

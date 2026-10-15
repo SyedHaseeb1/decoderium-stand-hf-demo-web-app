@@ -40,8 +40,14 @@
 
       <div class="segment seg-anim auth-tabs" role="tablist" aria-label="Sign in as">
         <span class="seg-thumb" aria-hidden="true"></span>
-        <button type="button" role="tab" data-tab="investigator" aria-selected="true" class="on" title="Site investigator"><span class="tab-full">Site investigator</span><span class="tab-short">Investigator</span></button>
-        <button type="button" role="tab" data-tab="admin" aria-selected="false">Admin</button>
+        <button type="button" role="tab" data-tab="investigator" aria-selected="true" class="on" title="Site Investigator"><span class="tab-full">Site Investigator</span><span class="tab-short">Investigator</span></button>
+        <button type="button" role="tab" data-tab="central" aria-selected="false" title="Central Team"><span class="tab-full">Central Team</span><span class="tab-short">Central</span></button>
+        <button type="button" role="tab" data-tab="admin" aria-selected="false" title="Super Admin"><span class="tab-full">Super Admin</span><span class="tab-short">Admin</span></button>
+      </div>
+
+      <div class="auth-role-desc" id="roleDesc">
+        <i class="ms" id="roleDescIcon">clinical_notes</i>
+        <span id="roleDescText">Clinical data entry &amp; patient follow-up for assigned centres</span>
       </div>
 
       <div class="error" id="err" role="alert">
@@ -88,10 +94,16 @@
 const APP='../records/', DASH='../dashboard/', ADMIN='../admin/', AUTH_KEY='standhf_auth', USER_KEY='standhf_user', ROLE_KEY='standhf_role';
 const REMEMBER_KEY='standhf_remember_user';
 const ACCOUNTS=accessStore().users.filter(u=>u.active).map(u=>({user:u.username,name:u.name,role:u.role}));
-/* Each tab accepts its own roles: Admin covers Super Admin and Central team */
-const TAB_ROLES={investigator:['investigator'],admin:['superadmin','central']};
-const TAB_LABEL={investigator:'Site investigator',admin:'Admin'};
+/* Each tab accepts its own roles: Site Investigator, Central Team (Read-only), and Super Admin */
+const TAB_ROLES={investigator:['investigator'],central:['central'],admin:['superadmin']};
+const TAB_LABEL={investigator:'Site Investigator',central:'Central Team',admin:'Super Admin'};
 let tab='investigator';
+
+const DESCS={
+  investigator:{icon:'clinical_notes',text:'Clinical data entry & patient follow-up for assigned centres'},
+  central:{icon:'verified_user',text:'Read-only national oversight & data export across all sites'},
+  admin:{icon:'admin_panel_settings',text:'Global system configuration, user accounts & site administration'}
+};
 
 const $=id=>document.getElementById(id);
 
@@ -123,6 +135,9 @@ function setTab(next,animate=true){
   $('pass').value='';
   $('err').classList.remove('show');
   $('note').textContent='';
+  const d=DESCS[next]||DESCS.investigator;
+  if($('roleDescIcon'))$('roleDescIcon').textContent=d.icon;
+  if($('roleDescText'))$('roleDescText').textContent=d.text;
   moveThumb();
 }
 
@@ -144,7 +159,12 @@ try{remembered=localStorage.getItem(REMEMBER_KEY)||''}catch(e){}
 setTab('investigator',false);
 if(remembered){
   const acc=ACCOUNTS.find(a=>a.user===remembered);
-  if(acc){setTab(acc.role==='investigator'?'investigator':'admin',false);$('user').value=acc.user;$('remember').checked=true}
+  if(acc){
+    const targetTab=acc.role==='investigator'?'investigator':(acc.role==='central'?'central':'admin');
+    setTab(targetTab,false);
+    $('user').value=acc.user;
+    $('remember').checked=true;
+  }
 }
 
 $('form').addEventListener('submit',e=>{
