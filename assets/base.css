@@ -2491,6 +2491,12 @@ td label.ck {
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
+.cb input[data-cb-input]:not([readonly]),
+.cb input.cb-input:not([readonly]) {
+  cursor: text;
+  user-select: text;
+}
+
 .cb input[data-cb-input]:hover,
 .cb input.cb-input:hover {
   border-color: var(--ink);
@@ -2555,6 +2561,12 @@ td label.ck {
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.cb.open-up .cb-list {
+  top: auto;
+  bottom: calc(100% + 6px);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.14), 0 -1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .cb-list li {

@@ -507,16 +507,36 @@ function getCbItems(key, q, wrap){
   }).map(o => ({ v: o }));
 }
 
+
 function positionCb(wrap){
   const ul = wrap.querySelector('.cb-list');
   const inp = wrap.querySelector('[data-cb-input]');
   if(!ul || !inp || ul.hidden) return;
 
   const r = inp.getBoundingClientRect();
-  const vh = window.innerHeight || document.documentElement.clientHeight;
-  const spaceBelow = vh - r.bottom - 14;
-  const spaceAbove = r.top - 14;
-  const openUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+  const vv = window.visualViewport;
+  const vh = vv ? vv.height : (window.innerHeight || document.documentElement.clientHeight);
+  const vTop = (vv && vv.offsetTop) ? vv.offsetTop : 0;
+
+  // Viewport space
+  const vpBelow = vh - (r.bottom - vTop) - 14;
+  const vpAbove = (r.top - vTop) - 14;
+
+  // Modal dialog boundaries (if inside a dialog or modal container)
+  const dlg = wrap.closest('dialog, .admin-modal, .modal-body, .modal-form');
+  let spaceBelow = vpBelow;
+  let spaceAbove = vpAbove;
+
+  if(dlg){
+    const dr = dlg.getBoundingClientRect();
+    const modalBelow = dr.bottom - r.bottom - 16;
+    const modalAbove = r.top - dr.top - 16;
+    spaceBelow = Math.min(vpBelow, modalBelow);
+    spaceAbove = Math.min(vpAbove, modalAbove);
+  }
+
+  // If down space is little, adjust above!
+  const openUp = (spaceBelow < 220 && spaceAbove > spaceBelow) || (spaceBelow < 130 && spaceAbove > 70);
 
   // Use fixed positioning so the dropdown floats cleanly in front of all dialogs and containers without clipping
   ul.style.position = 'fixed';
@@ -525,13 +545,13 @@ function positionCb(wrap){
   ul.style.zIndex = '999999';
 
   if(openUp){
-    const maxH = Math.min(250, Math.max(120, spaceAbove - 10));
+    const maxH = Math.min(260, Math.max(90, spaceAbove - 8));
     ul.style.maxHeight = maxH + 'px';
     ul.style.top = 'auto';
-    ul.style.bottom = Math.round(vh - r.top + 4) + 'px';
+    ul.style.bottom = Math.round(vh - (r.top - vTop) + 4) + 'px';
     wrap.classList.add('open-up');
   } else {
-    const maxH = Math.min(250, Math.max(120, spaceBelow - 10));
+    const maxH = Math.min(260, Math.max(90, spaceBelow - 8));
     ul.style.maxHeight = maxH + 'px';
     ul.style.bottom = 'auto';
     ul.style.top = Math.round(r.bottom + 4) + 'px';
@@ -645,6 +665,7 @@ function chooseCb(wrap, i){
   inp.value = val;
   setMsg(inp.id, '', false);
   closeCb(wrap);
+  if(inp) inp.blur();
   wrap._justChose = true;  // the input event below must not reopen the list
   inp.dispatchEvent(new Event('input', { bubbles: true }));
   wrap._justChose = false;
@@ -926,8 +947,6 @@ function usersView(){
           </thead>
           <tbody>
             ${filtered.map(u=>{
-              const desig=u.personal?.designation||'Clinical Staff';
-              const phone=u.personal?.phone?` · <span style="font-family:monospace">${esc(u.personal.phone)}</span>`:'';
               const isHl=u.username===highlightUser;
               return `
                 <tr data-user-row="${esc(u.username)}" ${isHl?'style="background:var(--soft-2);outline:2px solid var(--primary);outline-offset:-2px"':''}>
@@ -936,7 +955,7 @@ function usersView(){
                       <div class="admin-user-avatar ${u.role}">${initials(u.name)}</div>
                       <div>
                         <div class="admin-user-name">${esc(u.name)}</div>
-                        <div class="admin-user-sub">${esc(desig)}${phone} · <span class="admin-user-handle">@${esc(u.username)}</span></div>
+                        <div class="admin-user-sub"><span class="admin-user-handle">@${esc(u.username)}</span></div>
                       </div>
                     </div>
                   </td>
@@ -1776,7 +1795,10 @@ $('fEditSite')?.addEventListener('submit',e=>{
    ------------------------------------------------------------- */
 document.addEventListener('focusin', e => {
   const i = e.target.closest && e.target.closest('[data-cb-input]');
-  if(i && !i.disabled && i.closest('[data-cb]')?.dataset.disabled !== 'true') openCb(i.closest('[data-cb]'), '');
+  if(i && !i.disabled && i.closest('[data-cb]')?.dataset.disabled !== 'true'){
+    const wrap = i.closest('[data-cb]');
+    openCb(wrap, '');
+  }
 });
 
 document.addEventListener('click', e => {
@@ -1784,10 +1806,36 @@ document.addEventListener('click', e => {
   if(i && !i.disabled && i.closest('[data-cb]')?.dataset.disabled !== 'true') {
     const wrap = i.closest('[data-cb]');
     if(wrap.querySelector('.cb-list').hidden){
-      openCb(wrap, i.value);
+      openCb(wrap, i.hasAttribute('readonly') ? '' : i.value);
+    }
+    return;
+  }
+
+  // Tapping outside on screen dismisses the dropdown and closes the keyboard
+  if(!e.target.closest('[data-cb]')){
+    closeAllCbs();
+    if(document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-cb-input]')){
+      document.activeElement.blur();
     }
   }
 });
+
+// Reposition open comboboxes dynamically when mobile keyboard triggers visualViewport resize/scroll or modal scrolls
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', () => {
+    const openWrap = document.querySelector('.cb.is-open');
+    if(openWrap) positionCb(openWrap);
+  });
+  window.visualViewport.addEventListener('scroll', () => {
+    const openWrap = document.querySelector('.cb.is-open');
+    if(openWrap) positionCb(openWrap);
+  });
+}
+
+window.addEventListener('scroll', () => {
+  const openWrap = document.querySelector('.cb.is-open');
+  if(openWrap) positionCb(openWrap);
+}, true);
 
 document.addEventListener('input', e => {
   if(e.target.matches && e.target.matches('[data-cb-input]:not([readonly])')){
@@ -1797,7 +1845,7 @@ document.addEventListener('input', e => {
   }
 });
 
-document.addEventListener('mousedown', e => {
+document.addEventListener('pointerdown', e => {
   const li = e.target.closest && e.target.closest('.cb-list li[data-i]');
   if(li){
     e.preventDefault();
