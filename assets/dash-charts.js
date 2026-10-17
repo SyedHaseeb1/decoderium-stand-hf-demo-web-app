@@ -353,6 +353,7 @@
       });
 
       const signed = x => (x == null ? '–' : (x > 0 ? '+' : '') + x.toFixed(1));
+      const signedInt = x => (x == null ? '–' : (x > 0 ? '+' : '') + Math.round(x));
       const mean = a => (a && a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
       const mstsMean = mean(st.dMsts);
       const efMean = mean(st.dEf);
@@ -376,7 +377,7 @@
               <b>Functional Capacity (1MSTS)</b>
               <div class="muted" style="font-size:12px">Mean 1-Minute Sit-to-Stand repetitions gain</div>
             </div>
-            <b style="font-size:18px;color:${mstsMean > 0 ? 'var(--success)' : 'var(--ink)'}">${signed(mstsMean)} reps</b>
+            <b style="font-size:18px;color:${mstsMean > 0 ? 'var(--success)' : 'var(--ink)'}">${signedInt(mstsMean)} reps</b>
           </div>
 
           <div class="traj-row">

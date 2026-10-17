@@ -12,6 +12,7 @@
   /* Pages with data-nav="compact" (the reduced doctor dashboard) hide the Reports group */
   const compact=document.body.dataset.nav==='compact';
   const isCentral=ss('standhf_role')==='central';
+  const canExport=(typeof can==='function')?can('export_data'):(!isInv);
   const onNew=/[?&]new=1/.test(location.search);
   const page=document.body.dataset.page;
   /* Which nav item is active: admin and dashboard sections follow the URL hash */
@@ -22,14 +23,14 @@
       const h=location.hash.slice(1).toLowerCase();
       if(['performance','clinical','report','reports','analytics'].includes(h)) return 'performance';
       if(['sites','league'].includes(h)) return 'sites';
-      if(['export','exports','downloads','download'].includes(h)) return 'export';
+      if(['export','exports','downloads','download'].includes(h)) return canExport ? 'export' : 'dashboard';
       return 'dashboard';
     }
     const isNew=(typeof window.standhfIsNewMode==='function'&&window.standhfIsNewMode())||(/[?&]new=1/.test(location.search));
     return isNew?'add':'records';
   };
   const current=pageKey();
-  const drawerQuery=window.matchMedia('(max-width: 1000px)');
+  const drawerQuery=window.matchMedia('(max-width: 1024px)');
 
   const groups=[
     {label:'General',items:[
@@ -40,7 +41,7 @@
     {label:'Reports',items:[
       {key:'performance',label:'Performance',href:DASH+'#performance',icon:'monitoring',show:!compact},
       {key:'sites',label:'Sites & League',href:DASH+'#sites',icon:'leaderboard',show:!compact},
-      {key:'export',label:'Data Export',href:DASH+'#export',icon:'file_download',show:!compact}
+      {key:'export',label:'Data Export',href:DASH+'#export',icon:'file_download',show:!compact && canExport}
     ]},
     {label:'Administration',items:[
       {key:'adm-users',label:'Users & Teams',href:ADMIN+'#users',icon:'group',show:isSuper||isCentral},
@@ -51,14 +52,21 @@
   const link=i=>`<a class="nav${i.key===current?' active':''}" data-key="${i.key}" href="${i.href}"${i.key===current?' aria-current="true"':''} title="${i.label}"><i class="ms">${i.icon}</i><span class="side-text">${i.label}</span></a>`;
   const navScript=document.querySelector('script[src$="nav.js"]');
   const logoSrc=(navScript?navScript.getAttribute('src'):'../assets/nav.js').replace(/nav\.js.*$/,'STAND-HF-logo.svg');
+  const sponsorSrc=(navScript?navScript.getAttribute('src'):'../assets/nav.js').replace(/nav\.js.*$/,'sponsor-logo.png');
+  const sponsorCollapsedSrc=(navScript?navScript.getAttribute('src'):'../assets/nav.js').replace(/nav\.js.*$/,'sponsor-logo-collapsed.png');
   root.innerHTML=`
     <div class="side-top">
       <span class="logo logo-img"><img src="${logoSrc}" alt="STAND-HF"></span>
-      <button type="button" class="side-toggle" id="sideToggle" aria-expanded="true" title="Collapse navigation" aria-label="Collapse navigation"><i class="ms">menu_open</i></button>
+      <button type="button" class="side-toggle" id="sideToggle" aria-expanded="true" title="${drawerQuery.matches?'Close menu':'Collapse navigation'}" aria-label="${drawerQuery.matches?'Close menu':'Collapse navigation'}"><i class="ms">${drawerQuery.matches?'close':'menu_open'}</i></button>
     </div>
     ${groups.map(g=>{const shown=g.items.filter(i=>i.show);return shown.length?`<div class="side-label">${g.label}</div>${shown.map(link).join('')}`:''}).join('')}
     <div class="side-label">Other</div>
-    <button type="button" class="nav" id="navOut"><i class="ms">logout</i><span class="side-text">Sign out</span></button>`;
+    <button type="button" class="nav" id="navOut"><i class="ms">logout</i><span class="side-text">Sign out</span></button>
+    <div class="side-sponsor" title="Powered by Sacuvia™ (Sacubitril + Valsartan)">
+      <div class="sponsor-card">
+        <img src="${sponsorSrc}" alt="Powered by Sacuvia (Sacubitril + Valsartan)" class="sponsor-img" loading="lazy">
+      </div>
+    </div>`;
 
   const app=document.querySelector('.app'),toggle=document.getElementById('sideToggle');
 
@@ -78,7 +86,13 @@
     scrim.hidden=!o;
     document.body.classList.toggle('drawer-open',o);
     menuBtn.setAttribute('aria-expanded',String(o));
-    if(o)root.querySelector('.nav')?.focus({preventScroll:true});
+    if(drawerQuery.matches && toggle){
+      toggle.setAttribute('aria-label', o ? 'Close menu' : 'Open menu');
+      toggle.title = o ? 'Close menu' : 'Open menu';
+      const icon = toggle.querySelector('.ms');
+      if(icon) icon.textContent = o ? 'close' : 'menu';
+    }
+    if(o && !drawerQuery.matches)root.querySelector('.nav')?.focus({preventScroll:true});
   };
   menuBtn.onclick=()=>setDrawer(true);
   scrim.onclick=()=>setDrawer(false);
@@ -109,20 +123,54 @@
 
   /* Desktop: collapse to icons, remembered per browser */
   const setCollapsed=c=>{
-    app.classList.toggle('collapsed',c);
+    if(drawerQuery.matches){
+      if(app) app.classList.remove('collapsed');
+      return;
+    }
+    if(app) app.classList.toggle('collapsed',c);
     const label=c?'Expand navigation':'Collapse navigation';
-    toggle.setAttribute('aria-expanded',String(!c));toggle.setAttribute('aria-label',label);toggle.title=label;
-    toggle.querySelector('.ms').textContent=c?'menu':'menu_open';
+    if(toggle){
+      toggle.setAttribute('aria-expanded',String(!c));toggle.setAttribute('aria-label',label);toggle.title=label;
+      const icon=toggle.querySelector('.ms');
+      if(icon) icon.textContent=c?'menu':'menu_open';
+    }
   };
   let saved=false;try{saved=localStorage.getItem('standhf_nav_collapsed')==='1'}catch(e){}
-  setCollapsed(saved);
-  toggle.onclick=()=>{
-    if(drawerQuery.matches){setDrawer(false);return}
-    const c=!app.classList.contains('collapsed');setCollapsed(c);try{localStorage.setItem('standhf_nav_collapsed',c?'1':'0')}catch(e){}
-  };
+  if(!drawerQuery.matches){
+    setCollapsed(saved);
+  } else {
+    if(app) app.classList.remove('collapsed');
+    if(toggle){
+      toggle.setAttribute('aria-label','Close menu');
+      toggle.title='Close menu';
+      const icon=toggle.querySelector('.ms');
+      if(icon) icon.textContent='close';
+    }
+  }
+  if(toggle){
+    toggle.onclick=()=>{
+      if(drawerQuery.matches){setDrawer(false);return}
+      const c=!app.classList.contains('collapsed');setCollapsed(c);try{localStorage.setItem('standhf_nav_collapsed',c?'1':'0')}catch(e){}
+    };
+  }
 
-  /* Leaving drawer mode closes the drawer */
-  drawerQuery.addEventListener('change',()=>{if(!drawerQuery.matches)setDrawer(false)});
+  /* Leaving drawer mode closes the drawer; entering drawer mode removes collapsed state */
+  drawerQuery.addEventListener('change',()=>{
+    if(drawerQuery.matches){
+      if(app) app.classList.remove('collapsed');
+      setDrawer(false);
+      if(toggle){
+        toggle.setAttribute('aria-label','Close menu');
+        toggle.title='Close menu';
+        const icon=toggle.querySelector('.ms');
+        if(icon) icon.textContent='close';
+      }
+    } else {
+      setDrawer(false);
+      let s=false;try{s=localStorage.getItem('standhf_nav_collapsed')==='1'}catch(e){}
+      setCollapsed(s);
+    }
+  });
 
   /* Update active nav button state across all pages and events */
   window.standhfUpdateNav=()=>{

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>STAND-HF Registry Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1a5fb4">
+  <meta name="theme-color" content="#C90085">
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
@@ -14,8 +14,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261017a">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
   <script>
+    try {
+      if (localStorage.getItem('standhf_theme') !== 'blue') {
+        document.documentElement.setAttribute('data-theme', 'logo');
+      }
+    } catch(e) {}
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
   </script>
 </head>
@@ -27,7 +32,8 @@
 
   <main class="main">
 
-    <div id="app-header" data-page="dashboard" data-timeline></div>
+    <!-- data-timeline commented out: default shows all-time data -->
+    <div id="app-header" data-page="dashboard"></div>
 
     <!-- Role-Aware Dashboard Content Shell -->
     <div id="dashRoot"></div>
@@ -103,14 +109,14 @@
 <div class="snack" id="snack" role="status" aria-live="polite"></div>
 
 <!-- Required Shared Infrastructure Scripts in Strict Order -->
-<script src="../assets/access.js?v=20261015b"></script>
+<script src="../assets/access.js?v=20261018l"></script>
 <script src="../assets/validator.js?v=20261016a"></script>
 <script src="../assets/notifications-data.js?v=20261015b"></script>
 <script src="../assets/lookups.js?v=20261015b"></script>
 <script src="../assets/file-card.js?v=20261015b"></script>
 <script src="../assets/dialog.js?v=20261015c"></script>
-<script src="../assets/header.js?v=20261017b" data-root="../"></script>
-<script src="../assets/nav.js?v=20261016d"></script>
+<script src="../assets/header.js?v=20261018l" data-root="../"></script>
+<script src="../assets/nav.js?v=20261018h"></script>
 <script src="../assets/dash-charts.js?v=20261015c"></script>
 <script src="../assets/dash-components.js?v=20261015d"></script>
 
@@ -146,6 +152,7 @@ const initials = s => String(s || '').split(/\s+/).filter(Boolean).slice(0, 2).m
 const pct = (a, b) => (b ? Math.round(100 * a / b) : null);
 const mean = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
 const signed = x => (x == null ? '–' : (x > 0 ? '+' : '') + x.toFixed(1));
+const signedInt = x => (x == null ? '–' : (x > 0 ? '+' : '') + Math.round(x));
 
 function toast(m){
   const el = $('snack');
@@ -156,12 +163,17 @@ function toast(m){
   toast._t = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
-/* --- Patient Data Loader --- */
+/* --- Patient Data Loader (Strictly Scoped by Role & Ownership) --- */
 function loadData(){
   try {
     const raw = localStorage.getItem(KEY);
     const d = JSON.parse(raw || 'null');
-    if (Array.isArray(d?.pts)) return d.pts;
+    if (Array.isArray(d?.pts)) {
+      if (typeof inScope === 'function') {
+        return d.pts.filter(inScope);
+      }
+      return d.pts;
+    }
   } catch(e){}
   return [];
 }
@@ -248,8 +260,9 @@ function aggregateStats(list){
   return { n, b, m3, m6, all3, ontimeRate, overdueCount, dueCount, fourPillars, gdmtRate, dMsts, dEf, events, pendingSync };
 }
 
-/* Time period filter state: 1 = Today, 7 = Week, 30 = Month, 0 = All */
-let periodDays = 7;
+/* Time period filter state: 0 = All (default), 1 = Today, 7 = Week, 30 = Month */
+// let periodDays = 7; /* Formerly defaulted to Week */
+let periodDays = 0; /* Default: all time data */
 function matchesPeriod(p){
   if (periodDays === 0) return true;
   if (!p.consent) return false;
@@ -299,7 +312,11 @@ function applyHash(h){
     } else if (['upcoming', 'queue', 'visits'].includes(clean)) {
       if (currentInvTab !== 'upcoming') { currentInvTab = 'upcoming'; changed = true; }
     } else if (['export', 'exports', 'download', 'downloads'].includes(clean)) {
-      if (currentInvTab !== 'export') { currentInvTab = 'export'; changed = true; }
+      if (typeof can === 'function' && can('export_data')) {
+        if (currentInvTab !== 'export') { currentInvTab = 'export'; changed = true; }
+      } else {
+        if (currentInvTab !== 'all') { currentInvTab = 'all'; changed = true; }
+      }
     } else if (clean === 'all' || clean === 'overview') {
       if (currentInvTab !== 'all') { currentInvTab = 'all'; changed = true; }
     }
@@ -337,8 +354,12 @@ function applyHash(h){
 }
 
 window.standhfSelectTab = (tabId) => {
-  if (ROLE === 'investigator') currentInvTab = tabId;
-  else currentSuperTab = tabId;
+  if (ROLE === 'investigator') {
+    if (tabId === 'export' && (typeof can !== 'function' || !can('export_data'))) tabId = 'all';
+    currentInvTab = tabId;
+  } else {
+    currentSuperTab = tabId;
+  }
   renderDashboard();
   if (typeof window.standhfUpdateNav === 'function') window.standhfUpdateNav();
 };
@@ -348,34 +369,41 @@ window.standhfApplyHash = (h) => {
   if (typeof window.standhfUpdateNav === 'function') window.standhfUpdateNav();
 };
 
-/* ==========================================================================
-   VIEW 1: SITE INVESTIGATOR DASHBOARD
-   ========================================================================== */
 function renderInvestigatorView(allPts){
-  const mine = allPts.filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME);
+  const mine = allPts.filter(p => inScope(p));
   const st = aggregateStats(mine);
   const newCount = mine.filter(matchesPeriod).length;
-  const sites = [...new Set(mine.map(p => p.site).filter(Boolean))].sort();
+  const myAssigned = (typeof mySites === 'function') ? mySites() : [];
+  const sites = myAssigned.length ? myAssigned : [...new Set(mine.map(p => p.site).filter(Boolean))].sort();
+  const store = (typeof accessStore === 'function') ? accessStore() : { sites: [] };
+  const primaryCode = sites[0];
+  const primarySiteObj = primaryCode ? store.sites.find(s => s.code === primaryCode) : null;
+  const siteDesc = primarySiteObj
+    ? `${primarySiteObj.name} [${primarySiteObj.code}] · ${primarySiteObj.zone || 'Central'} Zone`
+    : (sites.join(', ') || 'No centre assigned');
 
   // Upcoming visits needing attention (all patients; completed ones sort last)
   const upcoming = invPatientRows(allPts);
 
+  const canExp = typeof can === 'function' && can('export_data');
   const tabs = [
     { id: 'all', label: 'Overview', shortLabel: 'Overview', icon: 'dashboard' },
     { id: 'upcoming', label: 'Upcoming Visits', shortLabel: 'Visits', icon: 'event_upcoming', badge: upcoming.length },
     { id: 'clinical', label: 'Clinical Performance', shortLabel: 'Performance', icon: 'monitoring' },
-    { id: 'sites', label: 'Assigned Sites', shortLabel: 'Sites', icon: 'local_hospital', badge: sites.length },
-    { id: 'export', label: 'Data Export & Reports', shortLabel: 'Export', icon: 'file_download' }
+    { id: 'sites', label: 'Assigned Site', shortLabel: 'Site', icon: 'local_hospital', badge: sites.length ? 1 : 0 }
   ];
+  if (canExp) {
+    tabs.push({ id: 'export', label: 'Data Export & Reports', shortLabel: 'Export', icon: 'file_download' });
+  }
 
   const headerHtml = `
     <div class="hello">
       <div>
         <h1 id="welcome">Welcome, Dr. ${esc(USER_NAME.split(/\s+/)[0])}</h1>
-        <p id="meta">Assigned Sites: ${sites.join(', ') || 'No site assigned'} · Clinical Outpatient HF Registry</p>
+        <p id="meta">Assigned Centre: ${esc(siteDesc)} · Clinical Outpatient HF Registry</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn" id="btnExportModal"><i class="ms">download</i>Data Export</button>
+        ${canExp ? '<button type="button" class="btn" id="btnExportModal"><i class="ms">download</i>Data Export</button>' : ''}
         <a class="btn" href="${ECRF}"><i class="ms">edit_note</i>Patient records</a>
         <a class="btn primary" href="${ECRF}?new=1"><i class="ms">person_add</i>Add patient</a>
       </div>
@@ -413,7 +441,7 @@ function renderInvestigatorView(allPts){
             <div class="card-head"><h2>Clinical Performance</h2><small>From your verified patient data</small></div>
             <div id="perfMetrics">
               <div class="metric"><span>Follow-up visits within protocol window</span><b class="${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b></div>
-              <div class="metric"><span>Mean 1MSTS change (Baseline to 6 Months)</span><b class="${mean(st.dMsts)>0?'good':''}">${signed(mean(st.dMsts))} reps</b></div>
+              <div class="metric"><span>Mean 1MSTS change (Baseline to 6 Months)</span><b class="${mean(st.dMsts)>0?'good':''}">${signedInt(mean(st.dMsts))} reps</b></div>
               <div class="metric"><span>Mean LVEF change (Baseline to 6 Months)</span><b class="${mean(st.dEf)>0?'good':''}">${signed(mean(st.dEf))}%</b></div>
               <div class="metric"><span>Patients at 4 of 4 GDMT pillars (latest visit)</span><b class="${st.gdmtRate>=70?'good':''}">${st.fourPillars} / ${st.n} (${st.gdmtRate??0}%)</b></div>
             </div>
@@ -453,7 +481,7 @@ function renderInvestigatorView(allPts){
             ${sites.map(s => {
               const ps = mine.filter(p => p.site === s);
               return `<tr>
-                <td><b>${esc(s)}</b><div class="muted">${esc(getSiteZone(s))} Zone</div></td>
+                <td><b>${esc(getSiteName(s))} [${esc(s)}]</b><div class="muted">${esc(getSiteZone(s))} Zone</div></td>
                 <td class="num">${ps.length}</td>
                 <td class="num">${ps.filter(p=>p.v?.b?.done).length}</td>
                 <td class="num">${ps.filter(p=>p.v?.m3?.done).length}</td>
@@ -465,7 +493,7 @@ function renderInvestigatorView(allPts){
         </div>
       </section>
     `;
-  } else if (currentInvTab === 'export') {
+  } else if (currentInvTab === 'export' && (typeof can === 'function' && can('export_data'))) {
     bodyHtml = `
       <div class="dash-fade-in">
         ${renderExportStudioSection(mine, 'Assigned Sites (' + (sites.join(', ') || 'None') + ')')}
@@ -526,7 +554,7 @@ function renderInvestigatorView(allPts){
             <div class="card-head"><h2>Clinical Performance</h2><small>From your verified patient data</small></div>
             <div id="perfMetrics">
               <div class="metric"><span>Follow-up visits within protocol window</span><b class="${st.ontimeRate>=80?'good':'warn'}">${st.ontimeRate!=null?st.ontimeRate+'%':'–'}</b></div>
-              <div class="metric"><span>Mean 1MSTS change (Baseline to 6 Months)</span><b class="${mean(st.dMsts)>0?'good':''}">${signed(mean(st.dMsts))} reps</b></div>
+              <div class="metric"><span>Mean 1MSTS change (Baseline to 6 Months)</span><b class="${mean(st.dMsts)>0?'good':''}">${signedInt(mean(st.dMsts))} reps</b></div>
               <div class="metric"><span>Mean LVEF change (Baseline to 6 Months)</span><b class="${mean(st.dEf)>0?'good':''}">${signed(mean(st.dEf))}%</b></div>
               <div class="metric"><span>Patients at 4 of 4 GDMT pillars (latest visit)</span><b class="${st.gdmtRate>=70?'good':''}">${st.fourPillars} / ${st.n} (${st.gdmtRate??0}%)</b></div>
             </div>
@@ -549,7 +577,7 @@ function renderInvestigatorView(allPts){
                   ${sites.map(s => {
                     const ps = mine.filter(p => p.site === s);
                     return `<tr>
-                      <td><b>${esc(s)}</b><div class="muted">${esc(getSiteZone(s))} Zone</div></td>
+                      <td><b>${esc(getSiteName(s))} [${esc(s)}]</b><div class="muted">${esc(getSiteZone(s))} Zone</div></td>
                       <td class="num">${ps.length}</td>
                       <td class="num">${ps.filter(p=>p.v?.b?.done).length}</td>
                       <td class="num">${ps.filter(p=>p.v?.m3?.done).length}</td>
@@ -595,7 +623,7 @@ function renderEnrolmentSvg(pts){
 let invSelectedId = null;
 // Shared row builder for the investigator patient list, detail pane and click handler
 function invPatientRows(allPts){
-  const mine = allPts.filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME);
+  const mine = allPts.filter(inScope);
   const rows = mine.map(p => {
     const k = nextVisit(p);
     if (!k) return { p, k: null, s: 'Completed', win: null };
@@ -713,7 +741,7 @@ function renderCentralView(allPts){
           <h1 id="welcome">Central Registry Oversight</h1>
           <span class="tag info" style="font-size:12px;padding:3px 10px"><i class="ms" style="font-size:14px;vertical-align:-2px">verified_user</i> Directorate Access</span>
         </div>
-        <p id="meta">Live statistics and multi-site monitoring across cardiology centres in Pakistan · Read-Only Clinical Governance</p>
+        <p id="meta">Registry statistics and multi-site monitoring across cardiology centres in Pakistan · Read-Only Clinical Governance</p>
       </div>
       <div class="actions">
         <button type="button" class="btn primary" id="btnExportModal"><i class="ms">download</i>Export Study Data</button>
@@ -2050,8 +2078,8 @@ function renderExportStudioSection(ptsPool, scopeTitle){
           <div class="card" id="exportPreviewSection">
             <div class="card-head">
               <div>
-                <h2>Live Cohort Preview</h2>
-                <small id="expPreviewSub">Showing matching patient records in real-time. Exported files will include all ${nPts} records.</small>
+                <h2>Cohort Preview</h2>
+                <small id="expPreviewSub">Showing matching patient records. Exported files will include all ${nPts} records.</small>
               </div>
               <div class="card-head-actions">
                 <div class="search-expandable" title="Search preview cohort">
@@ -2141,9 +2169,13 @@ function attachEvents(){
   // Tab switcher clicks
   document.querySelectorAll('.dash-tab[data-dashtab]').forEach(btn => {
     btn.onclick = () => {
-      const tabId = btn.dataset.dashtab;
-      if (ROLE === 'investigator') currentInvTab = tabId;
-      else currentSuperTab = tabId;
+      let tabId = btn.dataset.dashtab;
+      if (ROLE === 'investigator') {
+        if (tabId === 'export' && (typeof can !== 'function' || !can('export_data'))) tabId = 'all';
+        currentInvTab = tabId;
+      } else {
+        currentSuperTab = tabId;
+      }
       renderDashboard();
     };
   });
@@ -2159,7 +2191,8 @@ function attachEvents(){
     };
   }
 
-  // Period filter clicks (Today, Week, Month from header.js)
+  // Period filter clicks (Today, Week, Month from header.js) — commented out as time filter is hidden
+  /*
   document.querySelectorAll('[data-period]').forEach(btn => {
     btn.onclick = () => {
       periodDays = +btn.dataset.period;
@@ -2167,6 +2200,7 @@ function attachEvents(){
       renderDashboard();
     };
   });
+  */
 
   // In-section search handlers for all relatable sections
   document.addEventListener('input', e => {
@@ -2181,7 +2215,7 @@ function attachEvents(){
         plistEl.innerHTML = renderInvestigatorList(upcoming);
         const q = invSearchQuery.toLowerCase();
         const countEl = $('invPtCount');
-        const mine = allPts.filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME);
+        const mine = allPts.filter(inScope);
         if (countEl) {
           const matchCount = upcoming.filter(u => !q || (u.p.id + ' ' + u.p.site + ' ' + (u.p.name||'')).toLowerCase().includes(q)).length;
           countEl.textContent = q ? `${matchCount} of ${mine.length}` : `${mine.length} total`;
@@ -2394,7 +2428,7 @@ function attachEvents(){
   // ==========================================================================
   // EXPORT HUB & CUSTOM FILTER STUDIO EVENT LISTENERS
   // ==========================================================================
-  const currentPtsPool = ROLE === 'investigator' ? loadData().filter(p => p.owner === USER_HANDLE || p.inv === USER_NAME) : loadData();
+  const currentPtsPool = loadData();
 
   const expZone = $('expFilterZone');
   if (expZone) {

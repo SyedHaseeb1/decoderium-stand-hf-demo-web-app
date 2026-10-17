@@ -64,8 +64,7 @@ const ACCESS_DATA = {
       enter_data: true,
       mark_complete: true,
       load_demo: true,
-      clear_all: true,
-      export_data: true
+      clear_all: true
     },
     central: {
       view_all_sites: true,

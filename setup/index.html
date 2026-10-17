@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <title>STAND-HF — Account Setup</title>
   <script>
+    // Apply STAND-HF Logo Theme by default unless 'blue'
+    try {
+      if (localStorage.getItem('standhf_theme') !== 'blue') {
+        document.documentElement.setAttribute('data-theme', 'logo');
+      }
+    } catch(e) {}
     // Security Gate: user must be signed in to access setup
     try {
       if (sessionStorage.getItem('standhf_auth') !== '1') {
@@ -14,7 +20,7 @@
     }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1a5fb4">
+  <meta name="theme-color" content="#C90085">
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
@@ -24,7 +30,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261017a">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
   <style>
     /* =========================================================
        STAND-HF Doctor-Friendly Account Setup
@@ -122,15 +128,16 @@
       width: 72px;
       height: 72px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #1a5fb4, #0f2c4d);
+      background: linear-gradient(135deg, var(--primary), #0f2c4d);
       color: #ffffff;
       display: grid;
       place-items: center;
       font-size: 24px;
       font-weight: 700;
       overflow: hidden;
-      box-shadow: 0 4px 10px rgba(26,95,180,0.2);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
       border: 2px solid #ffffff;
+      transition: background 0.25s ease, box-shadow 0.25s ease;
     }
     .doctor-avatar img {
       width: 100%;
@@ -446,6 +453,39 @@
       border-color: var(--danger);
     }
 
+    /* STAND-HF Logo Theme adaptations */
+    [data-theme="logo"] .doctor-avatar {
+      background: linear-gradient(135deg, var(--brand-magenta, #C90085), var(--brand-pink, #E60057));
+      box-shadow: 0 4px 14px rgba(201, 0, 133, 0.28);
+    }
+    [data-theme="logo"] .doctor-camera-btn {
+      background: var(--brand-magenta, #C90085);
+    }
+    [data-theme="logo"] .doctor-camera-btn:hover {
+      background: var(--brand-pink, #E60057);
+    }
+    [data-theme="logo"] .btn-submit-setup {
+      background: var(--brand-gradient, #C90085);
+      box-shadow: 0 4px 12px rgba(201, 0, 133, 0.25);
+    }
+    [data-theme="logo"] .btn-submit-setup:hover {
+      background: var(--brand-gradient-hover, #A8006E);
+      box-shadow: 0 6px 16px rgba(201, 0, 133, 0.35);
+    }
+    [data-theme="logo"] .doctor-setup-card {
+      border-color: rgba(201, 0, 133, 0.14);
+      box-shadow: 0 10px 30px rgba(201, 0, 133, 0.08);
+    }
+    [data-theme="logo"] .setup-topbar {
+      border-bottom-color: rgba(201, 0, 133, 0.14);
+    }
+    .setup-topbar-right .theme-toggle-btn {
+      height: 34px;
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 12.5px;
+    }
+
     @media (max-width: 480px) {
       .setup-topbar {
         padding: 0 14px;
@@ -479,6 +519,10 @@
       <span class="setup-topbar-tag">E-CRF Portal</span>
     </div>
     <div class="setup-topbar-right">
+      <button type="button" class="theme-toggle-btn" id="setupThemeToggle" aria-label="Toggle STAND-HF Theme" title="Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue">
+        <span class="theme-dot"></span>
+        <span class="theme-btn-label" id="setupThemeBtnText">Blue Theme</span>
+      </button>
       <button type="button" class="pill synced" style="cursor:default" title="Encrypted connection active">● Online</button>
       <button type="button" class="btn btn-sm" id="btnHeaderSignOut" title="Sign out" style="height:34px;padding:0 10px;font-size:12.5px">
         <i class="ms" style="font-size:16px">logout</i> <span>Sign out</span>
@@ -613,7 +657,7 @@
     </div>
   </main>
 
-  <script src="../assets/access.js?v=20261017b"></script>
+  <script src="../assets/access.js?v=20261018l"></script>
   <script src="../assets/validator.js?v=20261016a"></script>
   <script>
     const $ = id => document.getElementById(id);
@@ -862,6 +906,41 @@
         location.replace('../dashboard/');
       }
     });
+
+    // Setup Theme Toggle
+    (function(){
+      const btn = $('setupThemeToggle');
+      const txt = $('setupThemeBtnText');
+      if (!btn) return;
+
+      function updateThemeBtn(isLogo) {
+        if (txt) txt.textContent = isLogo ? 'Blue Theme' : 'Logo Theme';
+        btn.title = isLogo ? 'Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue' : 'Using Clinical Blue Theme · Click to switch to STAND-HF Logo Theme (Default)';
+      }
+
+      const isLogo = document.documentElement.getAttribute('data-theme') === 'logo';
+      updateThemeBtn(isLogo);
+
+      btn.addEventListener('click', () => {
+        document.documentElement.classList.add('theme-transition');
+        const nowLogo = document.documentElement.getAttribute('data-theme') === 'logo';
+        const nextLogo = !nowLogo;
+
+        if (nextLogo) {
+          document.documentElement.setAttribute('data-theme', 'logo');
+          try { localStorage.setItem('standhf_theme', 'logo'); } catch(e){}
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+          try { localStorage.setItem('standhf_theme', 'blue'); } catch(e){}
+        }
+
+        updateThemeBtn(nextLogo);
+
+        setTimeout(() => {
+          document.documentElement.classList.remove('theme-transition');
+        }, 350);
+      });
+    })();
   </script>
 </body>
 </html>

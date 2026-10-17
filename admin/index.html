@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>STAND-HF Administration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1a5fb4">
+  <meta name="theme-color" content="#C90085">
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
@@ -14,8 +14,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261017a">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
 <script>
+  try {
+    if (localStorage.getItem('standhf_theme') !== 'blue') {
+      document.documentElement.setAttribute('data-theme', 'logo');
+    }
+  } catch(e) {}
   /* Register the service worker so the browser can install the app */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
 </script>
@@ -33,7 +38,7 @@
         <p>Manage clinical investigators, monitoring officers, cardiology centres, and geographic zones across Pakistan.</p>
       </div>
       <div class="actions">
-        <a class="btn primary" href="../dashboard/"><i class="ms">space_dashboard</i>View Live Dashboard</a>
+        <a class="btn primary" href="../dashboard/"><i class="ms">space_dashboard</i>View Dashboard</a>
         <a class="btn" href="../records/"><i class="ms">edit_note</i>Patient records</a>
       </div>
     </div>
@@ -136,35 +141,23 @@
         </div>
       </div>
 
-      <!-- Section C: Survey Zone Assignment (Dynamic based on Role) -->
+      <!-- Section C: Assigned Medical Centre (Dynamic based on Role) -->
       <div id="nuSiteSection">
-        <div class="form-section-title" id="nuSiteSecTitle"><i class="ms">map</i> Survey zones <span class="req">*</span></div>
+        <div class="form-section-title" id="nuSiteSecTitle"><i class="ms">local_hospital</i> Assigned Hospital Centre <span class="req">*</span></div>
 
-        <!-- Searchable Zone Dropdown (Scalable to 100+ Zones) -->
-        <div class="form-field" id="nuZonePickerField">
-          <label for="nuZoneInput">Add zone</label>
-          <div class="cb" data-cb="user-zone" data-prefix="nu">
-            <input id="nuZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="50">
+        <div class="form-field" id="nuSitePickerField">
+          <div class="cb" data-cb="site" data-prefix="nu">
+            <input id="nuSiteInput" placeholder="Search or select hospital centre (e.g. RIC, NICVD)..." autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
-          <span class="fmsg" data-for="nuZoneInput"></span>
+          <input type="hidden" id="nuSiteCode" name="site">
+          <span class="muted" style="font-size:12px;display:block;margin-top:4px">Site Investigator is authorized for 1 hospital centre. Clinical survey zone is automatically derived.</span>
+          <span class="fmsg" data-for="nuSite" style="margin-top:4px"></span>
         </div>
 
-        <!-- Selected Assigned Zone Chips -->
-        <div class="assigned-zones-card" id="nuAssignedZonesCard">
-          <div class="assigned-zones-head">
-            <span class="assigned-zones-title"><i class="ms">check_circle</i> Selected (<span id="nuZoneCount">0</span>)</span>
-            <button type="button" class="btn-clear-zones" data-clear-zones="nu">Clear all</button>
-          </div>
-          <div class="assigned-zones-chips" id="nuAssignedZonesChips">
-            <div class="empty-zones-hint"><i class="ms">travel_explore</i> None selected.</div>
-          </div>
-        </div>
-        <span class="fmsg" data-for="nuZones" style="margin-top:4px"></span>
-
-        <!-- Live Scope Summary (Hospital centres covered under assigned zones) -->
-        <div class="zone-scope-summary" id="nuScopeHospitalSummary"></div>
+        <!-- Selected Assigned Hospital Card -->
+        <div class="assigned-site-summary-card" id="nuAssignedSiteCard" style="display:none"></div>
 
         <!-- Scope Notice for Central and Superadmin -->
         <div id="nuScopeNotice" hidden></div>
@@ -252,35 +245,23 @@
         </div>
       </div>
 
-      <!-- Section C: Survey Zone Assignment -->
+      <!-- Section C: Assigned Medical Centre -->
       <div id="euSiteSection">
-        <div class="form-section-title" id="euSiteSecTitle"><i class="ms">map</i> Survey zones <span class="req">*</span></div>
+        <div class="form-section-title" id="euSiteSecTitle"><i class="ms">local_hospital</i> Assigned Hospital Centre <span class="req">*</span></div>
 
-        <!-- Searchable Zone Dropdown (Scalable to 100+ Zones) -->
-        <div class="form-field" id="euZonePickerField">
-          <label for="euZoneInput">Add zone</label>
-          <div class="cb" data-cb="user-zone" data-prefix="eu">
-            <input id="euZoneInput" placeholder="Search zone or alias, e.g. lhr" autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="50">
+        <div class="form-field" id="euSitePickerField">
+          <div class="cb" data-cb="site" data-prefix="eu">
+            <input id="euSiteInput" placeholder="Search or select hospital centre (e.g. RIC, NICVD)..." autocomplete="off" data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" maxlength="100">
             <span class="ms cb-ico">expand_more</span>
             <ul class="cb-list" role="listbox" hidden></ul>
           </div>
-          <span class="fmsg" data-for="euZoneInput"></span>
+          <input type="hidden" id="euSiteCode" name="site">
+          <span class="muted" style="font-size:12px;display:block;margin-top:4px">Site Investigator is authorized for 1 hospital centre. Clinical survey zone is automatically derived.</span>
+          <span class="fmsg" data-for="euSite" style="margin-top:4px"></span>
         </div>
 
-        <!-- Selected Assigned Zone Chips -->
-        <div class="assigned-zones-card" id="euAssignedZonesCard">
-          <div class="assigned-zones-head">
-            <span class="assigned-zones-title"><i class="ms">check_circle</i> Selected (<span id="euZoneCount">0</span>)</span>
-            <button type="button" class="btn-clear-zones" data-clear-zones="eu">Clear all</button>
-          </div>
-          <div class="assigned-zones-chips" id="euAssignedZonesChips">
-            <div class="empty-zones-hint"><i class="ms">travel_explore</i> None selected.</div>
-          </div>
-        </div>
-        <span class="fmsg" data-for="euZones" style="margin-top:4px"></span>
-
-        <!-- Live Scope Summary (Hospital centres covered under assigned zones) -->
-        <div class="zone-scope-summary" id="euScopeHospitalSummary"></div>
+        <!-- Selected Assigned Hospital Card -->
+        <div class="assigned-site-summary-card" id="euAssignedSiteCard" style="display:none"></div>
 
         <!-- Scope Notice for Central and Superadmin -->
         <div id="euScopeNotice" hidden></div>
@@ -474,13 +455,13 @@
 </dialog>
 
 <!-- Scripts in strict dependency order -->
-<script src="../assets/access.js?v=20261015c"></script>
+<script src="../assets/access.js?v=20261018l"></script>
 <script src="../assets/validator.js?v=20261016a"></script>
 <script src="../assets/notifications-data.js?v=20261015b"></script>
 <script src="../assets/lookups.js?v=20261015d"></script>
 <script src="../assets/dialog.js?v=20261015c"></script>
-<script src="../assets/header.js?v=20261017b" data-root="../"></script>
-<script src="../assets/nav.js?v=20261016d"></script>
+<script src="../assets/header.js?v=20261018l" data-root="../"></script>
+<script src="../assets/nav.js?v=20261018h"></script>
 
 <script>
 const LOGIN='../login/', ECRF='../records/', SUPER='superadmin';
@@ -580,8 +561,9 @@ const CB_DATA = {
   zone: () => {
     return getAllZones().sort((a,b)=>a.localeCompare(b));
   },
-  'user-zone': () => {
-    return getAllZones().sort((a,b)=>a.localeCompare(b));
+  site: () => {
+    const s = accessStore();
+    return (s.sites || []).slice();
   },
   designation: () => {
     return (window.CLINICAL_DESIGNATIONS || []).slice();
@@ -596,23 +578,45 @@ function getCbItems(key, q, wrap){
   const all = fn();
   const t = (q || '').trim();
   const lo = t.toLowerCase();
-  
-  // For user-zone, don't show zones that are already selected in the active modal
-  let selected = [];
-  if(key === 'user-zone' && wrap){
-    const prefix = wrap.dataset.prefix || (wrap.querySelector('[data-cb-input]')?.id?.startsWith('nu') ? 'nu' : 'eu');
-    const dlg = prefix === 'nu' ? $('dlgAddUser') : $('dlgEditUser');
-    if(dlg && dlg._selectedZones) selected = dlg._selectedZones.map(z => z.toLowerCase());
+
+  if(key === 'site'){
+    const filtered = all.filter(st => {
+      if(!lo) return true;
+      const cLo = (st.code || '').toLowerCase();
+      const nLo = (st.name || '').toLowerCase();
+      const zLo = (st.zone || '').toLowerCase();
+      const ctLo = (st.city || '').toLowerCase();
+      return cLo.includes(lo) || nLo.includes(lo) || zLo.includes(lo) || ctLo.includes(lo);
+    });
+
+    // Group/sort by Zone, then Hospital Name
+    filtered.sort((a,b) => (a.zone || '').localeCompare(b.zone || '') || (a.name || '').localeCompare(b.name || ''));
+
+    return filtered.map(st => ({
+      v: `[${st.code}] ${st.name}`,
+      code: st.code,
+      name: st.name,
+      zone: st.zone || 'Central',
+      city: st.city || '',
+      html: `
+        <div class="site-cb-row">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span class="site-badge">${esc(st.code)}</span>
+            <span class="site-cb-name">${esc(st.name)}</span>
+          </div>
+          <span class="tag info site-cb-zone"><i class="ms" style="font-size:12px">map</i> ${esc(st.zone || 'Central')}</span>
+        </div>
+      `
+    }));
   }
 
   // Strictly filter approved items from backend master list (NO custom additions)
   return all.filter(o => {
     const oLo = o.toLowerCase();
-    if(selected.includes(oLo)) return false;
     if(!lo) return true;
     if(oLo.includes(lo)) return true;
     if(key === 'city' && window.CITY_ALIASES && window.CITY_ALIASES[lo] && window.CITY_ALIASES[lo].toLowerCase() === oLo) return true;
-    if((key === 'zone' || key === 'user-zone') && window.ZONE_ALIASES && window.ZONE_ALIASES[lo] && window.ZONE_ALIASES[lo].toLowerCase() === oLo) return true;
+    if(key === 'zone' && window.ZONE_ALIASES && window.ZONE_ALIASES[lo] && window.ZONE_ALIASES[lo].toLowerCase() === oLo) return true;
     if(key === 'designation' && window.DESIG_ALIASES && window.DESIG_ALIASES[lo] && window.DESIG_ALIASES[lo].toLowerCase() === oLo) return true;
     return false;
   }).map(o => ({ v: o }));
@@ -686,9 +690,9 @@ function openCb(wrap, q){
   wrap._items = items;
   wrap._act = -1;
   ul.innerHTML = items.length
-    ? items.map((it, i) => `<li role="option" data-i="${i}" tabindex="-1">${esc(it.v)}</li>`).join('')
+    ? items.map((it, i) => `<li role="option" data-i="${i}" tabindex="-1">${it.html || esc(it.v)}</li>`).join('')
     : `<li class="none" style="padding:10px 14px;color:var(--ink-3);display:flex;align-items:center;gap:6px">
-         <i class="ms" style="font-size:16px">info</i> No matching ${wrap.dataset.cb==='city'?'approved city':wrap.dataset.cb==='designation'?'title':'approved survey zone'} in registry
+         <i class="ms" style="font-size:16px">info</i> No matching ${wrap.dataset.cb==='city'?'approved city':wrap.dataset.cb==='designation'?'title':wrap.dataset.cb==='site'?'hospital centre':'approved survey zone'} in registry
        </li>`;
   ul.hidden = false;
   inp.setAttribute('aria-expanded', 'true');
@@ -739,18 +743,36 @@ function closeCb(wrap){
         inp.value = '';
         setMsg(inp.id, 'Please select an approved zone from the registry', true);
       }
-    } else if(wrap.dataset.cb === 'user-zone'){
-      const norm = typeof window.normalizeZone === 'function' ? window.normalizeZone(raw) : raw;
-      const allZones = CB_DATA['user-zone']();
-      const isApproved = allZones.some(z => z.toLowerCase() === norm.toLowerCase());
-      if(isApproved){
-        const prefix = wrap.dataset.prefix || (inp.id.startsWith('nu') ? 'nu' : 'eu');
-        addZoneToUserModal(prefix, norm);
-      }
-      inp.value = '';
     } else if(wrap.dataset.cb === 'designation'){
       inp.value = typeof window.normalizeDesignation === 'function' ? window.normalizeDesignation(raw) : raw;
+    } else if(wrap.dataset.cb === 'site'){
+      const prefix = wrap.dataset.prefix || (inp.id.startsWith('nu') ? 'nu' : 'eu');
+      const codeEl = $(`${prefix}SiteCode`);
+      const s = accessStore();
+      const rawLo = raw.toLowerCase();
+      const st = s.sites.find(x => {
+        return x.code.toLowerCase() === rawLo ||
+               `[${x.code.toLowerCase()}] ${x.name.toLowerCase()}` === rawLo ||
+               x.name.toLowerCase() === rawLo ||
+               (codeEl && codeEl.value && x.code.toLowerCase() === codeEl.value.toLowerCase());
+      });
+      if(st){
+        inp.value = `[${st.code}] ${st.name}`;
+        if(codeEl) codeEl.value = st.code;
+        renderAssignedSiteCard(prefix, st.code);
+        setMsg(`${prefix}Site`, '', false);
+      } else {
+        inp.value = '';
+        if(codeEl) codeEl.value = '';
+        renderAssignedSiteCard(prefix, '');
+        setMsg(`${prefix}Site`, 'Please select an approved hospital centre from the list', true);
+      }
     }
+  } else if(inp && !inp.value.trim() && wrap.dataset.cb === 'site'){
+    const prefix = wrap.dataset.prefix || (inp.id.startsWith('nu') ? 'nu' : 'eu');
+    const codeEl = $(`${prefix}SiteCode`);
+    if(codeEl) codeEl.value = '';
+    renderAssignedSiteCard(prefix, '');
   }
 }
 
@@ -759,19 +781,19 @@ function chooseCb(wrap, i){
   if(!it) return;
   const inp = wrap.querySelector('[data-cb-input]');
   let val = it.v;
-  if(wrap.dataset.cb === 'user-zone'){
-    const prefix = wrap.dataset.prefix || (inp.id.startsWith('nu') ? 'nu' : 'eu');
-    addZoneToUserModal(prefix, val);
-    inp.value = '';
-    closeCb(wrap);
-    return;
-  }
   if(wrap.dataset.cb === 'city' && typeof window.normalizeCity === 'function'){
     val = window.normalizeCity(val);
   } else if(wrap.dataset.cb === 'zone' && typeof window.normalizeZone === 'function'){
     val = window.normalizeZone(val);
   } else if(wrap.dataset.cb === 'designation' && typeof window.normalizeDesignation === 'function'){
     val = window.normalizeDesignation(val);
+  } else if(wrap.dataset.cb === 'site'){
+    val = it.v;
+    const prefix = wrap.dataset.prefix || (inp.id.startsWith('nu') ? 'nu' : 'eu');
+    const codeEl = $(`${prefix}SiteCode`);
+    if(codeEl) codeEl.value = it.code || '';
+    renderAssignedSiteCard(prefix, it.code || '');
+    setMsg(`${prefix}Site`, '', false);
   }
   inp.value = val;
   setMsg(inp.id, '', false);
@@ -815,127 +837,41 @@ function adminTabsNav(){
 }
 
 /* -------------------------------------------------------------
-   Scalable Survey Zone Assignment Controller for Investigators
-   100+ Zones support: Combobox selection, chips, and live scope
+   Assigned Hospital Centre Controller for Site Investigators
+   1 Investigator is assigned strictly to 1 Hospital Centre (Site).
+   The clinical survey zone is automatically derived from the centre.
    ------------------------------------------------------------- */
-function renderAssignedZones(prefix){
-  const dlg = prefix === 'nu' ? $('dlgAddUser') : $('dlgEditUser');
-  if(!dlg) return;
-  dlg._selectedZones = dlg._selectedZones || [];
-  const chipsEl = $(`${prefix}AssignedZonesChips`);
-  const countEl = $(`${prefix}ZoneCount`);
-  const s = accessStore();
-
-  if(countEl) countEl.textContent = dlg._selectedZones.length;
-
-  if(chipsEl){
-    if(dlg._selectedZones.length){
-      chipsEl.innerHTML = dlg._selectedZones.map(zone => {
-        // Count hospital centres currently existing in this zone
-        const centresInZone = s.sites.filter(st => {
-          const z = (st.zone || 'Central').toLowerCase();
-          const uLo = zone.toLowerCase();
-          return z === uLo || z.includes(uLo) || uLo.includes(z);
-        });
-        const cntStr = centresInZone.length ? `${centresInZone.length} centre${centresInZone.length>1?'s':''}` : '0 centres yet';
-        return `
-          <span class="assigned-zone-chip" data-zone="${esc(zone)}" title="Survey Zone: ${esc(zone)}">
-            <i class="ms">map</i>
-            <span class="zone-name">${esc(zone)}</span>
-            <span class="zone-badge">${esc(cntStr)}</span>
-            ${isReadOnlyAdmin && prefix === 'eu' ? '' : `
-            <button type="button" class="chip-del" data-remove-zone="${esc(zone)}" data-zone-prefix="${esc(prefix)}" aria-label="Remove ${esc(zone)}">
-              <i class="ms">close</i>
-            </button>
-            `}
-          </span>
-        `;
-      }).join('');
-    } else {
-      chipsEl.innerHTML = `
-        <div class="empty-zones-hint">
-          <i class="ms">travel_explore</i> None selected.
-        </div>
-      `;
-    }
-  }
-
-  updateZoneHospitalSummary(prefix);
-
-  if(dlg._selectedZones.length){
-    setMsg(prefix === 'nu' ? 'nuZones' : 'euZones', '', false);
-  }
-}
-
-function updateZoneHospitalSummary(prefix){
-  const dlg = prefix === 'nu' ? $('dlgAddUser') : $('dlgEditUser');
-  if(!dlg) return;
-  const summaryEl = $(`${prefix}ScopeHospitalSummary`);
-  if(!summaryEl) return;
-  const zones = dlg._selectedZones || [];
-  const s = accessStore();
-
-  if(!zones.length){
-    summaryEl.innerHTML = `
-      <div class="scope-hint-box none">
-        <i class="ms">info</i>
-        <div><b>No survey zones assigned yet.</b> Site Investigators require at least one assigned survey zone to manage patient registrations and clinical CRFs.</div>
-      </div>
-    `;
+function renderAssignedSiteCard(prefix, siteCode){
+  const card = $(`${prefix}AssignedSiteCard`);
+  if(!card) return;
+  if(!siteCode){
+    card.style.display = 'none';
+    card.innerHTML = '';
     return;
   }
-
-  // Find all sites currently matching these zones
-  const matchingSites = s.sites.filter(st => {
-    const z = (st.zone || 'Central').toLowerCase();
-    return zones.some(uz => {
-      const uLo = uz.toLowerCase();
-      return uLo === z || z.includes(uLo) || uLo.includes(z);
-    });
-  });
-
-  if(matchingSites.length){
-    const siteBadges = matchingSites.map(st => `<b>[${esc(st.code)}]</b> ${esc(st.name)} (${esc(st.zone || 'Central')})`).join(' · ');
-    summaryEl.innerHTML = `
-      <div class="scope-hint-box active">
-        <i class="ms" style="color:var(--success)">verified</i>
-        <div>
-          <b>Clinical Scope Coverage:</b> ${matchingSites.length} participating centre${matchingSites.length > 1 ? 's' : ''} currently active in assigned zone${zones.length > 1 ? 's' : ''}:
-          <div class="scope-sites-list">${siteBadges}</div>
-          <div class="scope-sites-auto-note">Broad Survey Zone Scope: All participating hospitals, clinics, and cardiologists in these zones automatically fall under this investigator's oversight.</div>
-        </div>
-      </div>
-    `;
-  } else {
-    summaryEl.innerHTML = `
-      <div class="scope-hint-box active">
-        <i class="ms" style="color:var(--primary)">add_business</i>
-        <div>
-          <b>Assigned Zone Scope Active:</b> 0 hospital centres currently registered in these specific zones.
-          <div class="scope-sites-auto-note">Broad Survey Zone Scope: Any hospitals, clinics, or cardiologists subsequently added to these zones will automatically fall under this investigator.</div>
-        </div>
-      </div>
-    `;
+  const s = accessStore();
+  const st = s.sites.find(x => x.code === siteCode);
+  if(!st){
+    card.style.display = 'none';
+    card.innerHTML = '';
+    return;
   }
-}
-
-function addZoneToUserModal(prefix, zone){
-  const dlg = prefix === 'nu' ? $('dlgAddUser') : $('dlgEditUser');
-  if(!dlg || !zone) return;
-  dlg._selectedZones = dlg._selectedZones || [];
-  const norm = typeof window.normalizeZone === 'function' ? window.normalizeZone(zone) : zone;
-  if(!dlg._selectedZones.some(z => z.toLowerCase() === norm.toLowerCase())){
-    dlg._selectedZones.push(norm);
-  }
-  renderAssignedZones(prefix);
-}
-
-function removeZoneFromUserModal(prefix, zone){
-  const dlg = prefix === 'nu' ? $('dlgAddUser') : $('dlgEditUser');
-  if(!dlg || !zone) return;
-  dlg._selectedZones = dlg._selectedZones || [];
-  dlg._selectedZones = dlg._selectedZones.filter(z => z.toLowerCase() !== zone.toLowerCase());
-  renderAssignedZones(prefix);
+  card.style.display = 'flex';
+  card.className = 'assigned-site-card-active';
+  card.innerHTML = `
+    <div class="site-card-badge-wrap">
+      <span class="site-badge" style="font-size:13px;padding:4px 8px">${esc(st.code)}</span>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <b style="font-size:13.5px;color:var(--ink)">${esc(st.name)}</b>
+        <span class="tag info" style="font-size:11px"><i class="ms" style="font-size:12px">map</i> ${esc(st.zone || 'Central')} Zone</span>
+      </div>
+      <div style="font-size:12px;color:var(--ink-2);margin-top:2px">
+        <i class="ms" style="font-size:13px;vertical-align:-2px">location_on</i> City: ${esc(st.city || 'Pakistan')} · Clinical intake for this medical centre
+      </div>
+    </div>
+  `;
 }
 
 /* -------------------------------------------------------------
@@ -983,20 +919,20 @@ function usersView(){
       return `<span class="tag info" style="font-size:11.5px"><i class="ms" style="font-size:13px;vertical-align:-2px">travel_explore</i> National Scope (~100 sites)</span>
               <div class="zone-subtext"><i class="ms">public</i>All Pakistan Zones</div>`;
     }
-    // Site Investigator: display assigned survey zones + centres covered
-    const userZones = (u.zones && u.zones.length) ? u.zones : [...new Set((u.sites||[]).map(c=>s.sites.find(st=>st.code===c)?.zone).filter(Boolean))];
-    if(!userZones.length && (!u.sites || !u.sites.length)){
-      return '<span class="tag warn" style="font-size:11.5px"><i class="ms" style="font-size:13px;vertical-align:-2px">warning</i> No survey zones assigned</span>';
+    // Site Investigator: display assigned hospital centre + its zone
+    const siteCode = (Array.isArray(u.sites) && u.sites[0]) || u.site || '';
+    const st = s.sites.find(x => x.code === siteCode);
+    if(!st){
+      return '<span class="tag warn" style="font-size:11.5px"><i class="ms" style="font-size:13px;vertical-align:-2px">warning</i> No hospital assigned</span>';
     }
-    const zoneChips = userZones.map(z => `<span class="tag info" style="font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:4px"><i class="ms" style="font-size:12px">map</i>${esc(z)}</span>`).join(' ');
-    const coveredSites = typeof userAssignedSites === 'function' ? userAssignedSites(u, s) : (u.sites || []);
-    const siteSummary = coveredSites.length ? `${coveredSites.length} centres: ${coveredSites.join(', ')}` : '0 centres currently registered';
     return `
-      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:3px">
-        ${zoneChips}
-      </div>
-      <div class="zone-subtext" style="font-size:11.5px;color:var(--ink-2)">
-        <i class="ms" style="font-size:13px;vertical-align:-2px">local_hospital</i> ${esc(siteSummary)}
+      <div class="assigned-site-cell">
+        <span class="tag success" style="font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:4px">
+          <i class="ms" style="font-size:13px">local_hospital</i> <b>[${esc(st.code)}]</b> ${esc(st.name)}
+        </span>
+        <div class="zone-subtext" style="font-size:11.5px;color:var(--ink-2);margin-top:2px">
+          <i class="ms" style="font-size:13px;vertical-align:-2px">map</i> ${esc(st.zone || 'Central')} Zone · ${esc(st.city || '')}
+        </div>
       </div>
     `;
   };
@@ -1326,7 +1262,7 @@ function openAddUserModal(){
   f.reset();
   setMsg('nuName','',false);
   setMsg('nuUser','',false);
-  setMsg('nuZones','',false);
+  setMsg('nuSite','',false);
   setMsg('nuEmail','',false);
   setMsg('nuPhone','',false);
 
@@ -1337,7 +1273,7 @@ function openAddUserModal(){
     <label class="role-radio-option">
       <input type="radio" name="role" value="investigator" checked>
       <div class="role-opt-head"><i class="ms" style="color:var(--success)">clinical_notes</i> Site Investigator</div>
-      <div class="role-opt-desc">Enters patient data in assigned zones</div>
+      <div class="role-opt-desc">Enters patient data in assigned hospital centre</div>
     </label>
     <label class="role-radio-option ${lockedCentral?'locked':''}">
       <input type="radio" name="role" value="central" ${lockedCentral?'disabled':''}>
@@ -1351,10 +1287,9 @@ function openAddUserModal(){
     </label>
   `;
 
-  dlg._selectedZones = [];
-  const zoneInp = $('nuZoneInput');
-  if(zoneInp) zoneInp.value = '';
-  renderAssignedZones('nu');
+  if($('nuSiteInput')) $('nuSiteInput').value = '';
+  if($('nuSiteCode')) $('nuSiteCode').value = '';
+  renderAssignedSiteCard('nu', '');
   updateAddUserScopeNotice('investigator');
 
   if($('nuTempPass')) $('nuTempPass').value = generateTempPassword();
@@ -1409,22 +1344,19 @@ $('btnCopyCreds')?.addEventListener('click', () => {
 });
 
 function updateAddUserScopeNotice(role){
-  const zonePicker = $('nuZonePickerField');
-  const zoneCard = $('nuAssignedZonesCard');
-  const scopeSummary = $('nuScopeHospitalSummary');
+  const sitePicker = $('nuSitePickerField');
+  const siteCard = $('nuAssignedSiteCard');
   const scopeNotice = $('nuScopeNotice');
   const secTitle = $('nuSiteSecTitle');
 
   if(role === 'investigator'){
-    if(zonePicker) zonePicker.hidden = false;
-    if(zoneCard) zoneCard.hidden = false;
-    if(scopeSummary) scopeSummary.hidden = false;
+    if(sitePicker) sitePicker.hidden = false;
+    if(siteCard) siteCard.style.display = $('nuSiteCode')?.value ? 'flex' : 'none';
     if(scopeNotice) scopeNotice.hidden = true;
-    if(secTitle) secTitle.innerHTML = '<i class="ms">map</i> Survey zones <span class="req">*</span>';
+    if(secTitle) secTitle.innerHTML = '<i class="ms">local_hospital</i> Assigned Hospital Centre <span class="req">*</span>';
   } else if(role === 'central'){
-    if(zonePicker) zonePicker.hidden = true;
-    if(zoneCard) zoneCard.hidden = true;
-    if(scopeSummary) scopeSummary.hidden = true;
+    if(sitePicker) sitePicker.hidden = true;
+    if(siteCard) siteCard.style.display = 'none';
     if(scopeNotice){
       scopeNotice.hidden = false;
       scopeNotice.className = 'scope-callout central';
@@ -1432,15 +1364,14 @@ function updateAddUserScopeNotice(role){
         <i class="ms">travel_explore</i>
         <div>
           <b>Study-Wide National Monitoring Scope</b>
-          <p style="margin:2px 0 0">Central Directorate members automatically have continuous oversight across all ~100 participating cardiology centres and zones in Pakistan. Zone-specific assignment is not required.</p>
+          <p style="margin:2px 0 0">Central Directorate members automatically have continuous read-only oversight across all ~100 participating cardiology centres and zones in Pakistan. Centre-specific assignment is not applicable.</p>
         </div>
       `;
     }
-    if(secTitle) secTitle.innerHTML = '<i class="ms">map</i> Clinical Scope';
+    if(secTitle) secTitle.innerHTML = '<i class="ms">travel_explore</i> Clinical Scope';
   } else {
-    if(zonePicker) zonePicker.hidden = true;
-    if(zoneCard) zoneCard.hidden = true;
-    if(scopeSummary) scopeSummary.hidden = true;
+    if(sitePicker) sitePicker.hidden = true;
+    if(siteCard) siteCard.style.display = 'none';
     if(scopeNotice){
       scopeNotice.hidden = false;
       scopeNotice.className = 'scope-callout admin';
@@ -1448,11 +1379,11 @@ function updateAddUserScopeNotice(role){
         <i class="ms">admin_panel_settings</i>
         <div>
           <b>Global System Administration Scope</b>
-          <p style="margin:2px 0 0">Super Administrators configure sites, manage security permissions, and provision user accounts. Zone-specific assignment is not required.</p>
+          <p style="margin:2px 0 0">Super Administrators configure sites, manage security permissions, and provision user accounts. Centre-specific assignment is not applicable.</p>
         </div>
       `;
     }
-    if(secTitle) secTitle.innerHTML = '<i class="ms">map</i> Clinical Scope';
+    if(secTitle) secTitle.innerHTML = '<i class="ms">admin_panel_settings</i> Administrative Scope';
   }
 }
 
@@ -1500,7 +1431,7 @@ $('fAddUser')?.addEventListener('submit',e=>{
   const desig=typeof window.normalizeDesignation==='function'?window.normalizeDesignation(rawDesig):rawDesig;
   const phone=contactClean($('nuPhone').value.trim());
   const email=$('nuEmail').value.trim();
-  const selectedZones = dlg._selectedZones || [];
+  const selectedSite = ($('nuSiteCode')?.value || $('nuSiteInput')?.value || '').replace(/^\[([A-Z0-9]+)\].*$/i, '$1').trim();
 
   // Validations
   let hasErr=false;
@@ -1535,11 +1466,11 @@ $('fAddUser')?.addEventListener('submit',e=>{
     if(pMsg){setMsg('nuPhone',pMsg,true);hasErr=true}
   }
 
-  if(role==='investigator'&&!selectedZones.length){
-    setMsg('nuZones','Please search and select at least one survey zone for Site Investigator',true);
+  if(role==='investigator'&&!selectedSite){
+    setMsg('nuSite','Please select an assigned hospital centre for the Site Investigator',true);
     hasErr=true;
   } else {
-    setMsg('nuZones','',false);
+    setMsg('nuSite','',false);
   }
 
   if(hasErr)return;
@@ -1548,16 +1479,9 @@ $('fAddUser')?.addEventListener('submit',e=>{
   const saved=commit(s=>{
     if(s.users.some(u=>u.username===username))return 'Username already taken';
     const allKnownZones=getAllZones(s);
-    const userZones=role==='central'?allKnownZones:role===SUPER?[]:selectedZones.slice();
-    const userSites=role==='investigator'
-      ? s.sites.filter(st => {
-          const z = (st.zone || 'Central').toLowerCase();
-          return userZones.some(uz => {
-            const uLo = uz.toLowerCase();
-            return uLo === z || z.includes(uLo) || uLo.includes(z);
-          });
-        }).map(st => st.code)
-      : [];
+    const targetSiteObj=s.sites.find(st=>st.code===selectedSite);
+    const userSites=role==='investigator'&&targetSiteObj?[targetSiteObj.code]:[];
+    const userZones=role==='investigator'&&targetSiteObj?[targetSiteObj.zone||'Central']:role==='central'?allKnownZones:[];
     s.users.push({
       username,
       name,
@@ -1635,47 +1559,43 @@ function openEditUserModal(username){
 
   setMsg('euPhone','',false);
   setMsg('euEmail','',false);
-  setMsg('euZones','',false);
+  setMsg('euSite','',false);
 
   $('euRoleInput').value = ROLE_NAMES[user.role] || '';
 
-  // Selected survey zones for this user
-  let existingZones = Array.isArray(user.zones) ? [...user.zones] : [];
-  if(!existingZones.length && Array.isArray(user.sites) && user.sites.length){
-    existingZones = [...new Set(user.sites.map(c => s.sites.find(st => st.code === c)?.zone).filter(Boolean))];
+  // Single Hospital Site Assignment for Investigator
+  const primarySite = Array.isArray(user.sites) && user.sites.length ? user.sites[0] : '';
+  const siteObj = primarySite ? s.sites.find(x => x.code === primarySite) : null;
+  if($('euSiteCode')) $('euSiteCode').value = primarySite;
+  if($('euSiteInput')) {
+    $('euSiteInput').value = siteObj ? `[${siteObj.code}] ${siteObj.name}` : (primarySite ? `[${primarySite}]` : '');
+    $('euSiteInput').disabled = isReadOnlyAdmin;
+    $('euSiteInput').closest('.cb')?.setAttribute('data-disabled', isReadOnlyAdmin ? 'true' : 'false');
   }
-  dlg._selectedZones = existingZones;
-  const zoneInp = $('euZoneInput');
-  if(zoneInp) {
-    zoneInp.value = '';
-    zoneInp.disabled = isReadOnlyAdmin;
-  }
-  const clearZonesBtn = dlg.querySelector('[data-clear-zones="eu"]');
-  if(clearZonesBtn) clearZonesBtn.style.display = isReadOnlyAdmin ? 'none' : '';
+  renderAssignedSiteCard('eu', primarySite);
 
-  renderAssignedZones('eu');
   updateEditUserScopeNotice(user.role);
 
   dlg.showModal();
 }
 
 function updateEditUserScopeNotice(role){
-  const zonePicker = $('euZonePickerField');
-  const zoneCard = $('euAssignedZonesCard');
-  const scopeSummary = $('euScopeHospitalSummary');
+  const sitePicker = $('euSitePickerField');
+  const siteCard = $('euAssignedSiteCard');
   const scopeNotice = $('euScopeNotice');
   const secTitle = $('euSiteSecTitle');
 
   if(role === 'investigator'){
-    if(zonePicker) zonePicker.hidden = isReadOnlyAdmin;
-    if(zoneCard) zoneCard.hidden = false;
-    if(scopeSummary) scopeSummary.hidden = false;
+    if(sitePicker) sitePicker.hidden = isReadOnlyAdmin;
+    if(siteCard) siteCard.style.display = ($('euSiteCode')?.value || $('euSiteInput')?.value) ? 'flex' : 'none';
     if(scopeNotice) scopeNotice.hidden = true;
-    if(secTitle) secTitle.innerHTML = `<i class="ms">map</i> Survey zones ${isReadOnlyAdmin ? '' : '<span class="req">*</span>'}`;
+    if(secTitle){
+      secTitle.style.display = '';
+      secTitle.innerHTML = `<i class="ms">local_hospital</i> Assigned Hospital Centre ${isReadOnlyAdmin ? '' : '<span class="req">*</span>'}`;
+    }
   } else if(role === 'central'){
-    if(zonePicker) zonePicker.hidden = true;
-    if(zoneCard) zoneCard.hidden = true;
-    if(scopeSummary) scopeSummary.hidden = true;
+    if(sitePicker) sitePicker.hidden = true;
+    if(siteCard) siteCard.style.display = 'none';
     if(scopeNotice){
       scopeNotice.hidden = false;
       scopeNotice.className = 'scope-callout central';
@@ -1683,15 +1603,17 @@ function updateEditUserScopeNotice(role){
         <i class="ms">travel_explore</i>
         <div>
           <b>Study-Wide National Monitoring Scope</b>
-          <p style="margin:2px 0 0">Central Directorate members oversee all ~100 participating cardiology centres across all Pakistan survey zones.</p>
+          <p style="margin:2px 0 0">Central Directorate members oversee all participating cardiology centres across all Pakistan survey zones.</p>
         </div>
       `;
     }
-    if(secTitle) secTitle.innerHTML = '<i class="ms">map</i> Clinical Scope';
+    if(secTitle){
+      secTitle.style.display = '';
+      secTitle.innerHTML = '<i class="ms">travel_explore</i> National Monitoring Scope';
+    }
   } else {
-    if(zonePicker) zonePicker.hidden = true;
-    if(zoneCard) zoneCard.hidden = true;
-    if(scopeSummary) scopeSummary.hidden = true;
+    if(sitePicker) sitePicker.hidden = true;
+    if(siteCard) siteCard.style.display = 'none';
     if(scopeNotice){
       scopeNotice.hidden = false;
       scopeNotice.className = 'scope-callout admin';
@@ -1703,7 +1625,10 @@ function updateEditUserScopeNotice(role){
         </div>
       `;
     }
-    if(secTitle) secTitle.innerHTML = '<i class="ms">map</i> Clinical Scope';
+    if(secTitle){
+      secTitle.style.display = '';
+      secTitle.innerHTML = '<i class="ms">admin_panel_settings</i> Administrative Oversight Scope';
+    }
   }
 }
 
@@ -1727,7 +1652,9 @@ $('fEditUser')?.addEventListener('submit',e=>{
   const email=$('euEmail').value.trim();
   const role=roleKey($('euRoleInput').value);
   const active=$('euActive').checked;
-  const selectedZones = dlg._selectedZones || [];
+  const siteCodeVal = ($('euSiteCode')?.value || '').trim();
+  const siteInputVal = ($('euSiteInput')?.value || '').replace(/^\[([A-Z0-9]+)\].*$/i, '$1').trim();
+  const selectedSite = siteCodeVal || siteInputVal;
   const me=session().username;
 
   if(window.STANDHF_VALIDATOR){
@@ -1753,11 +1680,11 @@ $('fEditUser')?.addEventListener('submit',e=>{
     if(pMsg){setMsg('euPhone',pMsg,true);return}
   }
 
-  if(role==='investigator'&&!selectedZones.length){
-    setMsg('euZones','Please search and select at least one survey zone',true);
+  if(role==='investigator'&&!selectedSite){
+    setMsg('euSite','Please search and select an assigned hospital centre for the Site Investigator',true);
     return;
   } else {
-    setMsg('euZones','',false);
+    setMsg('euSite','',false);
   }
 
   const saved=commit(s=>{
@@ -1782,14 +1709,9 @@ $('fEditUser')?.addEventListener('submit',e=>{
     user.personal.email=email;
 
     if(role==='investigator'){
-      user.zones=selectedZones.slice();
-      user.sites=s.sites.filter(st => {
-        const z = (st.zone || 'Central').toLowerCase();
-        return user.zones.some(uz => {
-          const uLo = uz.toLowerCase();
-          return uLo === z || z.includes(uLo) || uLo.includes(z);
-        });
-      }).map(st => st.code);
+      const targetSiteObj=s.sites.find(st=>st.code===selectedSite);
+      user.sites=targetSiteObj?[targetSiteObj.code]:(selectedSite?[selectedSite]:[]);
+      user.zones=targetSiteObj?[targetSiteObj.zone||'Central']:['Central'];
     } else if(role==='central'){
       user.sites=[];
       user.zones=getAllZones(s);
@@ -2155,27 +2077,6 @@ document.addEventListener('click',e=>{
   if(zonePill){
     siteZoneFilter=zonePill.dataset.zoneFilter;
     render();
-    return;
-  }
-
-  // Remove individual assigned zone chip
-  const removeZoneBtn = e.target.closest('[data-remove-zone]');
-  if(removeZoneBtn){
-    const zone = removeZoneBtn.dataset.removeZone;
-    const prefix = removeZoneBtn.dataset.zonePrefix || 'nu';
-    removeZoneFromUserModal(prefix, zone);
-    return;
-  }
-
-  // Clear all assigned survey zones
-  const clearZonesBtn = e.target.closest('[data-clear-zones]');
-  if(clearZonesBtn){
-    const prefix = clearZonesBtn.dataset.clearZones || 'nu';
-    const dlg = prefix === 'nu' ? $('dlgAddUser') : $('dlgEditUser');
-    if(dlg){
-      dlg._selectedZones = [];
-      renderAssignedZones(prefix);
-    }
     return;
   }
 

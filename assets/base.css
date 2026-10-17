@@ -35,6 +35,280 @@
   color-scheme: light;
 }
 
+/* =========================================================
+   STAND-HF Logo Theme (Manual Activation)
+   Derived strictly from the official STAND-HF logo:
+   - Primary: #C90085 (Vibrant cardiology magenta)
+   - Secondary / Waveform: #E60057 (Carmine rose)
+   - Accent / Pulse: #FF0015 (Arterial red)
+   - Soft Surfacing: #FDF2F8 / #FCE7F3
+   - High Contrast Accessible Typography
+   ========================================================= */
+[data-theme="logo"] {
+  --bg: #eceef1;
+  --card: #ffffff;
+  --soft: #f4f5f7;
+  --soft-2: #e9ecf0;
+  --line: #e3e6eb;
+  --ink: #1b1d22;
+  --ink-2: #5b616d;
+  --ink-3: #8a919e;
+  --primary: #C90085;
+  --primary-hover: #A8006E;
+  --primary-active: #8A0059;
+  --primary-soft: #fcf1f7;
+  --primary-soft-2: #f7e0ee;
+  --primary-border: #f0c5de;
+  --on-primary: #ffffff;
+  --on-primary-soft: #C90085;
+  --brand-magenta: #C90085;
+  --brand-pink: #E60057;
+  --brand-red: #FF0015;
+  --brand-orange: #FF5722;
+  --brand-soft: #fcf1f7;
+  --brand-gradient: #C90085;
+  --brand-gradient-hover: #A8006E;
+  --brand-glow: 0 0 0 3px rgba(201, 0, 133, 0.22);
+}
+
+/* Smooth theme transitions */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *:before,
+html.theme-transition *:after {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease, box-shadow 0.25s ease !important;
+  transition-delay: 0s !important;
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.08);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--soft);
+  border-color: var(--ink-3);
+  color: var(--ink);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(60, 64, 67, 0.12);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0);
+}
+
+.theme-toggle-btn .theme-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #C90085;
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.8), 0 1px 3px rgba(201, 0, 133, 0.4);
+}
+
+.theme-toggle-btn .theme-btn-label {
+  display: inline;
+}
+
+[data-theme="logo"] .theme-toggle-btn {
+  background: #FFFFFF;
+  border-color: #C90085;
+  color: #C90085;
+  box-shadow: 0 0 0 2px rgba(201, 0, 133, 0.12), 0 2px 8px rgba(201, 0, 133, 0.16);
+}
+
+[data-theme="logo"] .theme-toggle-btn:hover {
+  background: #fcf1f7;
+  border-color: #A8006E;
+  color: #A8006E;
+}
+
+[data-theme="logo"] .theme-toggle-btn .theme-dot {
+  background: #1a5fb4;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.8), 0 1px 3px rgba(26, 95, 180, 0.4);
+}
+
+@media (max-width: 680px) {
+  .theme-toggle-btn .theme-btn-label {
+    display: none;
+  }
+  .theme-toggle-btn {
+    padding: 0 9px;
+  }
+}
+
+/* Component Overrides under Logo Theme (70% Neutral, 20% Black / Dark Anchor, 10% Magenta Accent) */
+[data-theme="logo"] .btn.primary {
+  background: var(--primary);
+  border-color: var(--primary-hover);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(201, 0, 133, 0.28);
+}
+
+[data-theme="logo"] .btn.primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-active);
+  box-shadow: 0 2px 8px rgba(201, 0, 133, 0.38);
+}
+
+/* 20% Structural Dark: Active Nav items match default theme cleanly (crisp white on dark anchor) */
+[data-theme="logo"] .side .nav.active,
+[data-theme="logo"] .nav.active {
+  background: #1b1d22;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+[data-theme="logo"] .side .nav.active .ms,
+[data-theme="logo"] .nav.active .ms {
+  color: #ffffff;
+}
+
+/* 20% Structural Dark: Active Page Tabs (Admin & Dashboard) match navigation cleanly */
+[data-theme="logo"] .admin-tab.active,
+[data-theme="logo"] .dash-tab.active {
+  background: #1b1d22 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="logo"] .admin-tab.active .ms,
+[data-theme="logo"] .admin-tab.active span,
+[data-theme="logo"] .dash-tab.active .ms,
+[data-theme="logo"] .dash-tab.active span {
+  color: #ffffff !important;
+}
+
+[data-theme="logo"] .admin-tab.active .tab-badge,
+[data-theme="logo"] .dash-tab.active .tab-badge {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+}
+
+/* 20% Structural Dark: Active Participant Card matches default theme cleanly without corner bleeding */
+[data-theme="logo"] .pt.on,
+[data-theme="logo"] .pitem.active,
+[data-theme="logo"] .pitem.on {
+  background: #1b1d22 !important;
+  color: #ffffff !important;
+  border-color: #1b1d22 !important;
+}
+
+[data-theme="logo"] .pt.on b,
+[data-theme="logo"] .pitem.active b,
+[data-theme="logo"] .pitem.on b {
+  color: #ffffff !important;
+}
+
+[data-theme="logo"] .pt.on small,
+[data-theme="logo"] .pt.on .muted,
+[data-theme="logo"] .pitem.active small,
+[data-theme="logo"] .pitem.active .muted,
+[data-theme="logo"] .pitem.on small,
+[data-theme="logo"] .pitem.on .muted,
+[data-theme="logo"] .pt.on span.pt-updated,
+[data-theme="logo"] .pt.on span.pt-inv,
+[data-theme="logo"] .pt.on span.sr-only {
+  color: #b7bcc6 !important;
+}
+
+[data-theme="logo"] .pitem.on .avatar,
+[data-theme="logo"] .pitem.active .avatar {
+  background: #2d3138;
+  color: #ffffff;
+}
+
+[data-theme="logo"] .tabs button.on,
+[data-theme="logo"] .tab.on,
+[data-theme="logo"] .v-tab.on {
+  background: #1b1d22;
+  border-color: #1b1d22;
+  color: #ffffff;
+}
+
+[data-theme="logo"] input:focus,
+[data-theme="logo"] select:focus,
+[data-theme="logo"] textarea:focus,
+[data-theme="logo"] .cb:focus-within [data-cb-input] {
+  border-color: var(--primary);
+  box-shadow: var(--brand-glow);
+}
+
+/* Ensure search boxes never have a duplicate/separate inner selected border */
+[data-theme="logo"] .search input,
+[data-theme="logo"] label.search input,
+[data-theme="logo"] .search-expandable input,
+[data-theme="logo"] .search input:focus,
+[data-theme="logo"] label.search input:focus,
+[data-theme="logo"] .search-expandable input:focus,
+[data-theme="logo"] .search input:focus-visible,
+[data-theme="logo"] label.search input:focus-visible,
+[data-theme="logo"] .search-expandable input:focus-visible {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+[data-theme="logo"] .site-badge {
+  background: #fcf1f7;
+  color: var(--primary);
+  border-color: #f0c5de;
+  font-weight: 600;
+}
+
+[data-theme="logo"] .assigned-site-card-active {
+  border-color: var(--primary);
+  background: #ffffff;
+}
+
+[data-theme="logo"] .assigned-site-card-active .site-badge {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+[data-theme="logo"] .scope-callout.admin {
+  border-left-color: var(--primary);
+  background: #fcf1f7;
+}
+
+[data-theme="logo"] .admin-user-avatar.superadmin {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+[data-theme="logo"] .search:focus-within,
+[data-theme="logo"] label.search:focus-within,
+[data-theme="logo"] .search-expandable:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow: var(--brand-glow) !important;
+  background: var(--card) !important;
+}
+
+[data-theme="logo"] .list-count {
+  background: var(--primary);
+  color: #ffffff;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -314,32 +588,171 @@ button .ms {
   white-space: nowrap;
 }
 
-.app.collapsed .side {
-  padding: 20px 10px;
+/* Desktop collapse to icons: only applies on screens wider than 1024px */
+@media (min-width: 1025px) {
+  .app.collapsed .side {
+    padding: 20px 10px;
+  }
+
+  .app.collapsed .side-label {
+    display: none;
+  }
+
+  .app.collapsed .side-top {
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .app.collapsed .logo.logo-img img {
+    max-width: 54px;
+    max-height: 28px;
+    height: auto;
+    margin: 0 auto;
+  }
+
+  .app.collapsed .nav {
+    justify-content: center;
+    padding: 11px 0;
+  }
+
+  .app.collapsed .side-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 }
 
-.app.collapsed .side-label {
-  display: none;
-}
-
-.app.collapsed .side-top {
-  justify-content: center;
+/* Sponsor Logo in Sidebar */
+.side-sponsor {
+  margin-top: auto;
+  padding: 14px 4px 6px;
+  width: 100%;
+  display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.app.collapsed .nav {
+  align-items: center;
   justify-content: center;
-  padding: 11px 0;
+  border-top: 1px solid var(--line);
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
-.app.collapsed .side-text {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+.sponsor-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  box-sizing: border-box;
+}
+
+.sponsor-img {
+  display: block;
+  width: 100%;
+  max-width: 154px;
+  height: auto;
+  max-height: 48px;
+  object-fit: contain;
+  transition: max-width 0.22s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, transform 0.2s ease;
+  user-select: none;
+}
+
+.sponsor-img:hover {
+  transform: translateY(-1px);
+}
+
+/* Desktop collapsed sponsor styling */
+@media (min-width: 1025px) {
+  .app.collapsed .side-sponsor {
+    padding: 10px 0 4px;
+    border-top: 1px solid var(--line);
+  }
+
+  .app.collapsed .sponsor-card {
+    padding: 4px 0;
+  }
+
+  .app.collapsed .sponsor-img {
+    display: block !important;
+    max-width: 58px;
+    max-height: 24px;
+    margin: 0 auto;
+  }
+}
+
+/* Desktop side rail: spacing and item sizes scale with viewport height so the
+   whole rail (including the sponsor logo) fits without overflow or scrolling */
+@media (min-width: 1025px) {
+  .side {
+    padding: clamp(6px, 2.4vh, 20px) 14px;
+    gap: clamp(0px, 0.4vh, 4px);
+  }
+
+  .app.collapsed .side {
+    padding: clamp(6px, 2.4vh, 20px) 10px;
+  }
+
+  .side-top,
+  .app.collapsed .side-top {
+    padding: 0 6px clamp(4px, 1.2vh, 12px);
+  }
+
+  .side-top .logo.logo-img img {
+    height: auto;
+    max-height: clamp(20px, 4vh, 44px);
+  }
+
+  .side-toggle {
+    width: clamp(24px, 3.8vh, 36px);
+    height: clamp(24px, 3.8vh, 36px);
+  }
+
+  .side .side-label {
+    padding: clamp(0px, 1.2vh, 16px) 12px clamp(0px, 0.6vh, 8px);
+    font-size: clamp(8px, 1.1vh, 11px);
+    line-height: 1.2;
+  }
+
+  .side .nav,
+  .app.collapsed .side .nav {
+    padding: clamp(2px, 0.9vh, 11px) 12px;
+    font-size: clamp(11px, 1.8vh, 15px);
+    line-height: 1.15;
+    border-radius: clamp(8px, 1.6vh, 14px);
+    gap: clamp(6px, 1.3vh, 12px);
+  }
+
+  .app.collapsed .side .nav {
+    padding: clamp(2px, 0.9vh, 11px) 0;
+  }
+
+  .side .nav .ms {
+    font-size: clamp(13px, 2.7vh, 22px);
+    width: clamp(13px, 2.7vh, 22px);
+    height: clamp(13px, 2.7vh, 22px);
+  }
+
+  .side .side-sponsor,
+  .app.collapsed .side .side-sponsor {
+    padding: clamp(2px, 0.8vh, 14px) 4px clamp(2px, 0.5vh, 6px);
+  }
+
+  .side .sponsor-card,
+  .app.collapsed .side .sponsor-card {
+    padding: 0;
+  }
+
+  .side .sponsor-img {
+    max-height: clamp(12px, 4.4vh, 48px);
+  }
+
+  .app.collapsed .side .sponsor-img {
+    max-height: clamp(12px, 3.4vh, 24px);
+  }
 }
 
 .main {
@@ -1317,34 +1730,31 @@ label.search input {
 }
 
 .chip.Completed {
-  background: var(--success-soft);
-  color: var(--on-success-soft);
+  background: #e6f4ea !important;
+  color: #137333 !important;
 }
 
-.chip.Overdue,
+.chip.Overdue {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
 .chip.Missed {
-  background: var(--error-soft);
-  color: var(--on-error-soft);
+  background: #fef2f2 !important;
+  color: #991b1b !important;
 }
 
-.chip.Due {
-  background: var(--warning-soft);
-  color: var(--on-warning-soft);
-}
 
-.chip.In {
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
-}
 
+.chip.In,
 .chip.Pending {
-  background: var(--primary-soft);
-  color: var(--on-primary-soft);
+  background: #e8f0fe !important;
+  color: #1a5fb4 !important;
 }
 
 .chip.Not {
-  background: var(--soft);
-  color: var(--ink-2);
+  background: #f1f3f5 !important;
+  color: #6c757d !important;
 }
 
 .pitem.on .chip {
@@ -1681,13 +2091,15 @@ button.list-head:hover {
 }
 
 .pt {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 3px;
   padding: 12px 14px;
   margin-bottom: 8px;
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--soft);
   cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .pt:hover {
@@ -1699,73 +2111,545 @@ button.list-head:hover {
   color: #fff;
 }
 
-.pt.on .mut {
-  color: #b7bcc6;
+.pt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
 }
 
-.pt.on .chip {
-  background: #2d3138;
-  color: #fff;
+.pt b.pt-id,
+.pt-head b {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.2px;
+  color: var(--ink);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.pt.on .chip.Completed {
-  background: #1e7a4c;
+.pt.on b.pt-id,
+.pt.on .pt-head b {
+  color: #ffffff !important;
 }
 
-.pt.on .chip.Missed,
-.pt.on .chip.Overdue {
-  background: #b3261e;
-}
-
-.pt.on .chip.Due {
-  background: #9a5b00;
-}
-
-.pt.on .chip.In {
-  background: #1a5fb4;
-}
-
-.pt b {
+/* Top-right Sync status badge (Pill on desktop; auto-shifts to circular icon on mobile/tablet) */
+.pt-sync {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: auto;
+  height: auto;
+  padding: 3px 9px 3px 7px !important;
+  border-radius: 999px !important;
+  font-size: 11.5px !important;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.2;
   white-space: nowrap;
-  display: block;
-  max-width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
 }
 
-.pt span {
-  font-size: 13px;
-  color: var(--ink-2);
+.pt-sync .pt-sync-icon,
+.pt-sync .ms {
+  font-size: 15.5px !important;
+  line-height: 1;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  color: inherit !important;
+}
+
+.pt-sync .pt-sync-text,
+.pt-sync span:not(.ms) {
+  display: inline !important;
+  font-size: 11.5px !important;
+  color: inherit !important;
+  line-height: inherit;
+  font-weight: 600;
+}
+
+/* Resting Cards: Synced green pill (Image 1 - no stroke) */
+.pt-sync.synced {
+  background: #e1fdf1 !important;
+  color: #04773a !important;
+  border: none !important;
+}
+
+/* Resting Cards: Not Synced amber pill (Image 2 - no stroke) */
+.pt-sync.pending {
+  background: #fef8e3 !important;
+  color: #e28912 !important;
+  border: none !important;
+}
+
+/* Active / Selected Card (.pt.on): Harmonized with dark selector background (no stroke) */
+.pt.on .pt-sync.synced,
+[data-theme="logo"] .pt.on .pt-sync.synced {
+  background: #163328 !important;
+  color: #4ade80 !important;
+  border: none !important;
+}
+.pt.on .pt-sync.synced .pt-sync-icon,
+.pt.on .pt-sync.synced .pt-sync-text,
+[data-theme="logo"] .pt.on .pt-sync.synced .pt-sync-icon,
+[data-theme="logo"] .pt.on .pt-sync.synced .pt-sync-text {
+  color: #4ade80 !important;
+}
+
+.pt.on .pt-sync.pending,
+[data-theme="logo"] .pt.on .pt-sync.pending {
+  background: #332918 !important;
+  color: #fbbf24 !important;
+  border: none !important;
+}
+.pt.on .pt-sync.pending .pt-sync-icon,
+.pt.on .pt-sync.pending .pt-sync-text,
+[data-theme="logo"] .pt.on .pt-sync.pending .pt-sync-icon,
+[data-theme="logo"] .pt.on .pt-sync.pending .pt-sync-text {
+  color: #fbbf24 !important;
+}
+
+/* In compact space (tablet, mobile <= 1024px, or compact list): always force circular icon only without stroke */
+@media (max-width: 1024px) {
+  .pt-sync {
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    border: none !important;
+  }
+  .pt-sync .pt-sync-icon,
+  .pt-sync .ms {
+    display: inline-flex !important;
+    font-size: 15px !important;
+  }
+  .pt-sync .pt-sync-text,
+  .pt-sync span:not(.ms) {
+    display: none !important;
+}
+}
+
+/* Patient card typography */
+.pt-name {
+  font-size: 13.5px !important;
+  font-weight: 500;
+  color: var(--ink) !important;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
-  max-width: 100%;
+}
+
+.pt.on .pt-name,
+[data-theme="logo"] .pt.on .pt-name {
+  color: #ffffff !important;
+}
+
+.pt-inv {
+  font-size: 12px !important;
+  color: var(--ink-2) !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.pt.on .pt-inv,
+[data-theme="logo"] .pt.on .pt-inv {
+  color: #d5d9e0 !important;
 }
 
 .pt-updated {
+  font-size: 11.5px !important;
+  color: var(--ink-3, #717784) !important;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
-  max-width: 100%;
 }
 
-.pt.on span {
-  color: #d5d9e0;
+.pt.on .pt-updated,
+[data-theme="logo"] .pt.on .pt-updated {
+  color: #b7bcc6 !important;
 }
 
-.pt>div {
-  margin-top: 4px;
+/* Visit status chips */
+.pt-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
 }
 
+/* Divider between chips: soft vertical line matching reference */
+.pt-chip-sep {
+  width: 1px;
+  height: 16px;
+  background: #e2e8f0;
+  display: inline-block;
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+.pt.on .pt-chip-sep {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Individual status chip pill */
 .pt .chip {
-  margin: 2px 4px 2px 0;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0 !important;
+  padding: 3px 9px !important;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+  white-space: nowrap;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+/* In Text Show Mode: HIDE the icons */
+.pt .chip .chip-ico-wrap {
+  display: none !important;
+}
+
+/* In Text Show Mode: SHOW B, 3M, 6M and status text */
+.pt .chip b,
+.pt .chip b.chip-v {
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.1px;
+  display: inline !important;
+  color: inherit !important;
+}
+
+.pt .chip .chip-lbl {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: inherit !important;
+}
+
+.pt .chip .chip-txt,
+.pt .chip span.chip-txt {
+  font-weight: 500;
+  display: inline !important;
+  color: inherit !important;
+}
+
+/* Done Icon: Solid green filled circle with white checkmark */
+.pt .chip .chip-ico-done {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #067744;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff !important;
+  flex-shrink: 0;
+}
+.pt .chip .chip-ico-done .ms {
+  font-size: 13px !important;
+  font-weight: 700;
+  color: #ffffff !important;
+  line-height: 1;
+}
+
+/* In Progress Icon: Blue outline clock */
+.pt .chip .chip-ico-clock {
+  font-size: 18px !important;
+  color: #0778fa !important;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Overdue Icon: Amber circle with exclamation mark */
+.pt .chip .chip-ico-warn {
+  font-size: 18px !important;
+  color: #f39802 !important;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Not Started Icon: Slate circle with horizontal minus */
+.pt .chip .chip-ico-not {
+  font-size: 18px !important;
+  color: #637494 !important;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Generic icon styling inside chip */
+.pt .chip .chip-icon,
+.pt .chip .ms {
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   Chip State Colors: Exact Matching User Reference
+   1. Done: Pale mint (#e3faee), dark green text (#067744)
+   2. In Progress: Pale sky blue (#eaf4fe), vibrant blue (#0778fa)
+   3. Overdue: Pale amber (#fef7e8), warm amber/orange (#d97706)
+   4. Not Started: Pale slate (#eef2f7), slate gray (#637494)
+   ========================================================= */
+
+/* Done / Completed */
+.chip.Completed,
+.chip.Done {
+  background: #e3faee !important;
+  color: #067744 !important;
+  border: 1px solid rgba(6, 119, 68, 0.16) !important;
+}
+.chip.Completed .chip-lbl,
+.chip.Done .chip-lbl,
+.chip.Completed b,
+.chip.Done b {
+  color: #067744 !important;
+}
+
+.chip.InProgress,
+.chip.In {
+  background: #eaf4fe !important;
+  color: #0778fa !important;
+  border: 1px solid rgba(7, 120, 250, 0.18) !important;
+}
+.chip.InProgress .chip-lbl,
+.chip.In .chip-lbl,
+.chip.InProgress b,
+.chip.In b {
+  color: #0778fa !important;
+}
+
+/* Overdue / Missed */
+.chip.Overdue,
+.chip.Missed {
+  background: #fef7e8 !important;
+  color: #d97706 !important;
+  border: 1px solid rgba(243, 152, 2, 0.22) !important;
+}
+.chip.Overdue .chip-lbl,
+.chip.Missed .chip-lbl,
+.chip.Overdue b,
+.chip.Missed b {
+  color: #d97706 !important;
+}
+
+/* Not Started */
+.chip.NotStarted,
+.chip.Not {
+  background: #eef2f7 !important;
+  color: #637494 !important;
+  border: 1px solid rgba(99, 116, 148, 0.18) !important;
+}
+.chip.NotStarted .chip-lbl,
+.chip.Not .chip-lbl,
+.chip.NotStarted b,
+.chip.Not b {
+  color: #637494 !important;
+}
+
+/* =========================================================
+   Active patient card (.pt.on): Exact Match with Dark BG Reference (Image 3)
+   Harmonized with dark selector background (#1a2029):
+   1. Done: Deep green (#163328), mint text (#4ade80), bright mint check badge (#34d399)
+   2. In Progress: Deep blue (#16283d), sky blue text & clock (#58b6ef)
+   3. Overdue: Deep amber (#332918), warm gold text & icon (#fbbf24)
+   4. Not Started: Deep slate (#1e2633), soft slate text & icon (#b0c5da)
+   ========================================================= */
+
+.pt.on .pt-chip-sep,
+[data-theme="logo"] .pt.on .pt-chip-sep {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Completed / Done */
+.pt.on .chip.Completed,
+.pt.on .chip.Done,
+[data-theme="logo"] .pt.on .chip.Completed,
+[data-theme="logo"] .pt.on .chip.Done {
+  background: #163328 !important;
+  color: #4ade80 !important;
+  border: 1px solid rgba(52, 211, 153, 0.35) !important;
+}
+.pt.on .chip.Completed .chip-ico-done,
+.pt.on .chip.Done .chip-ico-done,
+[data-theme="logo"] .pt.on .chip.Completed .chip-ico-done,
+[data-theme="logo"] .pt.on .chip.Done .chip-ico-done {
+  background: #34d399 !important;
+  color: #0f2e1e !important;
+}
+.pt.on .chip.Completed .chip-ico-done .ms,
+.pt.on .chip.Done .chip-ico-done .ms,
+[data-theme="logo"] .pt.on .chip.Completed .chip-ico-done .ms,
+[data-theme="logo"] .pt.on .chip.Done .chip-ico-done .ms {
+  color: #0f2e1e !important;
+}
+.pt.on .chip.Completed .chip-lbl,
+.pt.on .chip.Done .chip-lbl,
+.pt.on .chip.Completed b,
+.pt.on .chip.Done b,
+.pt.on .chip.Completed span,
+.pt.on .chip.Done span,
+[data-theme="logo"] .pt.on .chip.Completed .chip-lbl,
+[data-theme="logo"] .pt.on .chip.Done .chip-lbl,
+[data-theme="logo"] .pt.on .chip.Completed b,
+[data-theme="logo"] .pt.on .chip.Done b,
+[data-theme="logo"] .pt.on .chip.Completed span,
+[data-theme="logo"] .pt.on .chip.Done span {
+  color: #4ade80 !important;
+}
+
+.pt.on .chip.InProgress,
+.pt.on .chip.In,
+[data-theme="logo"] .pt.on .chip.InProgress,
+[data-theme="logo"] .pt.on .chip.In {
+  background: #16283d !important;
+  color: #58b6ef !important;
+  border: 1px solid rgba(96, 165, 250, 0.32) !important;
+}
+.pt.on .chip.InProgress .chip-ico-clock,
+.pt.on .chip.In .chip-ico-clock,
+[data-theme="logo"] .pt.on .chip.InProgress .chip-ico-clock,
+[data-theme="logo"] .pt.on .chip.In .chip-ico-clock {
+  color: #58b6ef !important;
+}
+.pt.on .chip.InProgress .chip-lbl,
+.pt.on .chip.In .chip-lbl,
+.pt.on .chip.InProgress b,
+.pt.on .chip.In b,
+.pt.on .chip.InProgress span,
+.pt.on .chip.In span,
+[data-theme="logo"] .pt.on .chip.InProgress .chip-lbl,
+[data-theme="logo"] .pt.on .chip.In .chip-lbl,
+[data-theme="logo"] .pt.on .chip.InProgress b,
+[data-theme="logo"] .pt.on .chip.In b,
+[data-theme="logo"] .pt.on .chip.InProgress span,
+[data-theme="logo"] .pt.on .chip.In span {
+  color: #58b6ef !important;
+}
+
+/* Overdue / Missed */
+.pt.on .chip.Overdue,
+.pt.on .chip.Missed,
+[data-theme="logo"] .pt.on .chip.Overdue,
+[data-theme="logo"] .pt.on .chip.Missed {
+  background: #332918 !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(251, 191, 36, 0.35) !important;
+}
+.pt.on .chip.Overdue .chip-ico-warn,
+.pt.on .chip.Missed .chip-ico-warn,
+[data-theme="logo"] .pt.on .chip.Overdue .chip-ico-warn,
+[data-theme="logo"] .pt.on .chip.Missed .chip-ico-warn {
+  color: #fbbf24 !important;
+}
+.pt.on .chip.Overdue .chip-lbl,
+.pt.on .chip.Missed .chip-lbl,
+.pt.on .chip.Overdue b,
+.pt.on .chip.Missed b,
+.pt.on .chip.Overdue span,
+.pt.on .chip.Missed span,
+[data-theme="logo"] .pt.on .chip.Overdue .chip-lbl,
+[data-theme="logo"] .pt.on .chip.Missed .chip-lbl,
+[data-theme="logo"] .pt.on .chip.Overdue b,
+[data-theme="logo"] .pt.on .chip.Missed b,
+[data-theme="logo"] .pt.on .chip.Overdue span,
+[data-theme="logo"] .pt.on .chip.Missed span {
+  color: #fbbf24 !important;
+}
+
+/* Not Started */
+.pt.on .chip.NotStarted,
+.pt.on .chip.Not,
+[data-theme="logo"] .pt.on .chip.NotStarted,
+[data-theme="logo"] .pt.on .chip.Not {
+  background: #1e2633 !important;
+  color: #b0c5da !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+}
+.pt.on .chip.NotStarted .chip-ico-not,
+.pt.on .chip.Not .chip-ico-not,
+[data-theme="logo"] .pt.on .chip.NotStarted .chip-ico-not,
+[data-theme="logo"] .pt.on .chip.Not .chip-ico-not {
+  color: #b0c5da !important;
+}
+.pt.on .chip.NotStarted .chip-lbl,
+.pt.on .chip.Not .chip-lbl,
+.pt.on .chip.NotStarted b,
+.pt.on .chip.Not b,
+.pt.on .chip.NotStarted span,
+.pt.on .chip.Not span,
+[data-theme="logo"] .pt.on .chip.NotStarted .chip-lbl,
+[data-theme="logo"] .pt.on .chip.Not .chip-lbl,
+[data-theme="logo"] .pt.on .chip.NotStarted b,
+[data-theme="logo"] .pt.on .chip.Not b,
+[data-theme="logo"] .pt.on .chip.NotStarted span,
+[data-theme="logo"] .pt.on .chip.Not span {
+  color: #b0c5da !important;
+}
+
+/* Accessible screen-reader utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 #pane {
   padding: 22px 24px;
+  overflow: visible;
+  position: relative;
+}
+
+.pane-head-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--card);
+  margin: -22px -24px 18px;
+  padding: 18px 24px 14px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.pane-head-sticky.np-sticky-head {
+  padding: 16px 24px 12px;
 }
 
 .pane-title {
@@ -1773,7 +2657,7 @@ button.list-head:hover {
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   font-size: 20px;
   font-weight: 600;
 }
@@ -1786,8 +2670,18 @@ button.list-head:hover {
 
 .pane-title b {
   color: var(--primary);
-  font-weight: 600;
+  font-weight: 700;
   flex-shrink: 0;
+}
+
+.pane-head-sticky .tabs {
+  position: static;
+  margin: 0;
+  padding: 6px;
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
 }
 
 .tabs {
@@ -2665,13 +3559,19 @@ td label.ck {
   height: auto;
   border-radius: 0;
   background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .logo.logo-img img {
   display: block;
-  height: 32px;
+  height: 36px;
   width: auto;
-  max-width: 100%;
+  max-width: 130px;
+  max-height: 44px;
+  object-fit: contain;
+  transition: max-width 0.22s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1), height 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 dialog.app-dialog {
@@ -2884,47 +3784,11 @@ dialog.app-dialog::backdrop {
   }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1024px) {
 
   .app,
   .app.collapsed {
     grid-template-columns: 1fr;
-  }
-
-  .side {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-    padding: 12px;
-  }
-
-  .side-top {
-    padding: 0 6px 0 0;
-  }
-
-  .side-label {
-    display: none;
-  }
-
-  .nav {
-    width: auto;
-    padding: 9px 12px;
-  }
-
-  .app.collapsed .nav {
-    justify-content: flex-start;
-    padding: 9px 12px;
-  }
-
-  .app.collapsed .side-text {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: hidden;
-    clip: auto;
   }
 
   .row.two,
@@ -2978,6 +3842,21 @@ dialog.app-dialog::backdrop {
     padding: 16px;
   }
 
+  .pane-head-sticky {
+    margin: -16px -16px 14px;
+    padding: 14px 16px 10px;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .pane-title {
+    font-size: 17px;
+    margin-bottom: 8px;
+  }
+
+  .pane-title b {
+    font-size: 17px;
+  }
+
   .facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3025,7 +3904,7 @@ dialog.app-dialog::backdrop {
 }
 
 /* ---------- Phones and tablets ---------- */
-/* Up to 1000px (tablets too): the sidebar is a drawer opened from the menu button */
+/* Up to 1024px (tablets too): the sidebar is a drawer opened from the menu button */
 .menu-btn {
   display: none;
   width: 44px;
@@ -3042,7 +3921,12 @@ dialog.app-dialog::backdrop {
   margin: 0;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1024px) {
+  body.drawer-open {
+    overflow: hidden !important;
+    touch-action: none;
+  }
+
   .menu-btn {
     display: grid;
     place-items: center;
@@ -3054,16 +3938,34 @@ dialog.app-dialog::backdrop {
     left: 0;
     bottom: 0;
     height: 100vh;
-    width: min(300px, 84vw);
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    width: min(280px, 82vw);
     border-radius: 0 var(--radius) var(--radius) 0;
-    padding: 16px 12px;
+    padding: clamp(4px, 1.1vh, 16px) clamp(6px, 1.4vw, 12px) clamp(3px, 0.8vh, 12px);
+    padding: clamp(4px, 1.1dvh, 16px) clamp(6px, 1.4vw, 12px) clamp(3px, 0.8dvh, 12px);
     transform: translateX(-105%);
     transition: transform 0.25s ease;
     z-index: 300;
-    overflow-y: auto;
+    overflow: hidden !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 4px;
+    justify-content: space-between;
+    gap: clamp(1px, 0.35vh, 4px);
+    gap: clamp(1px, 0.35dvh, 4px);
+    box-sizing: border-box;
+    touch-action: none;
+  }
+
+  .side::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   .side.open {
@@ -3071,29 +3973,172 @@ dialog.app-dialog::backdrop {
     box-shadow: 0 8px 32px rgba(27, 29, 34, 0.25);
   }
 
+  /* Top brand header & collapse toggle */
   .side-top {
     width: 100%;
-    padding: 0 4px 12px;
+    padding: 0 2px clamp(2px, 0.7vh, 10px);
+    padding: 0 2px clamp(2px, 0.7dvh, 10px);
+    margin-bottom: 0;
+    flex-shrink: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
     justify-content: space-between;
   }
 
+  .side-top .logo.logo-img img {
+    max-height: clamp(18px, 3.4vh, 34px);
+    max-height: clamp(18px, 3.4dvh, 34px);
+    max-width: clamp(80px, 12vw, 125px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .side-top,
+  .app.collapsed .side .side-top,
   .app.collapsed .side-top {
-    flex-direction: row;
-  }
-
-  .side .side-label {
-    display: block;
-    padding: 14px 12px 6px;
-  }
-
-  .side .nav {
-    display: flex;
     width: 100%;
+    padding: 0 2px clamp(2px, 0.7vh, 10px);
+    padding: 0 2px clamp(2px, 0.7dvh, 10px);
+    margin-bottom: 0;
+    flex-shrink: 0;
+    min-height: 0;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
   }
 
   .side-toggle {
-    width: 44px;
-    height: 44px;
+    width: clamp(24px, 3.8vh, 36px);
+    width: clamp(24px, 3.8dvh, 36px);
+    height: clamp(24px, 3.8vh, 36px);
+    height: clamp(24px, 3.8dvh, 36px);
+    border-radius: clamp(6px, 1vh, 8px);
+    border-radius: clamp(6px, 1dvh, 8px);
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  .side-toggle .ms {
+    font-size: clamp(15px, 2.4vh, 22px);
+    font-size: clamp(15px, 2.4dvh, 22px);
+  }
+
+  /* Section group labels: scale dynamically, always visible in drawer */
+  .side .side-label,
+  .app.collapsed .side .side-label,
+  .side.open .side-label {
+    display: block !important;
+    padding: clamp(1px, 0.35vh, 7px) clamp(4px, 1vw, 10px) clamp(0.5px, 0.2vh, 4px);
+    padding: clamp(1px, 0.35dvh, 7px) clamp(4px, 1vw, 10px) clamp(0.5px, 0.2dvh, 4px);
+    font-size: clamp(8px, 1.2vh, 11px);
+    font-size: clamp(8px, 1.2dvh, 11px);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    margin: 0;
+    line-height: 1.1;
+    flex-shrink: 1;
+    min-height: 0;
+  }
+
+  /* Navigation links: variable per space available from top to bottom, full width with icons and text */
+  .side .nav,
+  .app.collapsed .side .nav,
+  .side.open .nav {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: clamp(24px, 4.4vh, 44px);
+    max-height: clamp(24px, 4.4dvh, 44px);
+    padding: clamp(1.5px, 0.65vh, 10px) clamp(6px, 1.2vw, 12px);
+    padding: clamp(1.5px, 0.65dvh, 10px) clamp(6px, 1.2vw, 12px);
+    font-size: clamp(10.5px, 1.65vh, 15px);
+    font-size: clamp(10.5px, 1.65dvh, 15px);
+    border-radius: clamp(6px, 1vh, 10px);
+    border-radius: clamp(6px, 1dvh, 10px);
+    gap: clamp(6px, 1.1vw, 12px);
+    margin: 0;
+    line-height: 1.15;
+    box-sizing: border-box;
+  }
+
+  /* Nav item text labels: always clearly visible, never clipped in drawer */
+  .side .side-text,
+  .app.collapsed .side .side-text,
+  .side.open .side-text {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    clip: auto !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: inline-block !important;
+    font-size: inherit !important;
+    font-weight: 500 !important;
+    color: inherit !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Suppress programmatic focus ring on touch/drawer open unless keyboard navigated */
+  .side .nav:focus:not(:focus-visible) {
+    outline: none !important;
+  }
+
+  .side .nav .ms {
+    font-size: clamp(14px, 2.3vh, 22px);
+    font-size: clamp(14px, 2.3dvh, 22px);
+    width: clamp(14px, 2.3vh, 22px);
+    width: clamp(14px, 2.3dvh, 22px);
+    height: clamp(14px, 2.3vh, 22px);
+    height: clamp(14px, 2.3dvh, 22px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Sponsor card footer: sticks cleanly to bottom and scales variably */
+  .side .side-sponsor,
+  .app.collapsed .side .side-sponsor {
+    margin-top: auto;
+    padding: clamp(2px, 0.8vh, 12px) 4px clamp(2px, 0.5vh, 8px);
+    padding: clamp(2px, 0.8dvh, 12px) 4px clamp(2px, 0.5dvh, 8px);
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .side .sponsor-card,
+  .app.collapsed .side .sponsor-card {
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .side .sponsor-img,
+  .app.collapsed .side .sponsor-img {
+    display: block !important;
+    max-width: 96px;
+    max-height: clamp(26px, 6vh, 56px);
+    max-height: clamp(26px, 6dvh, 56px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
   }
 
   .scrim {
@@ -3105,6 +4150,90 @@ dialog.app-dialog::backdrop {
 
   .scrim[hidden] {
     display: none;
+  }
+}
+
+/* Height-adaptive adjustments for short screens or when zoomed in on mobile/tablet */
+@media (max-width: 1024px) and (max-height: 540px) {
+  .side {
+    gap: 0.5px;
+    padding: 3px 6px;
+  }
+
+  .side .side-label {
+    padding: 1px 4px 0.5px;
+    font-size: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  .side .nav {
+    padding: 1px 5px;
+    font-size: 10.5px;
+    gap: 6px;
+    max-height: 25px;
+  }
+
+  .side .nav .ms {
+    font-size: 13.5px;
+    width: 13.5px;
+    height: 13.5px;
+  }
+
+  .side-top {
+    padding: 0 2px 2px;
+  }
+
+  .side-top .logo.logo-img img {
+    max-height: 18px;
+  }
+
+  .side-toggle {
+    width: 24px;
+    height: 24px;
+  }
+
+  .side-toggle .ms {
+    font-size: 15px;
+  }
+
+  .side .side-sponsor {
+    padding: 2px 2px 1px;
+  }
+
+  .side .sponsor-img {
+    max-height: 13px;
+  }
+}
+
+@media (max-width: 1024px) and (max-height: 380px) {
+  .side {
+    gap: 0;
+    padding: 1px 4px;
+  }
+
+  .side .side-label {
+    display: none; /* Hide category headers in extreme landscape so nav links never scroll */
+  }
+
+  .side .nav {
+    padding: 0.5px 4px;
+    font-size: 9.5px;
+    gap: 4px;
+    max-height: 20px;
+  }
+
+  .side .nav .ms {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
+  }
+
+  .side-top .logo.logo-img img {
+    max-height: 15px;
+  }
+
+  .side .sponsor-img {
+    max-height: 11px;
   }
 }
 
@@ -7395,6 +8524,73 @@ dialog.admin-modal::backdrop {
   font-style: italic;
 }
 
+/* Assigned Medical Centre Card & Cell Styles */
+.assigned-site-summary-card,
+.assigned-site-card-active {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--primary);
+  border-radius: 12px;
+  margin-top: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.assigned-site-card-active .site-badge {
+  font-size: 13px;
+  padding: 4px 8px;
+  font-weight: 700;
+  border-radius: 6px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.assigned-site-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.site-cb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+}
+
+.site-cb-row .site-badge {
+  font-size: 11px;
+  padding: 3px 6px;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+  border-radius: 6px;
+}
+
+.site-cb-row .site-cb-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-cb-row .site-cb-zone {
+  font-size: 11px;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 
 /* Search boxes: the field sits inside the grey pill, with no box or focus ring of its own */
 label.search input[type="search"],
@@ -7539,7 +8735,6 @@ label.search input[type="search"]:focus-visible {
     font-size: 13px;
     padding: 6px 10px;
   }
-}
 
 @media (max-width: 640px) {
   .dash-tabs {
@@ -7592,4 +8787,144 @@ label.search input[type="search"]:focus-visible {
     font-size: 12px;
     padding: 5px 6px;
   }
+}
+
+/* Compact list (tablet / mobile <= 1024px): visit chips shift to icon + short label (B, 3M, 6M),
+   matching the circular sync badge. No stroke on any state. */
+@media (max-width: 1024px) {
+  .pt .pt-chips .chip.chip,
+  .pt.on .pt-chips .chip.chip,
+  [data-theme="logo"] .pt.on .pt-chips .chip.chip {
+    border: none !important;
+    padding: 2px 8px 2px 5px !important;
+    height: 24px;
+    gap: 3px !important;
+  }
+
+  .pt .pt-chips .chip.chip {
+    align-items: center !important;
+    line-height: 1 !important;
+  }
+
+  .pt .pt-chips .chip.chip .chip-ico-wrap,
+  .pt .pt-chips .chip.chip .chip-lbl,
+  .pt .pt-chips .chip.chip b.chip-v {
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+  }
+
+  .pt .pt-chips .chip.chip .ms {
+    line-height: 1 !important;
+    vertical-align: middle;
+  }
+
+  .pt .pt-chips .chip.chip .chip-ico-done {
+    width: 14px;
+    height: 14px;
+  }
+
+  .pt .pt-chips .chip.chip .chip-ico-done .ms,
+  .pt .pt-chips .chip.chip .chip-ico-clock,
+  .pt .pt-chips .chip.chip .chip-ico-warn,
+  .pt .pt-chips .chip.chip .chip-ico-not,
+  .pt .pt-chips .chip.chip .ms {
+    font-size: 14px !important;
+  }
+
+  .pt .pt-chips .chip.chip .chip-txt,
+  .pt .pt-chips .chip.chip .chip-colon {
+    display: none !important;
+  }
+
+  .pt .pt-chips .chip.chip .chip-v,
+  .pt .pt-chips .chip.chip b.chip-v {
+    font-size: 10.5px !important;
+    font-weight: 700;
+    position: relative;
+    top: 1px;
+  }
+
+  .pt-chip-sep {
+    height: 14px;
+  }
+}
+
+/* Visit chips (B, 3M, 6M): no stroke on any state or screen size */
+.pt .pt-chips .chip.chip,
+.pt.on .pt-chips .chip.chip,
+[data-theme="logo"] .pt.on .pt-chips .chip.chip {
+  border: 0 !important;
+}
+
+/* Sync badge: text only on wide screens, icon only on tablet/mobile (never both) */
+@media (min-width: 1025px) {
+  .pt-sync .pt-sync-icon,
+  .pt-sync .ms {
+    display: none !important;
+  }
+
+  .pt-sync {
+    padding: 3px 9px !important;
+  }
+}
+
+/* Completed visit chips: reference colours (light: #d5f2e1 / #164b30; selected card: #23794d / #fff) */
+.pt .pt-chips .chip.Completed,
+.pt .pt-chips .chip.Done {
+  background: #d5f2e1 !important;
+  color: #164b30 !important;
+}
+.pt .pt-chips .chip.Completed .chip-lbl,
+.pt .pt-chips .chip.Completed b,
+.pt .pt-chips .chip.Completed span,
+.pt .pt-chips .chip.Done .chip-lbl,
+.pt .pt-chips .chip.Done b,
+.pt .pt-chips .chip.Done span {
+  color: #164b30 !important;
+}
+.pt.on .pt-chips .chip.Completed,
+.pt.on .pt-chips .chip.Done,
+[data-theme="logo"] .pt.on .pt-chips .chip.Completed,
+[data-theme="logo"] .pt.on .pt-chips .chip.Done {
+  background: #23794d !important;
+  color: #ffffff !important;
+}
+.pt.on .pt-chips .chip.Completed .chip-lbl,
+.pt.on .pt-chips .chip.Completed b,
+.pt.on .pt-chips .chip.Completed span,
+.pt.on .pt-chips .chip.Done .chip-lbl,
+.pt.on .pt-chips .chip.Done b,
+.pt.on .pt-chips .chip.Done span,
+[data-theme="logo"] .pt.on .pt-chips .chip.Completed .chip-lbl,
+[data-theme="logo"] .pt.on .pt-chips .chip.Completed b,
+[data-theme="logo"] .pt.on .pt-chips .chip.Completed span,
+[data-theme="logo"] .pt.on .pt-chips .chip.Done .chip-lbl,
+[data-theme="logo"] .pt.on .pt-chips .chip.Done b,
+[data-theme="logo"] .pt.on .pt-chips .chip.Done span {
+  color: #ffffff !important;
+}
+
+/* Sync badge (synced): neutral so colour stays on the visit chips; amber remains for not synced */
+.pt .pt-sync.synced {
+  background: var(--soft) !important;
+  color: var(--ink-2) !important;
+}
+.pt .pt-sync.synced .pt-sync-icon,
+.pt .pt-sync.synced .pt-sync-text,
+.pt .pt-sync.synced span:not(.ms) {
+  color: var(--ink-2) !important;
+}
+.pt.on .pt-sync.synced,
+[data-theme="logo"] .pt.on .pt-sync.synced {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #e5e7eb !important;
+}
+.pt.on .pt-sync.synced .pt-sync-icon,
+.pt.on .pt-sync.synced .pt-sync-text,
+.pt.on .pt-sync.synced span:not(.ms),
+[data-theme="logo"] .pt.on .pt-sync.synced .pt-sync-icon,
+[data-theme="logo"] .pt.on .pt-sync.synced .pt-sync-text,
+[data-theme="logo"] .pt.on .pt-sync.synced span:not(.ms) {
+  color: #e5e7eb !important;
 }

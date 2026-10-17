@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>STAND-HF Sign in</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1a5fb4">
+  <meta name="theme-color" content="#C90085">
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
@@ -14,13 +14,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261016i">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
 <script>
+  try {
+    if (localStorage.getItem('standhf_theme') !== 'blue') {
+      document.documentElement.setAttribute('data-theme', 'logo');
+    }
+  } catch(e) {}
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
 </script>
 </head>
 <body class="auth-page">
+<button type="button" class="theme-toggle-btn" id="loginThemeToggle" style="position:fixed;top:16px;right:16px;z-index:999" title="Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue">
+  <span class="theme-dot"></span>
+  <span class="theme-btn-label" id="loginThemeBtnText">Blue Theme</span>
+</button>
 <main class="auth-wrap">
   <div class="auth-card">
     <section class="auth-brand" aria-label="STAND-HF">
@@ -119,7 +128,7 @@
   </div>
 </dialog>
 
-<script src="../assets/access.js?v=20261015a"></script>
+<script src="../assets/access.js?v=20261018l"></script>
 <script src="../assets/validator.js?v=20261016a"></script>
 <script>
 const APP='../records/', DASH='../dashboard/', ADMIN='../admin/', AUTH_KEY='standhf_auth', USER_KEY='standhf_user', ROLE_KEY='standhf_role';
@@ -292,6 +301,43 @@ document.addEventListener('focusin',function(e){
 document.addEventListener('focusout',function(){
   setTimeout(function(){if(!document.activeElement||document.activeElement.tagName!=='INPUT'){document.querySelector('.auth-page').classList.remove('kbd');document.querySelector('.auth-page').scrollTop=0}},300);
 });
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('loginThemeToggle');
+  if(!btn) return;
+  var isBlue = false;
+  try { isBlue = localStorage.getItem('standhf_theme') === 'blue'; } catch(e){}
+  var isLogo = !isBlue;
+  if(isLogo){
+    document.documentElement.setAttribute('data-theme', 'logo');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  var txt = document.getElementById('loginThemeBtnText');
+  if(txt) txt.textContent = isLogo ? 'Blue Theme' : 'Logo Theme';
+  btn.title = isLogo ? 'Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue' : 'Using Clinical Blue Theme · Click to switch to STAND-HF Logo Theme (Default)';
+
+  btn.addEventListener('click', function(){
+    document.documentElement.classList.add('theme-transition');
+    var nowLogo = document.documentElement.getAttribute('data-theme') === 'logo';
+    var nextLogo = !nowLogo;
+    if(nextLogo){
+      document.documentElement.setAttribute('data-theme', 'logo');
+      try { localStorage.setItem('standhf_theme', 'logo'); } catch(e){}
+      if(txt) txt.textContent = 'Blue Theme';
+      btn.title = 'Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue';
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      try { localStorage.setItem('standhf_theme', 'blue'); } catch(e){}
+      if(txt) txt.textContent = 'Logo Theme';
+      btn.title = 'Using Clinical Blue Theme · Click to switch to STAND-HF Logo Theme (Default)';
+    }
+    setTimeout(function(){
+      document.documentElement.classList.remove('theme-transition');
+    }, 350);
+  });
+})();
 </script>
 <script src="../assets/whatsnew.js?v=20261015a"></script>
 </body>

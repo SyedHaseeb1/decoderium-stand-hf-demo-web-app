@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <title>STAND-HF E-CRF</title>
   <script>
+    try {
+      if (localStorage.getItem('standhf_theme') !== 'blue') {
+        document.documentElement.setAttribute('data-theme', 'logo');
+      }
+    } catch(e) {}
     // Session gate: send anyone without a sign-in back to the login page.
     try{
       if(sessionStorage.getItem('standhf_auth')!=='1')location.replace('../login/');
@@ -11,7 +16,7 @@
     }catch(e){location.replace('../login/')}
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1a5fb4">
+  <meta name="theme-color" content="#C90085">
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
@@ -21,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261017a">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
   <style>
     .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
     .tint{background:var(--soft);border-radius:14px;padding:16px}
@@ -159,14 +164,14 @@
     <dialog class="viewer" id="viewer" aria-labelledby="vTitle"><div class="viewer-head"><b id="vTitle"></b><button type="button" class="icon-btn" id="vClose" aria-label="Close"><i class="ms">close</i></button></div><div class="viewer-body" id="vBody"></div></dialog>
   </div>
 </div>
-<script src="../assets/access.js?v=20261016a"></script>
+<script src="../assets/access.js?v=20261018l"></script>
 <script src="../assets/validator.js?v=20261016a"></script>
 <script src="../assets/notifications-data.js?v=20261016a"></script>
 <script src="../assets/lookups.js?v=20261016a"></script>
 <script src="../assets/file-card.js?v=20261016a"></script>
 <script src="../assets/dialog.js?v=20261016a"></script>
-<script src="../assets/header.js?v=20261017b" data-root="../"></script>
-<script src="../assets/nav.js?v=20261016d"></script>
+<script src="../assets/header.js?v=20261018l" data-root="../"></script>
+<script src="../assets/nav.js?v=20261018h"></script>
 <script>
 const KEY='standhf_ecrf_v1';
 const LIST_COLLAPSED_KEY='standhf_pt_list_collapsed';
@@ -179,7 +184,7 @@ function getInitialListOpen(){
     const saved=localStorage.getItem(LIST_COLLAPSED_KEY);
     if(saved!==null) return saved!=='1';
   }catch(e){}
-  return !window.matchMedia('(max-width: 1000px)').matches;
+  return !isTabletOrMobile();
 }
 let DB={pts:[],off:false},sel=null,tab='info',newMode=false,listOpen=getInitialListOpen(),ptSearchQuery='';
 try{const s=localStorage.getItem(KEY);if(s)DB=JSON.parse(s)}catch(e){}
@@ -465,8 +470,43 @@ function sortPts(arr){
   if(listSort==='Name (A–Z)')return a.sort((x,y)=>(x.name||'').localeCompare(y.name||''));
   if(listSort==='Study ID')return a.sort((x,y)=>x.id.localeCompare(y.id));
   return a.sort((x,y)=>(y.created||0)-(x.created||0))}
+
+const V_SHORT={'b':'B','m3':'3M','m6':'6M'};
+function ptVisitChip(p,k,n){
+  const s=vstat(p,k);
+  const shortName=V_SHORT[k]||n.replace(' Months','M');
+  let label='Not Started';
+  let iconHtml='<i class="ms chip-ico-not">do_not_disturb_on</i>';
+  let cls='NotStarted Not';
+
+  if(s==='Completed'){
+    label='Completed';
+    iconHtml='<span class="chip-ico-done"><i class="ms">check</i></span>';
+    cls='Done Completed';
+  } else if(s==='Due'){
+    /* Due is inside the visit window: amber (yellow) like Overdue; becomes Overdue once past the window */
+    label='Due';
+    iconHtml='<i class="ms chip-ico-warn">error</i>';
+    cls='Due Overdue';
+  } else if(s==='In Progress'){
+    label='In Progress';
+    iconHtml='<i class="ms chip-ico-clock">schedule</i>';
+    cls='InProgress In';
+  } else if(s==='Overdue'||s==='Missed'){
+    label=s==='Missed'?'Missed':'Overdue';
+    iconHtml='<i class="ms chip-ico-warn">error</i>';
+    cls='Overdue Missed';
+  } else {
+    label='Not Started';
+    iconHtml='<i class="ms chip-ico-not">do_not_disturb_on</i>';
+    cls='NotStarted Not';
+  }
+
+  return `<span class="chip ${cls}" title="${n}: ${s}"><span class="chip-ico-wrap">${iconHtml}</span><span class="chip-lbl"><b class="chip-v">${shortName}<span class="chip-colon">:</span></b><span class="chip-txt">${label}</span></span><span class="sr-only"> ${shortName} ${s}</span></span>`;
+}
+
 function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).length,od=k=>P.filter(p=>vstat(p,k)==='Overdue'||vstat(p,k)==='Missed').length;
- const mean=k=>{const a=P.filter(p=>p.v[k].msts!==''&&p.v[k].msts!=null).map(p=>+p.v[k].msts);return a.length?(a.reduce((x,y)=>x+y)/a.length).toFixed(1):'–'};
+ const mean=k=>{const a=P.filter(p=>p.v[k].msts!==''&&p.v[k].msts!=null).map(p=>+p.v[k].msts);return a.length?Math.round(a.reduce((x,y)=>x+y)/a.length):'–'};
  const full=P.filter(p=>{const d=VK.filter(([k])=>p.v[k].done).pop();return d&&act(p.v[d[0]])===4}).length;
  const pend=P.filter(p=>p.sync==='Pending').length;
  /* Sync capsule: yellow only while records wait to sync (offline saves); reconnecting shows its own toast */
@@ -484,7 +524,14 @@ function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).len
     const keepScroll=(document.querySelector('#list .pl-scroll')||{scrollTop:0}).scrollTop;
   const searchBarHtml=P.length?`<div class="pl-search-wrap"><label class="search"><i class="ms">search</i><input type="search" id="ptSearchInput" placeholder="Search patients by name, ID or phone" value="${esc(ptSearchQuery)}" autocomplete="off" maxlength="70"></label></div>`:'';
   const noMatchHtml=`<div id="plNoMatch" class="empty" hidden style="padding:24px 12px"><i class="ms">search_off</i>No matching patients.</div>`;
-  $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patients</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+(P.length?`<button type="button" class="icon-btn list-sort" data-a="sortMenu" aria-label="Sort patients" title="Sort: ${esc(listSort)}"><i class="ms">sort</i></button><div class="sort-menu" hidden>${SORT_LABELS.map(l=>`<button type="button" class="sort-opt${l===listSort?' on':''}" data-sortopt="${esc(l)}">${esc(l)}</button>`).join('')}</div>`:'')+searchBarHtml+(P.length?'':'<div class="empty"><i class="ms">groups</i>No patients yet. Create one or load the demo data.</div>')+'<div class="pl-scroll">'+noMatchHtml+sortPts(P).map(p=>`<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><b>${p.id}</b><span>${esc(p.name||'Name missing')}</span><span>${esc(p.inv||'–')}</span><span class="mut">${p.sync}</span><span class="pt-updated">Updated ${updatedTxt(p)}</span><div>${VK.map(([k,n])=>{const s=vstat(p,k);return`<span class="chip ${s.split(' ')[0]}">${n.replace(' Months','M')}: ${s}</span>`}).join('')}</div></div>`).join('')+'</div>';
+  const sortBtnHtml=P.length?`<button type="button" class="icon-btn list-sort" data-a="sortMenu" aria-label="Sort patients" title="Sort: ${esc(listSort)}"><i class="ms">sort</i></button><div class="sort-menu" hidden>${SORT_LABELS.map(l=>`<button type="button" class="sort-opt${l===listSort?' on':''}" data-sortopt="${esc(l)}">${esc(l)}</button>`).join('')}</div>`:'';
+  $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patients</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+sortBtnHtml+searchBarHtml+(P.length?'':'<div class="empty"><i class="ms">groups</i>No patients yet. Create one or load the demo data.</div>')+'<div class="pl-scroll">'+noMatchHtml+sortPts(P).map(p=>{
+    const rawSync=p.sync||(DB.off?'Pending':'Synced');
+    const isPending=rawSync==='Pending'||rawSync==='Not Synced';
+    const syncIcon=isPending?'cloud_off':'cloud_done';
+    const syncTxt=isPending?'Not Synced':'Synced';
+    return `<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><div class="pt-head"><b class="pt-id">${p.id}</b><span class="pt-sync ${isPending?'pending':'synced'}" title="Sync status: ${syncTxt}"><i class="ms pt-sync-icon">${syncIcon}</i><span class="pt-sync-text">${syncTxt}</span></span></div><span class="pt-name">${esc(p.name||'Name missing')}</span>${p.inv&&p.inv!=='–'?`<span class="pt-inv">${esc(p.inv)}</span>`:''}<span class="pt-updated">Updated ${updatedTxt(p)}</span><span class="sr-only">${esc(p.contact||'')} ${esc(p.inv||'')}${p.id||''}</span><div class="pt-chips">${VK.map(([k,n])=>ptVisitChip(p,k,n)).join('<span class="pt-chip-sep"></span>')}</div></div>`;
+  }).join('')+'</div>';
   const scrollBox=document.querySelector('#list .pl-scroll');if(scrollBox)scrollBox.scrollTop=keepScroll;keepSelectedVisible();
   if(ptSearchQuery)filterPatientList(ptSearchQuery);
   $('list').classList.toggle('collapsed',!listOpen);const p=cur();if(p){const st=$('vs');if(st&&tab in p.v)st.textContent=vstat(p,tab)}}
@@ -539,7 +586,7 @@ function pane(){saveView();
  if(tabLocked(p,tab))tab='b';
  const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info" title="Participant Info"><span class="tab-full">Participant info</span><span class="tab-short">Info</span></button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);const shortN=k==='b'?'Baseline':k==='m3'?'3M':'6M';return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':`title="${n}"`}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}<span class="tab-full">${n}</span><span class="tab-short">${shortN}</span></button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum" title="Summary & Audit"><span class="tab-full">Summary & audit</span><span class="tab-short">Audit</span></button></div>`;
  const readOnlyNotice=!editable?`<div class="lock-banner" style="background:var(--primary-soft);color:var(--primary);border-color:rgba(26,95,180,0.2);margin-bottom:14px"><i class="ms">visibility</i><span><b>Read-Only Mode:</b> You are viewing this record with oversight permissions. Clinical data entry and edits are restricted to authorized Site Investigators.</span></div>`:'';
-  let h=`<div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs+readOnlyNotice;
+  let h=`<div class="pane-head-sticky"><div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs+`</div>`+readOnlyNotice;
   if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${editable&&(!p.name||!p.contact)?banner('Patient name and contact number are required. Add them below.'):''}${secHeader('info-pt','Participant')}<div class="g tint" ${secBodyAttrs('info-pt')}><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel','inputmode="numeric" placeholder="e.g. 03001234567"')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
   else if(tab==='sum')h+=summary(p);
  else{const k=tab,v=p.v[k],name=VK.find(a=>a[0]===k)[1],b=p.v.b.date||p.consent;
@@ -622,7 +669,7 @@ document.addEventListener('click',e=>{const o=e.target.closest&&e.target.closest
  if(!(e.target.closest&&e.target.closest('.list-sort,.sort-menu')))document.querySelectorAll('#list .sort-menu').forEach(m=>m.hidden=true)});
 document.addEventListener('click',async e=>{const t=e.target.closest('[data-id],[data-t],[data-a],[data-jump]');if(!t)return;
  if(t.dataset.jump){jumpTo(t.dataset.jump);return}
- if(t.dataset.id){sel=t.dataset.id;newMode=false;if(isTabletOrMobile())setListOpen(false,false);pane();document.querySelectorAll('#list .pt').forEach(el=>el.classList.toggle('on',el.dataset.id===sel));keepSelectedVisible()}
+ if(t.dataset.id){sel=t.dataset.id;newMode=false;pane();document.querySelectorAll('#list .pt').forEach(el=>el.classList.toggle('on',el.dataset.id===sel));keepSelectedVisible()}
  else if(t.dataset.t){tab=t.dataset.t;newMode=false;pane();dash()}
  else if(t.dataset.a==='next'){const p=cur(),k=t.dataset.k,i=ORDER.indexOf(k);if(!p)return;
    if(!canEditPatient(p)){tab=ORDER[i+1];pane();dash();$('pane').scrollIntoView({behavior:'smooth',block:'start'});return}
@@ -717,11 +764,13 @@ document.addEventListener('click',async e=>{const t=e.target.closest('[data-id],
 
 $('bClr').onclick=async()=>{if(!can('clear_all')){toast('Permission denied.');return}if(await appDialog.confirm({tone:'danger',icon:'delete_sweep',title:'Delete all participants?',message:'Every patient in this browser will be removed.',confirmText:'Delete all'})){DB.pts=[];sel=null;persist();pane();dash()}};
 $('bCsv').onclick=()=>{
+  if(!can('export_data')){toast('Permission denied: Site Investigators do not have data export permissions.');return}
+  const exportPts = DB.pts.filter(inScope);
   if(session().role==='central'&&typeof logCentralAction==='function'){
-    logCentralAction('Export CSV', `Exported study records dataset (${DB.pts.length} patients across all centres)`, 'Study Registry');
+    logCentralAction('Export CSV', `Exported study records dataset (${exportPts.length} patients across permitted centres)`, 'Study Registry');
   }
   const H=['study_id','site','investigator','consent','age','sex','etiology'];VK.forEach(([k])=>['status','date','wt','hr','sbp','dbp','nyha','msts','lvef','pillars','hf_hosp','all_hosp','death'].forEach(f=>H.push(k+'_'+f)));
- const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"',rows=DB.pts.map(p=>{const a=[p.id,p.site,p.inv,p.consent,p.age,p.sex,p.etio];VK.forEach(([k])=>{const v=p.v[k];a.push(vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act(v),G(v,'ev.hf')?1:0,G(v,'ev.all')?1:0,G(v,'ev.death')?1:0)});return a.map(q).join(',')});
+ const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"',rows=exportPts.map(p=>{const a=[p.id,p.site,p.inv,p.consent,p.age,p.sex,p.etio];VK.forEach(([k])=>{const v=p.v[k];a.push(vstat(p,k),v.date,v.wt,v.hr,v.sbp,v.dbp,v.nyha,v.msts,v.lvef,act(v),G(v,'ev.hf')?1:0,G(v,'ev.all')?1:0,G(v,'ev.death')?1:0)});return a.map(q).join(',')});
  const b=new Blob([[H.join(','),...rows].join('\n')],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='stand_hf_export.csv';a.click()};
 
 /* Demo data: 44 patients split between the investigators who work at each site, with every required field and one prescription per visit */
@@ -843,7 +892,13 @@ const INVESTIGATORS=['Emily Carter','John Miller','Michael Johnson','Sarah Thomp
 function signedIn(){try{return sessionStorage.getItem('standhf_user')||''}catch(e){return ''}}
 const ROLE_LABEL={superadmin:'Super Admin',investigator:'Site Investigator',central:'Central'};
 function signedRole(){try{return sessionStorage.getItem('standhf_role')||''}catch(e){return ''}}
-function names(){return [...new Set([...INVESTIGATORS,signedIn(),...DB.pts.map(p=>p.inv)].filter(Boolean))].sort((a,b)=>a.localeCompare(b))}
+function names(){
+  if(signedRole()==='investigator'){
+    const me = signedIn();
+    return me ? [me] : [];
+  }
+  return [...new Set([...INVESTIGATORS,signedIn(),...DB.pts.map(p=>p.inv)].filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+}
 /* Site choices come from the site list, limited to the sites this user is assigned to */
 function sites(){return [...new Set(mySites())].sort()}
 const OPTS={inv:names,site:sites};
@@ -1017,9 +1072,16 @@ function updatePageSubtitle(){
   const el=$('pageSubtitle');
   if(!el)return;
   const r=signedRole();
-  if(r==='superadmin') el.textContent='Super Admin Executive Oversight (Read-Only) · All Participating Centres';
+  if(r==='superadmin') el.textContent='Super Admin Executive Governance · All Participating Centres';
   else if(r==='central') el.textContent='Central Monitoring & Governance (Read-Only) · All Participating Centres';
-  else el.textContent='Patient Electronic Case Report Forms (e-CRF) · ' + (mySites().join(', ') || 'Assigned Sites');
+  else {
+    const u = currentUser();
+    const stCode = (u && u.sites && u.sites[0]) || mySites()[0] || '';
+    const st = (typeof siteByCode === 'function') ? siteByCode(stCode) : null;
+    const siteName = st ? st.name : (stCode || 'Assigned Centre');
+    const zoneName = st ? (st.zone || 'Central') : (u && u.zones && u.zones[0]) || 'Central';
+    el.textContent = `Patient Electronic Case Report Forms (e-CRF) · [${stCode}] ${siteName} (${zoneName} Zone)`;
+  }
 }
 
 /* New participant: every field checked before the record is created */
@@ -1091,7 +1153,9 @@ function showNewErrors(errs){
 function paneNew(){
   if(!canAddPatient()){
     newMode=false;
-    toast('Access Denied: Only authorized Site Investigators can enroll new patients.');
+    const r = session().role;
+    if(r==='central') toast('Central Directorate has read-only oversight. Patient enrollment is conducted by Site Investigators.');
+    else toast('Access Denied: Only authorized Site Investigators can enroll new patients.');
     pane();dash();
     return;
   }
@@ -1103,20 +1167,26 @@ function paneNew(){
   const sub=$('pageSubtitle');
   if(sub) sub.textContent='Register and enroll a newly consented heart failure patient into the STAND-HF registry.';
 
+  const myAssigned = (typeof userAssignedSites==='function') ? userAssignedSites(currentUser()) : mySites();
+  const defaultSite = myAssigned.length === 1 ? myAssigned[0] : '';
+  const defaultInv = signedIn();
+
   $('pane').innerHTML=`<form id="fNew" class="np" novalidate>
-    <div class="np-header-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
-      <button type="button" id="btnBackToRecords" class="btn" style="display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:7px 14px;border:1px solid var(--border);background:var(--card);border-radius:6px;cursor:pointer">
-        <i class="ms" style="font-size:18px">arrow_back</i> Back to Participant Records
-      </button>
-      <span class="chip-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--primary-soft);color:var(--primary);font-weight:600;border-radius:12px;font-size:12px">
-        <i class="ms" style="font-size:16px">person_add</i> Intake &amp; Enrollment Mode
-      </span>
+    <div class="pane-head-sticky np-sticky-head">
+      <div class="np-header-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <button type="button" id="btnBackToRecords" class="btn" style="display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:7px 14px;border:1px solid var(--border);background:var(--card);border-radius:6px;cursor:pointer">
+          <i class="ms" style="font-size:18px">arrow_back</i> Back to Participant Records
+        </button>
+        <span class="chip-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--primary-soft);color:var(--primary);font-weight:600;border-radius:12px;font-size:12px">
+          <i class="ms" style="font-size:16px">person_add</i> Intake &amp; Enrollment Mode
+        </span>
+      </div>
+      <div class="pane-title" style="margin:0"><span>New Participant Registration</span></div>
     </div>
-    <div class="pane-title"><span>New Participant Registration</span></div>
     <p class="np-lead">The Study ID is generated from the site code. Patient name and contact number are required.</p>
     <div class="dlg-err" id="newErr" hidden></div>
     ${secHeader('new-inv','Investigator &amp; Site')}
-    <div class="g tint" ${secBodyAttrs('new-inv')}>${combo(null,'site','Site code','','Select site')}${combo(null,'inv','Investigator name',signedIn())}</div>
+    <div class="g tint" ${secBodyAttrs('new-inv')}>${combo(null,'site','Site code',defaultSite,'Select site')}${combo(null,'inv','Investigator name',defaultInv)}</div>
     ${secHeader('new-pt','Patient Information')}
     <div class="g tint" ${secBodyAttrs('new-pt')}>
       <label>Study ID<input value="Assigned on save (e.g. RIC-001)" disabled></label>
@@ -1148,6 +1218,7 @@ window.standhfOpenRecords=(targetPid)=>{
   }catch(e){}
   if(targetPid) sel=targetPid;
   saveView();
+  updatePageSubtitle();
   pane();
   dash();
   if(typeof window.standhfUpdateNav==='function') window.standhfUpdateNav();
@@ -1155,7 +1226,9 @@ window.standhfOpenRecords=(targetPid)=>{
 
 window.standhfOpenNew=()=>{
   if(!canAddPatient()){
-    toast('Access Denied: Only authorized Site Investigators can enroll new patients.');
+    const r = session().role;
+    if(r==='central') toast('Central Directorate has read-only oversight. Patient enrollment is conducted by Site Investigators.');
+    else toast('Access Denied: Only authorized Site Investigators can enroll new patients.');
     return;
   }
   newMode=true;
@@ -1180,7 +1253,12 @@ document.addEventListener('click',e=>{
 document.addEventListener('submit',e=>{
   if(e.target.id!=='fNew')return;
   e.preventDefault();
-  if(!canAddPatient()){toast('Access Denied: Only authorized Site Investigators can enroll new patients.');return}
+  if(!canAddPatient()){
+    const r = session().role;
+    if(r==='central') toast('Central Directorate has read-only oversight. Patient enrollment is conducted by Site Investigators.');
+    else toast('Access Denied: Only authorized Site Investigators can enroll new patients.');
+    return;
+  }
   const f=e.target;
   const site=f.querySelector('[data-cb="site"] input').value.toUpperCase().trim(),inv=f.querySelector('[data-cb="inv"] input').value.trim();
   const nm=f.querySelector('#nName').value.trim(),ct=contactClean(f.querySelector('#nContact').value.trim());
@@ -1222,17 +1300,17 @@ if(typeof window.isStandhfOnline==='function') DB.off=!window.isStandhfOnline();
 {
   const qp=new URLSearchParams(location.search);
   const pid=qp.get('patient');
-  if(signedRole()==='investigator'&&signedIn()&&DB.pts.some(x=>x.inv==='Demo investigator')){
-    DB.pts.forEach(x=>{if(x.inv==='Demo investigator')x.inv=signedIn()});
-    persist();
-  }
   if(pid) newMode=false;
   if(pid&&DB.pts.some(x=>x.id===pid&&inScope(x))) sel=pid;
   else if(pid) setTimeout(()=>toast('Patient '+pid+' is not in your records.'),400);
   if(['info','b','m3','m6','sum'].includes(qp.get('tab'))) tab=qp.get('tab');
   if(qp.get('new')==='1'){
     if(canAddPatient()) newMode=true;
-    else setTimeout(()=>toast('Admin Oversight: Patient enrollment is restricted to authorized Site Investigators.'), 400);
+    else {
+      const r = session().role;
+      if(r==='central') setTimeout(()=>toast('Central Directorate has read-only oversight. Patient enrollment is conducted by Site Investigators.'), 400);
+      else setTimeout(()=>toast('Patient enrollment is restricted to authorized Site Investigators.'), 400);
+    }
   } else {
     newMode=false;
   }
@@ -1296,8 +1374,8 @@ function autoCollapsePatientListOnEdit(e){
   if(!isTabletOrMobile() || !listOpen) return;
   const t = e.target;
   if(!t) return;
-  if(t.closest('.tabs') || t.closest('.np-header-bar') || t.closest('#list') || t.closest('#listToggle')) return;
-  if(t.matches('input, select, textarea, [data-p], .cb, .check-row, .rx-drop, [contenteditable], [data-cb-input]') || t.closest('.g, .tint, .wrap, .addform, .rx-wrap, .reasons, .upl, .np')){
+  if(t.closest('.tabs') || t.closest('.sec-collapsible') || t.closest('.pane-head-sticky') || t.closest('.np-header-bar') || t.closest('#list') || t.closest('#listToggle')) return;
+  if(t.matches('input, select, textarea, [data-p], .cb, .check-row, .rx-drop, [contenteditable], [data-cb-input], [data-a="upload"], [data-a="remove"], [data-a="next"]') || t.closest('.g, .tint, .wrap, .addform, .rx-wrap, .reasons, .upl, .np, .form, .field, .fld, .step-nav')){
     setListOpen(false, false);
   }
 }
@@ -1305,6 +1383,12 @@ document.addEventListener('focusin', e => {
   if(e.target && e.target.closest('#pane')) autoCollapsePatientListOnEdit(e);
 });
 document.addEventListener('input', e => {
+  if(e.target && e.target.closest('#pane')) autoCollapsePatientListOnEdit(e);
+});
+document.addEventListener('change', e => {
+  if(e.target && e.target.closest('#pane')) autoCollapsePatientListOnEdit(e);
+});
+document.addEventListener('click', e => {
   if(e.target && e.target.closest('#pane')) autoCollapsePatientListOnEdit(e);
 });
 
