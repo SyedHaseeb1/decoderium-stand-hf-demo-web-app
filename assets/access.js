@@ -27,10 +27,10 @@ const DEFAULT_ACCESS={
     {code:'ISB',name:'Highland Cardiology',zone:'North',city:'Islamabad'}
   ],
   users:[
-    {username:'michael.johnson',name:'Michael Johnson',role:'superadmin',sites:[],zones:[],active:true},
-    {username:'emily.carter',name:'Emily Carter',role:'investigator',sites:['RIC','LHR'],zones:['North','Central'],active:true},
-    {username:'robert.wilson',name:'Robert Wilson',role:'central',sites:[],zones:['North','Central','South'],active:true},
-    {username:'adnan.khan',name:'Adnan Khan',role:'investigator',sites:['KHI','ISB'],zones:['South','North'],active:true}
+    {username:'michael.johnson',name:'Michael Johnson',role:'superadmin',sites:[],zones:[],active:true,mustChangePassword:false},
+    {username:'emily.carter',name:'Emily Carter',role:'investigator',sites:['RIC','LHR'],zones:['North','Central'],active:true,mustChangePassword:false},
+    {username:'robert.wilson',name:'Robert Wilson',role:'central',sites:[],zones:['North','Central','South'],active:true,mustChangePassword:false},
+    {username:'adnan.khan',name:'Adnan Khan',role:'investigator',sites:['KHI','ISB'],zones:['South','North'],active:true,mustChangePassword:false}
   ],
   perms:{
     superadmin:{view_all_sites:true,export_data:true,assign_investigators:true,manage_users:true,manage_sites:true},
@@ -107,6 +107,42 @@ function saveAccess(s){try{localStorage.setItem(ACCESS_KEY,JSON.stringify(s))}ca
 const sessionVal=k=>{try{return sessionStorage.getItem(k)||''}catch(e){return ''}};
 function session(){return{username:sessionVal('standhf_username'),name:sessionVal('standhf_user'),role:sessionVal('standhf_role')}}
 function currentUser(){const u=session().username;return accessStore().users.find(x=>x.username===u)||null}
+
+function generateTempPassword(){
+  var num = Math.floor(1000 + Math.random() * 9000);
+  return 'Stand#' + num;
+}
+
+function updateUserPassword(username, newPass){
+  var s = accessStore();
+  var u = s.users.find(function(x){ return x.username === username; });
+  if(!u) return false;
+  u.password = newPass;
+  u.mustChangePassword = false;
+  u.passwordUpdatedAt = new Date().toISOString();
+  saveAccess(s);
+  return true;
+}
+
+function updateUserProfile(username, updates){
+  var s = accessStore();
+  var u = s.users.find(function(x){ return x.username === username; });
+  if(!u) return false;
+  u.personal = u.personal || {};
+  if(updates.phone !== undefined) u.personal.phone = updates.phone;
+  if(updates.avatar !== undefined) u.avatar = updates.avatar;
+  if(updates.profileUpdatedAt !== undefined) u.profileUpdatedAt = updates.profileUpdatedAt;
+  saveAccess(s);
+  return true;
+}
+
+function verifyUserPassword(username, pass){
+  var s = accessStore();
+  var u = s.users.find(function(x){ return x.username === username; });
+  if(!u) return false;
+  if(!u.password) return true; // legacy demo accounts without explicit password
+  return u.password === pass;
+}
 
 /* Super Admin and Central oversee the study; only allowed Site Investigators can enter or edit clinical forms */
 function can(perm){

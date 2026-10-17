@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261016i">
+  <link rel="stylesheet" href="../assets/base.css?v=20261017a">
 <script>
   /* Register the service worker so the browser can install the app */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
@@ -103,6 +103,29 @@
           <span class="muted" style="font-size:12px">Choose a standard title from the list</span>
           <span class="fmsg" data-for="nuDesig"></span>
         </div>
+
+        <!-- Section: Initial Temporary Password Generation -->
+        <div style="margin-top:14px;padding:12px 14px;background:var(--soft);border:1px solid var(--line);border-radius:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+            <label for="nuTempPass" style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;margin:0">
+              <i class="ms" style="font-size:18px;color:var(--brand-blue)">key</i>
+              Initial Temporary Password <span class="req">*</span>
+            </label>
+            <button type="button" class="btn btn-sm" id="btnGenNuPass" style="font-size:12px;padding:4px 8px;gap:4px">
+              <i class="ms" style="font-size:16px">refresh</i> Generate Random
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="nuTempPass" name="tempPassword" readonly style="font-family:monospace;font-size:15px;font-weight:700;letter-spacing:1px;background:var(--card);color:var(--brand-blue);cursor:text" value="Stand#4829">
+            <button type="button" class="btn btn-sm" id="btnCopyNuPass" title="Copy temporary password" style="padding:0 12px;height:40px">
+              <i class="ms">content_copy</i>
+            </button>
+          </div>
+          <p class="muted" style="font-size:12px;margin:6px 0 0;line-height:1.4">
+            <i class="ms" style="font-size:14px;vertical-align:-2px;color:var(--ink-2)">info</i>
+            User signs in with this temporary password and will be prompted to set their permanent password and profile upon first login.
+          </p>
+        </div>
       </div>
 
       <!-- Section B: Role Selection -->
@@ -178,6 +201,10 @@
           <div class="admin-user-name" id="euDisplayName" style="font-size:15px">Dr. Name</div>
           <div class="admin-user-sub" id="euDisplayMeta">Consultant Cardiologist · <span class="admin-user-handle" id="euDisplayHandle">@user</span></div>
         </div>
+      </div>
+      <div id="euMustChangeNotice" class="alert-box warn" style="display:none;margin-top:10px;padding:8px 12px;font-size:12px;border-radius:8px">
+        <i class="ms" style="font-size:16px">lock_reset</i>
+        <span>Initial password setup pending. User will configure permanent credentials on next sign-in.</span>
       </div>
       <input type="hidden" id="euUsername" name="username">
 
@@ -260,12 +287,95 @@
       </div>
     </div>
 
-    <div class="modal-foot">
-      <button type="button" class="btn" data-close-modal="dlgEditUser">Cancel</button>
-      <button type="submit" class="btn primary"><i class="ms">save</i> Save Changes</button>
+    <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div>
+        <button type="button" class="btn" id="btnResetEuPass" style="color:var(--brand-red);border-color:var(--line);font-size:13px"><i class="ms">lock_reset</i> Reset Password</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn" data-close-modal="dlgEditUser">Cancel</button>
+        <button type="submit" class="btn primary"><i class="ms">save</i> Save Changes</button>
+      </div>
     </div>
   </form>
 </dialog>
+
+<!-- =========================================================
+     MODAL: User Credentials & Invitation Modal
+     ========================================================= -->
+<dialog class="admin-modal" id="dlgUserCredentials" aria-labelledby="credTitle" style="max-width:480px">
+  <div class="modal-head">
+    <div class="modal-head-title">
+      <i class="ms" style="color:var(--success)">check_circle</i>
+      <div>
+        <h3 id="credTitle">User Account Provisioned</h3>
+        <p>Initial sign-in credentials ready to share</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" data-close-modal="dlgUserCredentials" aria-label="Close dialog"><i class="ms">close</i></button>
+  </div>
+  <div class="modal-body">
+    <div class="alert-box success" style="margin-bottom:14px;padding:10px 12px;font-size:12.5px;border-radius:10px">
+      <i class="ms" style="font-size:18px">info</i>
+      <span>Securely share these credentials with the user. On first sign-in, they will be guided to set a permanent password and complete their profile.</span>
+    </div>
+    <div class="credentials-card" style="background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px">
+      <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px">
+        <span class="muted" style="font-size:13px">Full Name</span>
+        <b id="credName" style="font-size:13.5px">Dr. Name</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px">
+        <span class="muted" style="font-size:13px">Username</span>
+        <span class="admin-user-handle" id="credHandle" style="font-size:13px">@username</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px">
+        <span class="muted" style="font-size:13px">System Role</span>
+        <span id="credRole" style="font-size:13px;font-weight:600">Site Investigator</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:2px">
+        <span class="muted" style="font-size:13px">Temporary Password</span>
+        <code id="credPass" style="font-size:16px;font-weight:700;color:var(--brand-blue);background:var(--card);padding:4px 10px;border-radius:6px;border:1px solid var(--line);letter-spacing:1px">Stand#4829</code>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label for="credCopyText" class="muted" style="font-size:12px;margin-bottom:4px;display:block">Invitation Text</label>
+      <textarea id="credCopyText" readonly style="width:100%;height:85px;font-size:11.5px;font-family:monospace;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);resize:none;box-sizing:border-box"></textarea>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button type="button" class="btn" data-close-modal="dlgUserCredentials">Done</button>
+    <button type="button" class="btn primary" id="btnCopyCreds"><i class="ms">content_copy</i> Copy Invitation</button>
+  </div>
+</dialog>
+
+<!-- =========================================================
+     MODAL: Confirm Password Reset Modal
+     ========================================================= -->
+<dialog class="admin-modal" id="dlgConfirmResetPass" aria-labelledby="confirmResetTitle" style="max-width:440px">
+  <div class="modal-head">
+    <div class="modal-head-title">
+      <i class="ms" style="color:var(--brand-red)">lock_reset</i>
+      <div>
+        <h3 id="confirmResetTitle">Reset User Password</h3>
+        <p>Issue temporary login credentials</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" data-close-modal="dlgConfirmResetPass" aria-label="Close dialog"><i class="ms">close</i></button>
+  </div>
+  <div class="modal-body" style="display:grid;gap:12px;font-size:13.5px;line-height:1.5">
+    <p style="margin:0">Are you sure you want to reset the password for <b id="confirmResetUserName">Dr. Name</b> (<span class="admin-user-handle" id="confirmResetUserHandle">@username</span>)?</p>
+    <div class="alert-box warn" style="padding:10px 12px;border-radius:10px;font-size:12.5px;display:flex;align-items:flex-start;gap:8px">
+      <i class="ms" style="font-size:18px">info</i>
+      <span>A new random temporary password will be generated. The user will be required to set their permanent personal password upon next login.</span>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button type="button" class="btn" data-close-modal="dlgConfirmResetPass">Cancel</button>
+    <button type="button" class="btn primary" id="btnExecuteResetPass" style="background:var(--brand-red);border-color:var(--brand-red)">
+      <i class="ms">lock_reset</i> Reset Password
+    </button>
+  </div>
+</dialog>
+
 
 <!-- =========================================================
      MODAL 3: Add Medical Centre (Searchable City & Zone Comboboxes)
@@ -369,7 +479,7 @@
 <script src="../assets/notifications-data.js?v=20261015b"></script>
 <script src="../assets/lookups.js?v=20261015d"></script>
 <script src="../assets/dialog.js?v=20261015c"></script>
-<script src="../assets/header.js?v=20261015c" data-root="../"></script>
+<script src="../assets/header.js?v=20261017b" data-root="../"></script>
 <script src="../assets/nav.js?v=20261016d"></script>
 
 <script>
@@ -396,6 +506,7 @@ let currentTab=tabFromHash();
 
 /* Security gate: Super Admin, Central Team (Read-only Governance), or users with 'assign_investigators' */
 if(sessionVal('standhf_auth')!=='1')location.replace(LOGIN);
+if(sessionVal('standhf_must_change_pw')==='1')location.replace('../setup/');
 else if(session().role!==SUPER&&session().role!=='central'&&!can('assign_investigators'))location.replace(ECRF);
 
 const isReadOnlyAdmin = session().role === 'central';
@@ -952,7 +1063,9 @@ function usersView(){
                 <tr data-user-row="${esc(u.username)}" ${isHl?'style="background:var(--soft-2);outline:2px solid var(--primary);outline-offset:-2px"':''}>
                   <td>
                     <div class="admin-user-cell">
-                      <div class="admin-user-avatar ${u.role}">${initials(u.name)}</div>
+                      <div class="admin-user-avatar ${u.role}">
+                        ${u.avatar ? `<img src="${esc(u.avatar)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : initials(u.name)}
+                      </div>
                       <div>
                         <div class="admin-user-name">${esc(u.name)}</div>
                         <div class="admin-user-sub"><span class="admin-user-handle">@${esc(u.username)}</span></div>
@@ -963,7 +1076,10 @@ function usersView(){
                   <td>${scopeContent(u)}</td>
                   <td>
                     ${u.active?
-                      '<span class="status-pill active"><i class="ms">check_circle</i> Active</span>':
+                      (u.mustChangePassword ?
+                        '<span class="status-pill active"><i class="ms">check_circle</i> Active</span><div style="font-size:11px;color:var(--warn);font-weight:600;display:flex;align-items:center;gap:3px;margin-top:3px"><i class="ms" style="font-size:13px">lock_reset</i> Setup Pending</div>':
+                        '<span class="status-pill active"><i class="ms">check_circle</i> Active</span>'
+                      ):
                       '<span class="status-pill inactive"><i class="ms">cancel</i> Inactive</span>'
                     }
                   </td>
@@ -1241,9 +1357,56 @@ function openAddUserModal(){
   renderAssignedZones('nu');
   updateAddUserScopeNotice('investigator');
 
+  if($('nuTempPass')) $('nuTempPass').value = generateTempPassword();
+
   dlg.showModal();
   $('nuName').focus();
 }
+
+$('btnGenNuPass')?.addEventListener('click', () => {
+  if($('nuTempPass')) $('nuTempPass').value = generateTempPassword();
+});
+$('btnCopyNuPass')?.addEventListener('click', () => {
+  const p = $('nuTempPass')?.value || '';
+  navigator.clipboard.writeText(p).then(() => toast('Temporary password copied')).catch(() => {});
+});
+
+function openCredentialsModal(name, username, role, tempPass, isReset){
+  const dlg = $('dlgUserCredentials');
+  if(!dlg) return;
+  $('credTitle').textContent = isReset ? 'Temporary Password Reset' : 'User Account Provisioned';
+  $('credName').textContent = name;
+  $('credHandle').textContent = '@' + username;
+  $('credRole').textContent = ROLE_NAMES[role] || role;
+  $('credPass').textContent = tempPass;
+
+  const origin = window.location.origin || '';
+  const loginPath = window.location.pathname.replace(/\/admin\/?.*$/, '/login/');
+  const portalUrl = origin + loginPath;
+
+  const inviteText = `STAND-HF Registry Electronic CRF Portal
+Portal Login: ${portalUrl}
+
+Initial Login Credentials:
+Full Name: ${name}
+Username: ${username}
+Temporary Password: ${tempPass}
+System Role: ${ROLE_NAMES[role] || role}
+
+Note: You will be prompted to set your personal permanent password and complete initial profile setup upon first sign-in.`;
+
+  $('credCopyText').value = inviteText;
+  dlg.showModal();
+}
+
+$('btnCopyCreds')?.addEventListener('click', () => {
+  const txt = $('credCopyText')?.value || '';
+  navigator.clipboard.writeText(txt).then(() => {
+    toast('Credentials & invitation copied to clipboard');
+  }).catch(() => {
+    toast('Copied to clipboard');
+  });
+});
 
 function updateAddUserScopeNotice(role){
   const zonePicker = $('nuZonePickerField');
@@ -1381,6 +1544,7 @@ $('fAddUser')?.addEventListener('submit',e=>{
 
   if(hasErr)return;
 
+  const tempPass = ($('nuTempPass')?.value || '').trim() || generateTempPassword();
   const saved=commit(s=>{
     if(s.users.some(u=>u.username===username))return 'Username already taken';
     const allKnownZones=getAllZones(s);
@@ -1401,6 +1565,9 @@ $('fAddUser')?.addEventListener('submit',e=>{
       sites:userSites,
       zones:userZones,
       active:true,
+      password: tempPass,
+      mustChangePassword: true,
+      passwordCreatedAt: new Date().toISOString(),
       personal:{designation:desig,phone,email}
     });
     return '';
@@ -1408,6 +1575,7 @@ $('fAddUser')?.addEventListener('submit',e=>{
 
   if(saved){
     $('dlgAddUser').close();
+    openCredentialsModal(name, username, role, tempPass, false);
     toast(`${name} added as ${ROLE_NAMES[role]}`);
   }
 });
@@ -1431,10 +1599,21 @@ function openEditUserModal(username){
   if(cancelBtn) cancelBtn.textContent = isReadOnlyAdmin ? 'Close' : 'Cancel';
 
   $('euUsername').value=user.username;
-  $('euAvatar').textContent=initials(user.name);
+  if(user.avatar) {
+    $('euAvatar').innerHTML=`<img src="${esc(user.avatar)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+  } else {
+    $('euAvatar').textContent=initials(user.name);
+  }
   $('euAvatar').className=`admin-user-avatar ${user.role}`;
   $('euDisplayName').textContent=user.name;
   $('euDisplayMeta').innerHTML=`${esc(user.personal?.designation||'Clinical Staff')} · <span class="admin-user-handle">@${esc(user.username)}</span>`;
+  
+  if($('euMustChangeNotice')) {
+    $('euMustChangeNotice').style.display = user.mustChangePassword ? 'flex' : 'none';
+  }
+  if($('btnResetEuPass')) {
+    $('btnResetEuPass').style.display = isReadOnlyAdmin ? 'none' : 'inline-flex';
+  }
   
   $('euName').value=user.name;
   $('euDesig').value=user.personal?.designation||'';
@@ -1625,6 +1804,45 @@ $('fEditUser')?.addEventListener('submit',e=>{
     $('dlgEditUser').close();
     toast(`Access updated for ${name}`);
   }
+});
+
+let pendingResetUsername = '';
+
+$('btnResetEuPass')?.addEventListener('click', () => {
+  if(isReadOnlyAdmin) return;
+  const username = $('euUsername')?.value;
+  const s = accessStore();
+  const user = s.users.find(u => u.username === username);
+  if(!user) return;
+
+  pendingResetUsername = username;
+  $('confirmResetUserName').textContent = user.name;
+  $('confirmResetUserHandle').textContent = '@' + user.username;
+  $('dlgConfirmResetPass')?.showModal();
+});
+
+$('btnExecuteResetPass')?.addEventListener('click', () => {
+  if(!pendingResetUsername || isReadOnlyAdmin) return;
+  const username = pendingResetUsername;
+  const s = accessStore();
+  const user = s.users.find(u => u.username === username);
+  if(!user) return;
+
+  const newPass = generateTempPassword();
+  commit(st => {
+    const u = st.users.find(x => x.username === username);
+    if(!u) return 'User not found';
+    u.password = newPass;
+    u.mustChangePassword = true;
+    u.passwordUpdatedAt = new Date().toISOString();
+    return '';
+  });
+
+  $('dlgConfirmResetPass')?.close();
+  $('dlgEditUser')?.close();
+  openCredentialsModal(user.name, user.username, user.role, newPass, true);
+  toast(`Temporary password reset for ${user.name}`);
+  pendingResetUsername = '';
 });
 
 /* -------------------------------------------------------------

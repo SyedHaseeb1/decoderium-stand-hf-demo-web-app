@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>STAND-HF — Account Setup</title>
+  <script>
+    // Security Gate: user must be signed in to access setup
+    try {
+      if (sessionStorage.getItem('standhf_auth') !== '1') {
+        location.replace('../login/');
+      }
+    } catch(e) {
+      location.replace('../login/');
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a5fb4">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
+  <link rel="icon" type="image/png" sizes="512x512" href="../assets/icon-512.png">
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="../assets/base.css?v=20261017a">
+  <style>
+    /* =========================================================
+       STAND-HF Doctor-Friendly Account Setup
+       Designed for clinical simplicity, warmth, and zero friction
+       ========================================================= */
+    body.setup-simple-page {
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Clean App Header */
+    .setup-topbar {
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .setup-topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .setup-topbar-brand img {
+      height: 32px;
+      width: auto;
+    }
+    .setup-topbar-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: var(--primary-soft);
+      color: var(--primary);
+      padding: 3px 8px;
+      border-radius: 12px;
+    }
+    .setup-topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Main Centered Setup Card Container */
+    .setup-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 48px;
+      box-sizing: border-box;
+    }
+
+    .doctor-setup-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+      width: 100%;
+      max-width: 500px;
+      padding: 32px 30px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      position: relative;
+    }
+
+    /* Doctor Profile Summary Banner */
+    .doctor-welcome-box {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .doctor-avatar-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .doctor-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1a5fb4, #0f2c4d);
+      color: #ffffff;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      font-weight: 700;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(26,95,180,0.2);
+      border: 2px solid #ffffff;
+    }
+    .doctor-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      aspect-ratio: 1 / 1;
+    }
+    .doctor-camera-btn {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #ffffff;
+      border: 2px solid #ffffff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.18);
+      transition: transform 0.15s, background-color 0.15s;
+      padding: 0;
+    }
+    .doctor-camera-btn:hover {
+      background: var(--primary-hover);
+      transform: scale(1.1);
+    }
+    .doctor-camera-btn i {
+      font-size: 15px;
+    }
+
+    .doctor-meta {
+      flex: 1;
+      min-width: 0;
+    }
+    .doctor-badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-soft);
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-bottom: 4px;
+    }
+    .doctor-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 2px;
+      line-height: 1.25;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .doctor-hospital {
+      font-size: 12.5px;
+      color: var(--ink-2);
+      line-height: 1.35;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .setup-instructions {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--ink);
+    }
+    .setup-instructions b {
+      color: var(--primary);
+    }
+
+    /* Form Fields */
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .field-optional {
+      font-size: 11.5px;
+      font-weight: 400;
+      color: var(--ink-2);
+    }
+
+    .input-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-box .input-icon {
+      position: absolute;
+      left: 14px;
+      color: var(--ink-2);
+      font-size: 19px;
+      pointer-events: none;
+    }
+    .input-box input {
+      width: 100%;
+      height: 46px;
+      padding: 0 44px 0 42px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      font-size: 14.5px;
+      color: var(--ink);
+      font-family: inherit;
+      box-sizing: border-box;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-soft);
+    }
+    .input-box input::placeholder {
+      color: #94a3b8;
+    }
+    .input-box .toggle-eye {
+      position: absolute;
+      right: 4px;
+      height: 38px;
+      width: 38px;
+      border: none;
+      background: transparent;
+      color: var(--ink-2);
+      border-radius: 8px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+    .input-box .toggle-eye:hover {
+      background: var(--soft);
+      color: var(--ink);
+    }
+    .input-box .toggle-eye i {
+      font-size: 20px;
+    }
+
+    /* Simple, Doctor-Friendly Criteria Indicators */
+    .criteria-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 2px;
+      flex-wrap: wrap;
+    }
+    .criterion-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-2);
+      transition: color 0.15s;
+    }
+    .criterion-item i {
+      font-size: 15px;
+      color: #94a3b8;
+      transition: color 0.15s;
+    }
+    .criterion-item.valid {
+      color: var(--success);
+      font-weight: 600;
+    }
+    .criterion-item.valid i {
+      color: var(--success);
+    }
+
+    /* Inline Alert Banner */
+    .setup-card-alert {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .setup-card-alert i {
+      font-size: 18px;
+      color: var(--danger);
+      flex-shrink: 0;
+    }
+
+    /* Submit & Action Buttons */
+    .btn-submit-setup {
+      width: 100%;
+      height: 48px;
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(26,95,180,0.25);
+      transition: background-color 0.15s, transform 0.1s, box-shadow 0.15s;
+      margin-top: 6px;
+    }
+    .btn-submit-setup:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 6px 16px rgba(26,95,180,0.35);
+    }
+    .btn-submit-setup:active {
+      transform: scale(0.99);
+    }
+
+    .setup-footnote {
+      text-align: center;
+      font-size: 12px;
+      color: var(--ink-2);
+      line-height: 1.4;
+      margin: 0;
+    }
+
+    .setup-cancel-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      margin-top: 6px;
+    }
+    .setup-cancel-row .btn {
+      height: 42px;
+      min-height: 42px;
+      padding: 0 16px;
+      font-size: 13.5px;
+      font-weight: 500;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      transition: all 0.15s ease;
+      box-sizing: border-box;
+      flex: 1;
+      max-width: 220px;
+    }
+    .setup-cancel-row .btn:hover {
+      background: var(--soft);
+      border-color: var(--border);
+      color: var(--ink);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    }
+    .setup-cancel-row .btn.btn-signout:hover {
+      color: var(--brand-red);
+      border-color: rgba(220, 53, 69, 0.3);
+      background: #fff5f5;
+    }
+
+    /* Photo change/remove button bar */
+    .photo-actions-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .photo-action-btn {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+    .photo-action-btn:hover {
+      background: var(--primary-soft);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+    .photo-action-btn.danger {
+      color: var(--danger);
+    }
+    .photo-action-btn.danger:hover {
+      background: #fef2f2;
+      border-color: var(--danger);
+    }
+
+    @media (max-width: 480px) {
+      .setup-topbar {
+        padding: 0 14px;
+      }
+      .doctor-setup-card {
+        padding: 24px 18px;
+        border-radius: 16px;
+      }
+      .doctor-welcome-box {
+        gap: 14px;
+      }
+      .doctor-avatar {
+        width: 60px;
+        height: 60px;
+        font-size: 20px;
+      }
+      .doctor-name {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body class="setup-simple-page">
+
+  <!-- =========================================================
+       CLEAN HEADER
+       ========================================================= -->
+  <header class="setup-topbar">
+    <div class="setup-topbar-brand">
+      <img src="../assets/STAND-HF-logo.svg" alt="STAND-HF Logo">
+      <span class="setup-topbar-tag">E-CRF Portal</span>
+    </div>
+    <div class="setup-topbar-right">
+      <button type="button" class="pill synced" style="cursor:default" title="Encrypted connection active">● Online</button>
+      <button type="button" class="btn btn-sm" id="btnHeaderSignOut" title="Sign out" style="height:34px;padding:0 10px;font-size:12.5px">
+        <i class="ms" style="font-size:16px">logout</i> <span>Sign out</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- =========================================================
+       MAIN SETUP CONTAINER (FOCUSED DOCTOR CARD)
+       ========================================================= -->
+  <main class="setup-container">
+    <div class="doctor-setup-card">
+
+      <!-- Doctor Profile Summary -->
+      <div class="doctor-welcome-box">
+        <div class="doctor-avatar-wrap">
+          <div class="doctor-avatar" id="docAvatarBox">
+            <span id="docInitials">Dr</span>
+          </div>
+          <button type="button" class="doctor-camera-btn" id="btnTriggerPhoto" title="Upload profile photo" aria-label="Upload photo">
+            <i class="ms">photo_camera</i>
+          </button>
+          <input type="file" id="fileAvatarInput" accept="image/png, image/jpeg, image/webp" hidden>
+        </div>
+
+        <div class="doctor-meta">
+          <span class="doctor-badge-status" id="docStatusBadge">
+            <i class="ms" style="font-size:13px">verified_user</i>
+            <span id="docStatusText">Initial Setup</span>
+          </span>
+          <h1 class="doctor-name" id="docFullName">Dr. Doctor Name</h1>
+          <p class="doctor-hospital" id="docHospitalText">
+            <i class="ms" style="font-size:14px;color:var(--primary)">local_hospital</i>
+            <span id="docHospitalName">Medical Centre</span>
+          </p>
+          <div class="photo-actions-bar" id="photoActionsBar" style="display:none">
+            <button type="button" class="photo-action-btn" id="btnChangePhoto"><i class="ms" style="font-size:14px">photo_camera</i> <span>Change</span></button>
+            <button type="button" class="photo-action-btn danger" id="btnRemovePhoto"><i class="ms" style="font-size:14px">delete</i> <span>Remove</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clean Instructions -->
+      <p class="setup-instructions" id="setupPrompt">
+        Welcome to STAND-HF! Please set your <b>personal password</b> to secure your account and access the clinical registry.
+      </p>
+
+      <!-- Inline Notification Alert -->
+      <div class="setup-card-alert" id="cardAlert" role="alert">
+        <i class="ms">error</i>
+        <span id="cardAlertText">Please verify your entries.</span>
+      </div>
+
+      <!-- Simple Form -->
+      <form id="fSimpleSetup" novalidate style="display:grid;gap:18px">
+
+        <!-- Field 1: New Password -->
+        <div class="field-group">
+          <label for="inpNewPassword" class="field-label">
+            <span>New Password <span class="req">*</span></span>
+          </label>
+          <div class="input-box">
+            <i class="ms input-icon">lock</i>
+            <input id="inpNewPassword" name="newPassword" type="password" required autocomplete="new-password" placeholder="Enter at least 6 characters" maxlength="100">
+            <button type="button" class="toggle-eye" data-target="inpNewPassword" aria-label="Show password">
+              <i class="ms">visibility</i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Field 2: Confirm Password -->
+        <div class="field-group">
+          <label for="inpConfirmPassword" class="field-label">
+            <span>Confirm New Password <span class="req">*</span></span>
+          </label>
+          <div class="input-box">
+            <i class="ms input-icon">check_circle</i>
+            <input id="inpConfirmPassword" name="confirmPassword" type="password" required autocomplete="new-password" placeholder="Re-enter your password" maxlength="100">
+            <button type="button" class="toggle-eye" data-target="inpConfirmPassword" aria-label="Show password">
+              <i class="ms">visibility</i>
+            </button>
+          </div>
+
+          <!-- Doctor-Friendly Live Check Indicators -->
+          <div class="criteria-row">
+            <span class="criterion-item" id="critLen">
+              <i class="ms">radio_button_unchecked</i> At least 6 characters
+            </span>
+            <span class="criterion-item" id="critMatch">
+              <i class="ms">radio_button_unchecked</i> Passwords match
+            </span>
+          </div>
+        </div>
+
+        <!-- Field 3: Mobile Phone Number (Optional) -->
+        <div class="field-group">
+          <label for="inpDoctorPhone" class="field-label">
+            <span>Mobile Phone</span>
+            <span class="field-optional">Optional</span>
+          </label>
+          <div class="input-box">
+            <i class="ms input-icon">call</i>
+            <input id="inpDoctorPhone" name="phone" type="tel" inputmode="numeric" maxlength="11" placeholder="03001234567" data-contact="1">
+          </div>
+          <small style="font-size:11.5px;color:var(--ink-2);line-height:1.3;margin-top:2px">
+            Direct mobile number for official registry updates and coordination.
+          </small>
+        </div>
+
+        <!-- Primary Submit Button -->
+        <button type="submit" class="btn-submit-setup" id="btnSubmit">
+          <i class="ms" style="font-size:20px">check</i>
+          <span id="btnSubmitText">Save Password &amp; Continue</span>
+        </button>
+
+        <p class="setup-footnote">
+          You will sign in once with your new password to verify and access the portal.
+        </p>
+
+        <!-- Cancel / Dashboard Buttons -->
+        <div class="setup-cancel-row">
+          <a href="../dashboard/" class="btn" id="linkBackDash" style="display:none">
+            <i class="ms" style="font-size:18px">arrow_back</i> <span>Back to Dashboard</span>
+          </a>
+          <button type="button" class="btn btn-signout" id="btnCancelSignOut">
+            <i class="ms" style="font-size:18px">logout</i> <span>Sign out</span>
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </main>
+
+  <script src="../assets/access.js?v=20261017b"></script>
+  <script src="../assets/validator.js?v=20261016a"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const initials = s => String(s || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'Dr';
+
+    // Verify session
+    const sess = session();
+    const user = currentUser();
+    if (!user) {
+      location.replace('../login/');
+    }
+
+    const isFirstTime = user.mustChangePassword === true || sessionStorage.getItem('standhf_must_change_pw') === '1';
+
+    // Doctor profile details
+    $('docFullName').textContent = user.name || 'Investigator';
+
+    // Designation and medical centre
+    const sStore = accessStore();
+    const desig = user.personal?.designation || (user.role === 'investigator' ? 'Site Investigator' : ROLE_NAMES[user.role] || 'Clinical Staff');
+    let centreName = '';
+
+    if (user.role === 'superadmin') {
+      centreName = 'Global System Administration';
+    } else if (user.role === 'central') {
+      centreName = 'Central Monitoring Directorate';
+    } else {
+      const assignedSites = Array.isArray(user.sites) ? user.sites : [];
+      if (assignedSites.length) {
+        const primaryCode = assignedSites[0];
+        const siteObj = sStore.sites.find(s => s.code === primaryCode);
+        centreName = siteObj ? `${siteObj.name} (${primaryCode})` : primaryCode;
+        if (assignedSites.length > 1) {
+          centreName += ` + ${assignedSites.length - 1} more`;
+        }
+      } else if (Array.isArray(user.zones) && user.zones.length) {
+        centreName = user.zones.join(', ') + ' Zone';
+      } else {
+        centreName = 'Cardiology Registry Site';
+      }
+    }
+    $('docHospitalName').textContent = `${desig} · ${centreName}`;
+
+    // Prefill phone if exists
+    if (user.personal?.phone) {
+      $('inpDoctorPhone').value = contactClean(user.personal.phone);
+    }
+
+    // Avatar rendering & canvas downsampling
+    let currentAvatar = user.avatar || '';
+
+    function renderAvatar() {
+      const box = $('docAvatarBox');
+      const photoBar = $('photoActionsBar');
+
+      if (currentAvatar) {
+        box.innerHTML = `<img src="${esc(currentAvatar)}" alt="${esc(user.name)}">`;
+        photoBar.style.display = 'flex';
+      } else {
+        box.innerHTML = `<span>${esc(initials(user.name))}</span>`;
+        photoBar.style.display = 'none';
+      }
+    }
+    renderAvatar();
+
+    const triggerUpload = () => $('fileAvatarInput').click();
+    $('btnTriggerPhoto').addEventListener('click', triggerUpload);
+    $('btnChangePhoto').addEventListener('click', triggerUpload);
+
+    $('btnRemovePhoto').addEventListener('click', () => {
+      currentAvatar = '';
+      $('fileAvatarInput').value = '';
+      renderAvatar();
+    });
+
+    $('fileAvatarInput').addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        showError('Please select an image file (JPG, PNG, or WebP).');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showError('Image file is too large. Please select a photo under 5MB.');
+        return;
+      }
+
+      hideError();
+      const reader = new FileReader();
+      reader.onload = evt => {
+        const img = new Image();
+        img.onload = () => {
+          // Center-crop to a 1:1 square canvas (240x240) so the avatar is always a clean circle
+          const size = 240;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const minDim = Math.min(img.width, img.height);
+          const sx = (img.width - minDim) / 2;
+          const sy = (img.height - minDim) / 2;
+          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+          currentAvatar = canvas.toDataURL('image/jpeg', 0.88);
+          renderAvatar();
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Eye toggle for passwords
+    document.querySelectorAll('.toggle-eye').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const inp = $(targetId);
+        if (!inp) return;
+        const isPw = inp.type === 'password';
+        inp.type = isPw ? 'text' : 'password';
+        btn.querySelector('.ms').textContent = isPw ? 'visibility_off' : 'visibility';
+      });
+    });
+
+    // Real-time simple criteria feedback
+    function checkCriteria() {
+      const np = $('inpNewPassword').value;
+      const cp = $('inpConfirmPassword').value;
+
+      const hasLen = np.length >= 6;
+      const isMatch = np.length > 0 && np === cp;
+
+      const cLen = $('critLen');
+      const cMatch = $('critMatch');
+
+      cLen.classList.toggle('valid', hasLen);
+      cLen.querySelector('.ms').textContent = hasLen ? 'check_circle' : 'radio_button_unchecked';
+
+      cMatch.classList.toggle('valid', isMatch);
+      cMatch.querySelector('.ms').textContent = isMatch ? 'check_circle' : 'radio_button_unchecked';
+
+      return hasLen && isMatch;
+    }
+
+    $('inpNewPassword').addEventListener('input', checkCriteria);
+    $('inpConfirmPassword').addEventListener('input', checkCriteria);
+
+    // If returning user (not first-time setup), adapt UI
+    if (!isFirstTime) {
+      $('docStatusText').textContent = 'Profile & Password';
+      $('setupPrompt').innerHTML = 'Update your profile photo, contact mobile number, or set a new password.';
+      $('btnSubmitText').textContent = 'Save Changes';
+      $('linkBackDash').style.display = 'inline-flex';
+      $('inpNewPassword').placeholder = 'Leave blank to keep current password';
+      $('inpConfirmPassword').placeholder = 'Confirm new password';
+    }
+
+    // Sign out handler
+    const signOut = () => {
+      sessionStorage.clear();
+      location.replace('../login/');
+    };
+    $('btnHeaderSignOut').addEventListener('click', signOut);
+    $('btnCancelSignOut').addEventListener('click', signOut);
+
+    // Error helper
+    function showError(msg) {
+      $('cardAlertText').textContent = msg;
+      $('cardAlert').style.display = 'flex';
+    }
+    function hideError() {
+      $('cardAlert').style.display = 'none';
+    }
+
+    // Form submission
+    $('fSimpleSetup').addEventListener('submit', e => {
+      e.preventDefault();
+      hideError();
+
+      const np = $('inpNewPassword').value.trim();
+      const cp = $('inpConfirmPassword').value.trim();
+      const phone = contactClean($('inpDoctorPhone').value.trim());
+
+      const changingPassword = np.length > 0 || cp.length > 0 || isFirstTime;
+
+      if (isFirstTime) {
+        if (!np) {
+          showError('Please enter a new password (at least 6 characters).');
+          $('inpNewPassword').focus();
+          return;
+        }
+        if (np.length < 6) {
+          showError('Your password must be at least 6 characters long.');
+          $('inpNewPassword').focus();
+          return;
+        }
+        if (np !== cp) {
+          showError('The passwords do not match. Please verify.');
+          $('inpConfirmPassword').focus();
+          return;
+        }
+      } else if (changingPassword) {
+        if (np.length < 6) {
+          showError('Your new password must be at least 6 characters long.');
+          $('inpNewPassword').focus();
+          return;
+        }
+        if (np !== cp) {
+          showError('The passwords do not match. Please verify.');
+          $('inpConfirmPassword').focus();
+          return;
+        }
+      }
+
+      // Check phone if provided
+      if (phone) {
+        const pErr = contactError(phone, false);
+        if (pErr) {
+          showError(pErr);
+          $('inpDoctorPhone').focus();
+          return;
+        }
+      }
+
+      // Save profile updates (avatar & phone)
+      updateUserProfile(user.username, {
+        avatar: currentAvatar,
+        phone: phone,
+        profileUpdatedAt: new Date().toISOString()
+      });
+
+      // Save password if set
+      if (changingPassword) {
+        updateUserPassword(user.username, np);
+
+        // Audit log
+        if (typeof logCentralAction === 'function') {
+          logCentralAction('Account Setup Completed', `User @${user.username} configured permanent credentials`, user.username);
+        }
+
+        // Conclude setup session and redirect to login with prefilled success banner
+        sessionStorage.clear();
+        location.replace(`../login/?setupComplete=1&user=${encodeURIComponent(user.username)}`);
+      } else {
+        // Returning user just updating photo or phone
+        location.replace('../dashboard/');
+      }
+    });
+  </script>
+</body>
+</html>

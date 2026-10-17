@@ -50,6 +50,14 @@
         <span id="roleDescText">Clinical data entry &amp; patient follow-up for assigned centres</span>
       </div>
 
+      <div class="alert-box success" id="setupSuccess" role="status" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:12px;font-size:13px;align-items:flex-start;gap:10px">
+        <i class="ms" style="font-size:22px;color:var(--success)">check_circle</i>
+        <div>
+          <b style="display:block;margin-bottom:2px">Password &amp; Profile Setup Complete</b>
+          <span style="color:var(--ink-2);font-size:12.5px;line-height:1.4">Your permanent password has been configured. Please sign in with your credentials to access the portal.</span>
+        </div>
+      </div>
+
       <div class="error" id="err" role="alert">
         <span class="ms">error</span>
         <span id="errMsg"></span>
@@ -85,8 +93,31 @@
     </form>
   </div>
 
-  <p class="footer">Activity on this portal is recorded in the audit trail.</p>
 </main>
+
+<dialog class="admin-modal" id="dlgForgotNotice" style="max-width:440px">
+  <div class="modal-head">
+    <div class="modal-head-title">
+      <i class="ms" style="color:var(--brand-blue)">lock_reset</i>
+      <div>
+        <h3 style="margin:0;font-size:16px;font-weight:700">Password Recovery &amp; Support</h3>
+        <p style="margin:2px 0 0;font-size:12px;color:var(--ink-2)">STAND-HF Clinical Registry Support</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" data-close-modal="dlgForgotNotice" aria-label="Close dialog"><i class="ms">close</i></button>
+  </div>
+  <div class="modal-body" style="font-size:13px;line-height:1.5;display:grid;gap:12px">
+    <p style="margin:0">For clinical data security, user accounts in the STAND-HF Electronic CRF Portal are provisioned and managed centrally by the Study Administration.</p>
+    <div class="alert-box info" style="padding:10px 12px;border-radius:8px">
+      <i class="ms">info</i>
+      <span>To request a temporary password or account reactivation, contact your medical centre's Study Coordinator or email the Central Team at <b>support@standhf.pk</b>.</span>
+    </div>
+    <p class="muted" style="margin:0;font-size:12px">An authorized administrator will issue a temporary one-time password to your registered official contact.</p>
+  </div>
+  <div class="modal-foot">
+    <button type="button" class="btn primary" data-close-modal="dlgForgotNotice">Close</button>
+  </div>
+</dialog>
 
 <script src="../assets/access.js?v=20261015a"></script>
 <script src="../assets/validator.js?v=20261016a"></script>
@@ -151,19 +182,50 @@ $('togglePw').onclick=()=>{
   $('togglePw').firstElementChild.textContent=show?'visibility_off':'visibility';
 };
 
-$('forgot').onclick=()=>{$('note').textContent='Password reset is not available here. Contact the study administrator.'};
+$('forgot').onclick=()=>{
+  const dlg = $('dlgForgotNotice');
+  if(dlg) dlg.showModal();
+  else $('note').textContent='For password resets, contact the study administrator at support@standhf.pk.';
+};
+
+document.querySelectorAll('[data-close-modal]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const id=b.getAttribute('data-close-modal');
+    const d=document.getElementById(id);
+    if(d&&d.close) d.close();
+  });
+});
+
+// Check URL query parameters for ?setupComplete=1&user=...
+const urlParams = new URLSearchParams(window.location.search);
+if(urlParams.get('setupComplete') === '1'){
+  const sc = $('setupSuccess');
+  if(sc) sc.style.display = 'flex';
+  const preUser = urlParams.get('user');
+  if(preUser){
+    const found = accessStore().users.find(x => x.username === preUser.toLowerCase());
+    if(found){
+      const targetTab = found.role === 'investigator' ? 'investigator' : (found.role === 'central' ? 'central' : 'admin');
+      setTab(targetTab, false);
+      $('user').value = found.username;
+      setTimeout(() => $('pass').focus(), 150);
+    }
+  }
+}
 
 /* Only the username is remembered, never the password */
 let remembered='';
 try{remembered=localStorage.getItem(REMEMBER_KEY)||''}catch(e){}
-setTab('investigator',false);
-if(remembered){
-  const acc=ACCOUNTS.find(a=>a.user===remembered);
-  if(acc){
-    const targetTab=acc.role==='investigator'?'investigator':(acc.role==='central'?'central':'admin');
-    setTab(targetTab,false);
-    $('user').value=acc.user;
-    $('remember').checked=true;
+if(!urlParams.get('setupComplete')){
+  setTab('investigator',false);
+  if(remembered){
+    const acc=ACCOUNTS.find(a=>a.user===remembered);
+    if(acc){
+      const targetTab=acc.role==='investigator'?'investigator':(acc.role==='central'?'central':'admin');
+      setTab(targetTab,false);
+      $('user').value=acc.user;
+      $('remember').checked=true;
+    }
   }
 }
 
@@ -172,13 +234,46 @@ $('form').addEventListener('submit',e=>{
   const u=$('user').value.trim().toLowerCase(),p=$('pass').value;
   if(!u)return fail('Enter your username.','user');
   if(!p)return fail('Enter your password.','pass');
-  const acc=ACCOUNTS.find(a=>a.user===u);
-  if(!acc||!TAB_ROLES[tab].includes(acc.role))return fail('Username or password is incorrect.','user');
+  
+  const allUsers=accessStore().users;
+  const userObj=allUsers.find(a=>a.username===u);
+  if(!userObj||!userObj.active)return fail('Username or password is incorrect.','user');
+  
+  // Verify password using verifyUserPassword
+  if(typeof verifyUserPassword==='function'){
+    if(!verifyUserPassword(u, p))return fail('Username or password is incorrect.','pass');
+  } else {
+    if(userObj.password && userObj.password!==p)return fail('Username or password is incorrect.','pass');
+  }
+
+  // Ensure role tab matches user's role (or auto-switch)
+  if(!TAB_ROLES[tab].includes(userObj.role)){
+    const targetTab=userObj.role==='investigator'?'investigator':(userObj.role==='central'?'central':'admin');
+    setTab(targetTab,false);
+  }
+
   try{
-    if($('remember').checked)localStorage.setItem(REMEMBER_KEY,acc.user);else localStorage.removeItem(REMEMBER_KEY);
+    if($('remember').checked)localStorage.setItem(REMEMBER_KEY,userObj.username);else localStorage.removeItem(REMEMBER_KEY);
   }catch(err){}
-  try{sessionStorage.setItem(AUTH_KEY,'1');sessionStorage.setItem(USER_KEY,acc.name);sessionStorage.setItem(ROLE_KEY,acc.role);sessionStorage.setItem('standhf_username',acc.user)}
-  catch(err){return fail('Browser storage is blocked, so sign-in cannot be kept. Allow site data and try again.','signin')}
+
+  try{
+    sessionStorage.setItem(AUTH_KEY,'1');
+    sessionStorage.setItem(USER_KEY,userObj.name);
+    sessionStorage.setItem(ROLE_KEY,userObj.role);
+    sessionStorage.setItem('standhf_username',userObj.username);
+  }catch(err){
+    return fail('Browser storage is blocked, so sign-in cannot be kept. Allow site data and try again.','signin');
+  }
+
+  // If initial password setup is required, route immediately to setup page!
+  if(userObj.mustChangePassword){
+    sessionStorage.setItem('standhf_must_change_pw','1');
+    location.replace('../setup/');
+    return;
+  } else {
+    sessionStorage.removeItem('standhf_must_change_pw');
+  }
+
   location.replace(DASH);
 });
 </script>

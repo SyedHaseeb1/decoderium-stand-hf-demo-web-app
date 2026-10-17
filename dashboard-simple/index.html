@@ -4,6 +4,7 @@
   <script>
     try {
       if (sessionStorage.getItem('standhf_auth') !== '1') location.replace('../login/');
+      if (sessionStorage.getItem('standhf_must_change_pw') === '1') location.replace('../setup/');
     } catch(e) {
       location.replace('../login/');
     }

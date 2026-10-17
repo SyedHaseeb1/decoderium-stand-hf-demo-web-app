@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261016i">
+  <link rel="stylesheet" href="../assets/base.css?v=20261017a">
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
   </script>
@@ -109,7 +109,7 @@
 <script src="../assets/lookups.js?v=20261015b"></script>
 <script src="../assets/file-card.js?v=20261015b"></script>
 <script src="../assets/dialog.js?v=20261015c"></script>
-<script src="../assets/header.js?v=20261015c" data-root="../"></script>
+<script src="../assets/header.js?v=20261017b" data-root="../"></script>
 <script src="../assets/nav.js?v=20261016d"></script>
 <script src="../assets/dash-charts.js?v=20261015c"></script>
 <script src="../assets/dash-components.js?v=20261015d"></script>
@@ -128,6 +128,7 @@ const DAY = 864e5;
 /* Guard: user must be authenticated */
 const auth = sessionVal('standhf_auth');
 if (auth !== '1') { location.replace(LOGIN); return; }
+if (sessionVal('standhf_must_change_pw') === '1') { location.replace('../setup/'); return; }
 
 const sess = session();
 const ROLE = sess.role; // 'investigator' | 'central' | 'superadmin'
