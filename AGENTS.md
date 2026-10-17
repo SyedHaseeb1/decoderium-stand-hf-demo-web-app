@@ -42,9 +42,10 @@ Stand-HF/                          <-- Workspace Root
 │   ├── docs -> ../docs            <-- Symlink to project documentation
 │   ├── index.html                 <-- Root redirect to login/
 │   ├── login/index.html           <-- Authentication & role selection
-│   ├── dashboard/index.html       <-- Metrics, follow-up queues, study tiles
+│   ├── setup/index.html           <-- Password setup, verification, and first-time forced change
+│   ├── dashboard/index.html       <-- Metrics, follow-up queues, study tiles, role views, export studio
 │   ├── records/index.html         <-- Patient registry, visit forms (B, M3, M6), audit, export
-│   ├── admin/index.html           <-- User management, site assignments, permissions
+│   ├── admin/index.html           <-- User management, site assignments, permissions matrix
 │   └── assets/                    <-- Shared design system & script infrastructure
 │       ├── base.css               <-- CSS tokens, components, responsive layout
 │       ├── access.js              <-- Role permissions, users, sites, session helpers
@@ -117,13 +118,15 @@ Every HTML page (`records/index.html`, `dashboard/index.html`, `admin/index.html
 ### 5.1 Role Hierarchy
 - **Super Admin (`superadmin`)**: Global system oversight, user/site administration. Cannot directly modify patient clinical visit entries (reserved for clinical staff).
 - **Central Team (`central`)**: Oversees all clinical sites, views all patient records, exports study data, marks visits complete.
-- **Site Investigator (`investigator`)**: Treats patients at assigned sites. Adds patients and completes visit CRFs for their assigned site(s).
+- **Site Investigator (`investigator`)**: Treats patients at assigned sites. Adds patients and completes visit CRFs for their assigned site(s). By default, `export_data` is disabled (export screen, tab, and buttons are hidden), but can be dynamically enabled/disabled by Super Admin in the Role Permissions Matrix.
 - **Study Coordinator**: Assists Site Investigator with data entry at assigned sites.
 - **Data Manager**: Validates completeness, issues queries, exports datasets.
 
-### 5.2 Mandatory Site-Scoping Invariant
+### 5.2 Mandatory Site-Scoping & Export Invariant
 > [!CRITICAL]
-> **Data Isolation Rule**: Users with role `investigator` or site-bound roles **MUST NEVER** see, edit, search, or aggregate patient records from any site outside their assigned site list (`mySites()`). Super Admin and Central Team can view records across all sites.
+> **Data Isolation & Export Rules**:
+> 1. Users with role `investigator` or site-bound roles **MUST NEVER** see, edit, search, or aggregate patient records from any site outside their assigned site list (`mySites()`). Super Admin and Central Team can view records across all sites.
+> 2. Users without the `export_data` capability (by default: `investigator`) must never see or access the Data Export Studio, export navigation links, export buttons, or `#export` route. If they attempt to open `#export`, the system redirects them to Overview.
 
 Key helpers in [`assets/access.js`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/assets/access.js):
 - `session()`: Returns `{ username, name, role }`.
