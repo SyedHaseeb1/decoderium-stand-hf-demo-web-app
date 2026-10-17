@@ -236,8 +236,7 @@ const events = {
 
 ## 6. Access Control & Role Scoping Rules
 
-Refer to [`access.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/access.json) for testing role-based filtering:
-- **`superadmin`** (`michael.johnson`): Global administrative oversight. Views all sites and patients; cannot edit clinical patient data.
-- **`central`** (`robert.wilson`): Clinical trial monitor. Views all sites and patients; exports complete research datasets.
-- **`investigator`** (`emily.carter`): Site investigator assigned to `RIC` (Rawalpindi) and `LHR` (Lahore). **Must only see patients where `site === 'RIC' || site === 'LHR'`**.
-- **`investigator`** (`adnan.khan`): Site investigator assigned to `KHI` (Karachi) and `ISB` (Islamabad). **Must only see patients where `site === 'KHI' || site === 'ISB'`**.
+- **`superadmin`** (`michael.johnson`): Global administrative oversight. Views all sites and patients; manages users, sites, and permissions; exports research datasets; cannot edit clinical patient data.
+- **`central`** (`robert.wilson`): Clinical trial monitor / directorate. Views all sites and patients; exports complete research datasets; read-only administrative inspection.
+- **`investigator`** (`emily.carter`): Site investigator assigned to `RIC` (Rawalpindi). **Must only see patients where `site === 'RIC'`**. By default, `export_data` is disabled.
+- **`investigator`** (`adnan.khan`): Site investigator assigned to `KHI` (Karachi). **Must only see patients where `site === 'KHI'`**. By default, `export_data` is disabled.
