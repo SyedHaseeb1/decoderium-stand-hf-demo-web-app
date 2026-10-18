@@ -455,15 +455,15 @@
 </dialog>
 
 <!-- Scripts in strict dependency order -->
-<script src="../assets/access.js?v=20261018l"></script>
-<script src="../assets/validator.js?v=20261016a"></script>
-<script src="../assets/notifications-data.js?v=20261015b"></script>
-<script src="../assets/lookups.js?v=20261015d"></script>
-<script src="../assets/dialog.js?v=20261015c"></script>
-<script src="../assets/header.js?v=20261018l" data-root="../"></script>
-<script src="../assets/nav.js?v=20261018h"></script>
+<script src="../assets/boot.js?v=20261018m"></script>
+<script type="text/plain" data-src="access.js?v=20261018l"></script>
+<script type="text/plain" data-src="validator.js?v=20261016a"></script>
+<script type="text/plain" data-src="lookups.js?v=20261015d"></script>
+<script type="text/plain" data-src="dialog.js?v=20261015c"></script>
+<script type="text/plain" data-src="header.js?v=20261018l" data-root="../"></script>
+<script type="text/plain" data-src="nav.js?v=20261018h"></script>
 
-<script>
+<script type="text/plain">
 const LOGIN='../login/', ECRF='../records/', SUPER='superadmin';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

@@ -54,7 +54,7 @@ Stand-HF/                          <-- Workspace Root
 │       ├── lookups.js             <-- Clinical options, medications, codes
 │       ├── dialog.js              <-- Modal dialog utilities
 │       ├── file-card.js           <-- Attachment card renderer
-│       └── notifications-data.js  <-- Role-scoped mock notifications
+│       └── (demo listings now live in data/*.json)
 ```
 
 ### Path Resolution Rules
@@ -89,23 +89,20 @@ Every HTML page (`records/index.html`, `dashboard/index.html`, `admin/index.html
 <!-- 1. Access, roles, and session storage -->
 <script src="../assets/access.js"></script>
 
-<!-- 2. Dummy notification feeds -->
-<script src="../assets/notifications-data.js"></script>
-
-<!-- 3. Domain lookups and file cards (for records / data entry) -->
+<!-- 2. Domain lookups and file cards (for records / data entry) -->
 <script src="../assets/lookups.js"></script>
 <script src="../assets/file-card.js"></script>
 
-<!-- 4. Dialog & modal utilities -->
+<!-- 3. Dialog & modal utilities -->
 <script src="../assets/dialog.js"></script>
 
-<!-- 5. Header (must specify data-root="../" for relative assets) -->
+<!-- 4. Header (must specify data-root="../" for relative assets) -->
 <script src="../assets/header.js" data-root="../"></script>
 
-<!-- 6. Side navigation and mobile drawer -->
+<!-- 5. Side navigation and mobile drawer -->
 <script src="../assets/nav.js"></script>
 
-<!-- 7. Page-specific logic -->
+<!-- 6. Page-specific logic -->
 <script>
   // Page initialization...
 </script>

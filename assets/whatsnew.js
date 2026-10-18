@@ -1,46 +1,12 @@
 /* "What's new" for the client demo. Shown on the sign-in page.
-   To announce a new change: edit CONTENT and change VERSION.
+   To announce a new change: edit data/whatsnew.json and change its version.
    The checkbox "Don't show until the next change" hides it until VERSION changes. */
 (function(){
-  var DATE='2026-10-13';          /* the date these changes were made (shown to the client) */
-  var VERSION='2026-10-13-b';     /* changes whenever the list changes, so the alert returns */
   var KEY='standhf_whatsnew_hidden';
-  var CONTENT=[
-    {cat:'Sign-in', items:[
-      'Full-screen sign-in with the photo background and the STAND-HF logo',
-      'Fits tablets and phones, and keeps the field you type in visible when the keyboard opens',
-      'Remember my username, and a Forgot your password link',
-      'Sponsor links on the sign-in page'
-    ]},
-    {cat:'Patient records', items:[
-      'Sync capsule beside the page title: yellow while records wait to sync, then a toast when all are synced',
-      'Patient name and contact number are required on the participant form',
-      'Prescription upload on all three visits (Baseline, 3 months, 6 months): PDF, JPG or PNG, up to 5 files and 10 MB each',
-      'Uploaded prescriptions are shown in the patient summary',
-      'GDMT: the daily dose is now a dropdown for each drug, instead of free text',
-      'Load demo: 44 patients split between the investigators, with full data, prescriptions and audit history',
-      'Investigators can use Load demo and Clear all',
-      'Patient list collapses and expands smoothly',
-      'Confirmation dialogs for Delete record, Remove file and Clear all'
-    ]},
-    {cat:'Dashboards and admin', items:[
-      'Super Admin: Performance by team with an Access column, and each investigator name opens their profile',
-      'Investigator profile: each site investigator\'s own patients, overdue follow-ups and recent activity',
-      'CSV export for each site investigator, and a summary of all investigators',
-      'Super Admin: Export all patients, one row per visit across all sites',
-      'Compact top stat cards, with the Pending sync card moved to the records header',
-    ]},
-    {cat:'Header and navigation', items:[
-      'Round profile icon with a panel: name, role, username, sites and Sign out',
-      'Super Admin profile icon has a black ring',
-      'Search collapses to an icon on tablets and expands on tap',
-      'Central loader on the app pages, and smaller logos in the side navigation'
-    ]},
-    {cat:'Installable app', items:[
-      'Favicon and app icons',
-      'Web app manifest and service worker, so the app can be installed to the home screen (install needs HTTPS)'
-    ]}
-  ];
+  var src=document.currentScript&&document.currentScript.src;
+  /* Date, version and the list of changes live in data/whatsnew.json */
+  function show(data){
+  var DATE=data.date, VERSION=data.version, CONTENT=data.content;  /* DATE: shown to the client. VERSION: changes whenever the list changes, so the alert returns */
   var seen=function(){try{return localStorage.getItem(KEY)===VERSION}catch(e){return false}};
   var remember=function(v){try{if(v)localStorage.setItem(KEY,VERSION);else localStorage.removeItem(KEY)}catch(e){}};
   if(seen())return;
@@ -67,4 +33,7 @@
     wrap.remove();
   });
   document.getElementById('wnGo').focus();
+  }
+  if(!src)return;
+  fetch(new URL('../data/whatsnew.json', src)).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)show(d)}).catch(function(){});
 })();

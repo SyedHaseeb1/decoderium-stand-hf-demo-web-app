@@ -128,9 +128,11 @@
   </div>
 </dialog>
 
-<script src="../assets/access.js?v=20261018l"></script>
-<script src="../assets/validator.js?v=20261016a"></script>
-<script>
+<script src="../assets/boot.js?v=20261018m"></script>
+<script type="text/plain" data-src="access.js?v=20261018l"></script>
+<script type="text/plain" data-src="validator.js?v=20261016a"></script>
+<script src="../assets/btn-loader.js"></script>
+<script type="text/plain">
 const APP='../records/', DASH='../dashboard/', ADMIN='../admin/', AUTH_KEY='standhf_auth', USER_KEY='standhf_user', ROLE_KEY='standhf_role';
 const REMEMBER_KEY='standhf_remember_user';
 const ACCOUNTS=accessStore().users.filter(u=>u.active).map(u=>({user:u.username,name:u.name,role:u.role}));
@@ -274,19 +276,22 @@ $('form').addEventListener('submit',e=>{
     return fail('Browser storage is blocked, so sign-in cannot be kept. Allow site data and try again.','signin');
   }
 
+  // Keep the Login button busy for a few seconds while the session is prepared, then route
+  const go=url=>btnWait($('signin'),3000,()=>location.replace(url));
+
   // If initial password setup is required, route immediately to setup page!
   if(userObj.mustChangePassword){
     sessionStorage.setItem('standhf_must_change_pw','1');
-    location.replace('../setup/');
+    go('../setup/');
     return;
   } else {
     sessionStorage.removeItem('standhf_must_change_pw');
   }
 
-  location.replace(DASH);
+  go(DASH);
 });
 </script>
-<script>
+<script type="text/plain">
 /* Size the sign-in screen to the visible height (the keyboard and browser bars change it) */
 function setVH(){document.documentElement.style.setProperty('--vh',(window.visualViewport||window).height+'px')}
 window.addEventListener('resize',setVH);
@@ -302,7 +307,7 @@ document.addEventListener('focusout',function(){
   setTimeout(function(){if(!document.activeElement||document.activeElement.tagName!=='INPUT'){document.querySelector('.auth-page').classList.remove('kbd');document.querySelector('.auth-page').scrollTop=0}},300);
 });
 </script>
-<script>
+<script type="text/plain">
 (function(){
   var btn = document.getElementById('loginThemeToggle');
   if(!btn) return;

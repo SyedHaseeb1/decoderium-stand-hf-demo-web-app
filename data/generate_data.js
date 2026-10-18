@@ -4,8 +4,7 @@
  * 
  * Generates protocol-compliant, high-fidelity JSON dummy data for:
  * - srs/data/dummy_data.json
- * - srs/data/access.json
- * - srs/data/lookups.json
+ * (access.json and lookups.json are maintained by hand; the app reads them directly)
  */
 const fs = require('fs');
 const path = require('path');
@@ -140,9 +139,9 @@ const PATIENT_NAMES = [
 // Site & Investigator assignments
 const SITE_CONFIG = {
   RIC: { investigator: 'Emily Carter', username: 'emily.carter', initials: 'EC' },
-  LHR: { investigator: 'Emily Carter', username: 'emily.carter', initials: 'EC' },
+  LHR: { investigator: 'Sana Iqbal', username: 'sana.iqbal', initials: 'SI' },
   KHI: { investigator: 'Adnan Khan', username: 'adnan.khan', initials: 'AK' },
-  ISB: { investigator: 'Adnan Khan', username: 'adnan.khan', initials: 'AK' }
+  ISB: { investigator: 'Usman Tariq', username: 'usman.tariq', initials: 'UT' }
 };
 
 const SITES = ['RIC', 'LHR', 'KHI', 'ISB'];
@@ -574,10 +573,6 @@ const DB_OBJECT = {
 
 // Write files
 fs.writeFileSync(path.join(DATA_DIR, 'dummy_data.json'), JSON.stringify(DB_OBJECT, null, 2));
-fs.writeFileSync(path.join(DATA_DIR, 'access.json'), JSON.stringify(ACCESS_DATA, null, 2));
-fs.writeFileSync(path.join(DATA_DIR, 'lookups.json'), JSON.stringify(LOOKUPS_DATA, null, 2));
 
 console.log('Successfully generated:');
 console.log('- srs/data/dummy_data.json (' + patients.length + ' patients)');
-console.log('- srs/data/access.json');
-console.log('- srs/data/lookups.json');

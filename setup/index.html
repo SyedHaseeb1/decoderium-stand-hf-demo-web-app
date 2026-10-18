@@ -657,9 +657,10 @@
     </div>
   </main>
 
-  <script src="../assets/access.js?v=20261018l"></script>
-  <script src="../assets/validator.js?v=20261016a"></script>
-  <script>
+  <script src="../assets/boot.js?v=20261018m"></script>
+<script type="text/plain" data-src="access.js?v=20261018l"></script>
+  <script type="text/plain" data-src="validator.js?v=20261016a"></script>
+  <script type="text/plain">
     const $ = id => document.getElementById(id);
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const initials = s => String(s || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'Dr';

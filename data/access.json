@@ -1,4 +1,55 @@
 {
+  "roleNames": {
+    "superadmin": "Super Admin",
+    "investigator": "Site Investigator",
+    "central": "Central team"
+  },
+  "permissions": [
+    [
+      "view_all_sites",
+      "See patients at every site"
+    ],
+    [
+      "add_patient",
+      "Add patients"
+    ],
+    [
+      "enter_data",
+      "Enter and edit visit data"
+    ],
+    [
+      "mark_complete",
+      "Mark visits complete or reopen them"
+    ],
+    [
+      "export_data",
+      "Export CSV"
+    ],
+    [
+      "load_demo",
+      "Load demo data"
+    ],
+    [
+      "clear_all",
+      "Clear all data"
+    ],
+    [
+      "assign_investigators",
+      "Add site investigators and assign their sites"
+    ],
+    [
+      "manage_users",
+      "Manage users"
+    ],
+    [
+      "manage_sites",
+      "Manage sites"
+    ]
+  ],
+  "superNo": [
+    "load_demo",
+    "clear_all"
+  ],
   "zones": [
     "North",
     "Central",
@@ -37,21 +88,19 @@
       "role": "superadmin",
       "sites": [],
       "zones": [],
-      "active": true
+      "active": true,
+      "mustChangePassword": false
     },
     {
       "username": "emily.carter",
       "name": "Emily Carter",
       "role": "investigator",
       "sites": [
-        "RIC",
-        "LHR"
+        "RIC"
       ],
-      "zones": [
-        "North",
-        "Central"
-      ],
-      "active": true
+      "zones": [],
+      "active": true,
+      "mustChangePassword": false
     },
     {
       "username": "robert.wilson",
@@ -63,26 +112,49 @@
         "Central",
         "South"
       ],
-      "active": true
+      "active": true,
+      "mustChangePassword": false
     },
     {
       "username": "adnan.khan",
       "name": "Adnan Khan",
       "role": "investigator",
       "sites": [
-        "KHI",
+        "KHI"
+      ],
+      "zones": [],
+      "active": true,
+      "mustChangePassword": false
+    },
+    {
+      "username": "sana.iqbal",
+      "name": "Sana Iqbal",
+      "role": "investigator",
+      "sites": [
+        "LHR"
+      ],
+      "zones": [],
+      "active": true,
+      "mustChangePassword": false
+    },
+    {
+      "username": "usman.tariq",
+      "name": "Usman Tariq",
+      "role": "investigator",
+      "sites": [
         "ISB"
       ],
-      "zones": [
-        "South",
-        "North"
-      ],
-      "active": true
+      "zones": [],
+      "active": true,
+      "mustChangePassword": false
     }
   ],
   "perms": {
     "superadmin": {
       "view_all_sites": true,
+      "add_patient": true,
+      "enter_data": true,
+      "mark_complete": true,
       "export_data": true,
       "assign_investigators": true,
       "manage_users": true,
@@ -99,5 +171,6 @@
       "view_all_sites": true,
       "export_data": true
     }
-  }
+  },
+  "_migrated_inv_export_v2": true
 }

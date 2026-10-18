@@ -6,6 +6,7 @@
      data-own      present on pages that show their own sync status in the pill
    Connection: the header shows the offline bar and the Online/Offline pill, and announces changes
    with the "standhf:connection" event (detail: { online, quiet }). */
+var HEADER_SRC=document.currentScript&&document.currentScript.src;
 (function(){
   var host=document.getElementById('app-header');
   if(!host)return;
@@ -201,10 +202,13 @@
   var readSet=function(){try{return JSON.parse(localStorage.getItem(readKey)||'[]')}catch(e){return[]}};
   var writeRead=function(a){try{localStorage.setItem(readKey,JSON.stringify(a))}catch(e){}};
   var notesFor=function(){
-    var all=((window.NOTIFICATIONS_DUMMY||{})[sess.username]||[]).concat(window.liveNotesFor?window.liveNotesFor(sess.username):[]);
+    var all=((dummyNotes||{})[sess.username]||[]).concat(window.liveNotesFor?window.liveNotesFor(sess.username):[]);
     var allSites=(typeof can==='function')&&can('view_all_sites');
     var mine=(typeof mySites==='function')?mySites():[];
     return all.filter(function(n){return allSites||mine.indexOf(n.site)>=0})};
+  /* Demo notifications per user: loaded from data/notifications.json, then the bell is repainted */
+  var dummyNotes={};
+  if(HEADER_SRC)fetch(new URL('../data/notifications.json', HEADER_SRC)).then(function(r){return r.ok?r.json():{}}).then(function(d){dummyNotes=d||{};if(typeof paintNotes==='function')paintNotes()}).catch(function(){});
   var panel=document.getElementById('notifyPanel'), bell=document.getElementById('bell');
   var paintNotes=function(){
     var list=notesFor(), read=readSet();

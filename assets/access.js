@@ -1,44 +1,15 @@
 /* STAND-HF access: sites, users, role permissions and the signed-in session.
    Shared by the sign-in page, the administration page and the E-CRF.
    Data is kept in this browser (prototype). */
+/* Roles, permissions, sites and demo users are read from data/access.json (loaded by assets/boot.js) */
+const ACCESS_DATA=window.STANDHF_DATA.access;
 const ACCESS_KEY='standhf_access_v1';
-const ROLE_NAMES={superadmin:'Super Admin',investigator:'Site Investigator',central:'Central team'};
-const PERMS=[
-  ['view_all_sites','See patients at every site'],
-  ['add_patient','Add patients'],
-  ['enter_data','Enter and edit visit data'],
-  ['mark_complete','Mark visits complete or reopen them'],
-  ['export_data','Export CSV'],
-  ['load_demo','Load demo data'],
-  ['clear_all','Clear all data'],
-  ['assign_investigators','Add site investigators and assign their sites'],
-  ['manage_users','Manage users'],
-  ['manage_sites','Manage sites']
-];
+const ROLE_NAMES=ACCESS_DATA.roleNames;
+const PERMS=ACCESS_DATA.permissions;
 const ALL_PERMS=Object.fromEntries(PERMS.map(([k])=>[k,true]));
 /* Super Admin and Central team oversee the study; clinical patient data entry belongs strictly to assigned site investigators */
-const SUPER_NO=['load_demo','clear_all'];
-const DEFAULT_ACCESS={
-  zones:['North','Central','South'],
-  sites:[
-    {code:'RIC',name:'Riverside Cardiac Centre',zone:'North',city:'Rawalpindi'},
-    {code:'LHR',name:'Lakeview Heart Clinic',zone:'Central',city:'Lahore'},
-    {code:'KHI',name:'Harbor Heart Institute',zone:'South',city:'Karachi'},
-    {code:'ISB',name:'Highland Cardiology',zone:'North',city:'Islamabad'}
-  ],
-  users:[
-    {username:'michael.johnson',name:'Michael Johnson',role:'superadmin',sites:[],zones:[],active:true,mustChangePassword:false},
-    {username:'emily.carter',name:'Emily Carter',role:'investigator',sites:['RIC'],zones:['North'],active:true,mustChangePassword:false},
-    {username:'robert.wilson',name:'Robert Wilson',role:'central',sites:[],zones:['North','Central','South'],active:true,mustChangePassword:false},
-    {username:'adnan.khan',name:'Adnan Khan',role:'investigator',sites:['KHI'],zones:['South'],active:true,mustChangePassword:false}
-  ],
-  perms:{
-    superadmin:{view_all_sites:true,add_patient:true,enter_data:true,mark_complete:true,export_data:true,assign_investigators:true,manage_users:true,manage_sites:true},
-    investigator:{add_patient:true,enter_data:true,mark_complete:true,load_demo:true,clear_all:true},
-    central:{view_all_sites:true,export_data:true}
-  },
-  _migrated_inv_export_v2: true
-};
+const SUPER_NO=ACCESS_DATA.superNo;
+const DEFAULT_ACCESS=JSON.parse(JSON.stringify(ACCESS_DATA));
 
 const AUDIT_CENTRAL_KEY='standhf_central_audit_v1';
 function centralAuditLog(){

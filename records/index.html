@@ -164,15 +164,16 @@
     <dialog class="viewer" id="viewer" aria-labelledby="vTitle"><div class="viewer-head"><b id="vTitle"></b><button type="button" class="icon-btn" id="vClose" aria-label="Close"><i class="ms">close</i></button></div><div class="viewer-body" id="vBody"></div></dialog>
   </div>
 </div>
-<script src="../assets/access.js?v=20261018l"></script>
-<script src="../assets/validator.js?v=20261016a"></script>
-<script src="../assets/notifications-data.js?v=20261016a"></script>
-<script src="../assets/lookups.js?v=20261016a"></script>
-<script src="../assets/file-card.js?v=20261016a"></script>
-<script src="../assets/dialog.js?v=20261016a"></script>
-<script src="../assets/header.js?v=20261018l" data-root="../"></script>
-<script src="../assets/nav.js?v=20261018h"></script>
-<script>
+<script src="../assets/boot.js?v=20261018m"></script>
+<script type="text/plain" data-src="access.js?v=20261018l"></script>
+<script type="text/plain" data-src="validator.js?v=20261016a"></script>
+<script type="text/plain" data-src="lookups.js?v=20261016a"></script>
+<script type="text/plain" data-src="file-card.js?v=20261016a"></script>
+<script type="text/plain" data-src="dialog.js?v=20261016a"></script>
+<script type="text/plain" data-src="btn-loader.js"></script>
+<script type="text/plain" data-src="header.js?v=20261018l" data-root="../"></script>
+<script type="text/plain" data-src="nav.js?v=20261018h"></script>
+<script type="text/plain">
 const KEY='standhf_ecrf_v1';
 const LIST_COLLAPSED_KEY='standhf_pt_list_collapsed';
 const SEC_COLLAPSED_KEY='standhf_sec_collapsed';
@@ -782,6 +783,7 @@ function demoRx(label){const c=document.createElement('canvas');c.width=600;c.he
 const DEMO_NAMES=['Ali Raza','Sana Iqbal','Usman Tariq','Ayesha Noor','Bilal Ahmed','Hina Yousaf','Farhan Akhtar','Zainab Shah','Imran Hussain','Mariam Javed','Omar Farooq','Nadia Qureshi','Asad Mehmood','Sadia Rashid','Hamza Siddiqui','Kiran Abbas','Tariq Nawaz','Rabia Saleem','Waqar Younas','Fatima Zaidi','Danish Malik','Saima Bashir','Adnan Latif','Uzma Rehman','Kashif Iqbal','Maryam Ghani','Shahid Afridi','Noreen Akram','Faisal Mahmood','Lubna Pervaiz','Naveed Anwar','Huma Shafiq','Junaid Sheikh','Amna Hayat','Saad Karim','Rukhsana Bibi','Yasir Ali','Tahira Parveen','Zubair Ahmad','Khadija Nasir','Irfan Ullah','Sobia Riaz','Mudassar Rana','Rizwan Haider'];
 const loadDemo=async()=>{
   try{
+    await apiWait(900);
     const res=await fetch('../data/dummy_data.json');
     if(res.ok){
       const data=await res.json();
@@ -833,7 +835,7 @@ const loadDemo=async()=>{
  }
  persist();if(DB.pts.length){sel=DB.pts[DB.pts.length-1].id}tab='sum';pane();dash();
  toast('Demo data loaded: '+created.length+' visits with prescriptions')};
-$('bDemo').onclick=()=>{if(!can('load_demo')){toast('Permission denied.');return}window.withLoader(1000,loadDemo)};
+$('bDemo').onclick=()=>{if(!can('load_demo')){toast('Permission denied.');return}btnRun($('bDemo'),loadDemo).catch(()=>toast('Could not load demo data. Try again.'))};
 
 
 /* Prescription files: bytes live in IndexedDB; the patient record keeps the metadata */
