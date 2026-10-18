@@ -92,9 +92,12 @@ The investigator dropdown is built from the users with role `investigator` in `u
 - `type`: `deleted`, `due`, `overdue`, `missing`, `admin` or `info`.
 - `link`: `{ page, patient?, tab? }` to open a record.
 
-### `whatsnew.json`: release notes
+### `whatsnew.json`: release notes & backend changelog API
 - `date`, `version`, and `content`: a list of `{ cat, items[] }`.
-- The version controls when the sign-in dialog shows again. Change it with each release.
+- **UI Dialog Suppressed**: The client-side popup dialog on the sign-in page is now disabled and permanently hidden from the UI.
+- **Backend API Integration**: Changelog entries are managed via `STANDHF_CHANGELOG_API` (`assets/whatsnew.js`) connecting to `/api/changelog`:
+  - `GET /api/changelog`: Retrieves active changelog and release notes (with fallback to `data/whatsnew.json`).
+  - `POST /api/changelog`: Receives a list of content (`{ date, version, content: [{ cat, items: [] }] }`) whenever changes or updates occur.
 
 ### `dummy_data.json`: demo patients
 - `pts`: 44 patients, spread unevenly across the four sites (RIC 13, LHR 9, KHI 10, ISB 12). Each site's investigator owns that site's patients.

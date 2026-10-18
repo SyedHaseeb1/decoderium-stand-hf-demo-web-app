@@ -15,13 +15,8 @@
   <link rel="preload" href="../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261018p">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018r">
 <script>
-  try {
-    if (localStorage.getItem('standhf_theme') !== 'blue') {
-      document.documentElement.setAttribute('data-theme', 'logo');
-    }
-  } catch(e) {}
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
 </script>
@@ -48,6 +43,18 @@
   padding-bottom: 6px;
   border-bottom: 1px solid var(--line);
   font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Mobile/Tablet: Collapsed by default */
+@media (max-width: 1280px) {
+  .demo-ref-card .demo-ref-grid { display: none; }
+  .demo-ref-card.expanded .demo-ref-grid { display: grid; }
+}
+/* Desktop: Expanded by default */
+@media (min-width: 1281px) {
+  .demo-ref-card .demo-ref-grid { display: grid; }
 }
 .demo-ref-title {
   display: flex;
@@ -105,13 +112,31 @@
 .demo-ref-row .dot.inv { background: var(--success); }
 .demo-ref-row .dot.cent { background: #1a5fb4; }
 .demo-ref-row .dot.adm { background: #C90085; }
+.demo-ref-row .r-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
 .demo-ref-row .r-name {
   font-weight: 600;
-  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 11px;
+}
+.demo-ref-row .r-cred {
+  font-size: 9.5px;
+  color: var(--ink-3);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.demo-ref-row .r-cred.is-email {
+  color: var(--primary);
+  font-weight: 600;
 }
 .demo-ref-row .r-site {
   font-size: 10px;
@@ -124,10 +149,6 @@
 </style>
 </head>
 <body class="auth-page">
-<button type="button" class="theme-toggle-btn" id="loginThemeToggle" style="position:fixed;top:16px;right:16px;z-index:999" title="Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue">
-  <span class="theme-dot"></span>
-  <span class="theme-btn-label" id="loginThemeBtnText">Blue Theme</span>
-</button>
 <main class="auth-wrap">
   <div class="auth-card">
     <section class="auth-brand" aria-label="STAND-HF">
@@ -171,8 +192,8 @@
       </div>
 
       <label class="field">
-        <span>Username or Email</span>
-        <input id="user" name="username" type="text" autocomplete="username email" autocapitalize="off" spellcheck="false" maxlength="100" placeholder="e.g. emily.carter or emily@hospital.pk">
+        <span>Username or Official Email</span>
+        <input id="user" name="username" type="text" autocomplete="username email" autocapitalize="off" spellcheck="false" maxlength="100" placeholder="e.g. emily.carter or emily.carter@standhf.example" data-schema="login_identifier">
       </label>
 
       <label class="field">
@@ -202,38 +223,56 @@
       <div class="demo-ref-card">
         <div class="demo-ref-head">
           <span class="demo-ref-title"><i class="ms">badge</i> Demo Accounts</span>
-          <span class="demo-ref-sub">Click user to fill · Password: <i>any</i></span>
+          <span class="demo-ref-sub">Click user to fill (mixed usernames &amp; emails) · Password: <i>any</i></span>
         </div>
         <div class="demo-ref-grid">
-          <button type="button" class="demo-ref-row" data-user="emily.carter" data-role="investigator" title="Site Investigator at Rawalpindi Institute of Cardiology">
+          <button type="button" class="demo-ref-row" data-user="emily.carter" data-role="investigator" title="Sign in using username: emily.carter">
             <span class="dot inv"></span>
-            <span class="r-name">Dr. Emily Carter</span>
-            <span class="r-site">RIC (Rawalpindi)</span>
+            <div class="r-info">
+              <span class="r-name">Dr. Emily Carter</span>
+              <span class="r-cred">emily.carter</span>
+            </div>
+            <span class="r-site">RIC</span>
           </button>
-          <button type="button" class="demo-ref-row" data-user="adnan.khan" data-role="investigator" title="Site Investigator at National Institute of CV Diseases">
+          <button type="button" class="demo-ref-row" data-user="adnan.khan@standhf.example" data-role="investigator" title="Sign in using email: adnan.khan@standhf.example">
             <span class="dot inv"></span>
-            <span class="r-name">Prof. Adnan Khan</span>
-            <span class="r-site">KHI (Karachi)</span>
+            <div class="r-info">
+              <span class="r-name">Prof. Adnan Khan</span>
+              <span class="r-cred is-email">adnan.khan@standhf.example</span>
+            </div>
+            <span class="r-site">KHI</span>
           </button>
-          <button type="button" class="demo-ref-row" data-user="sana.iqbal" data-role="investigator" title="Site Investigator at Punjab Institute of Cardiology">
+          <button type="button" class="demo-ref-row" data-user="sana.iqbal" data-role="investigator" title="Sign in using username: sana.iqbal">
             <span class="dot inv"></span>
-            <span class="r-name">Dr. Sana Iqbal</span>
-            <span class="r-site">LHR (Lahore)</span>
+            <div class="r-info">
+              <span class="r-name">Dr. Sana Iqbal</span>
+              <span class="r-cred">sana.iqbal</span>
+            </div>
+            <span class="r-site">LHR</span>
           </button>
-          <button type="button" class="demo-ref-row" data-user="usman.tariq" data-role="investigator" title="Site Investigator at Pakistan Institute of Medical Sciences">
+          <button type="button" class="demo-ref-row" data-user="usman.tariq@standhf.example" data-role="investigator" title="Sign in using email: usman.tariq@standhf.example">
             <span class="dot inv"></span>
-            <span class="r-name">Dr. Usman Tariq</span>
-            <span class="r-site">ISB (Islamabad)</span>
+            <div class="r-info">
+              <span class="r-name">Dr. Usman Tariq</span>
+              <span class="r-cred is-email">usman.tariq@standhf.example</span>
+            </div>
+            <span class="r-site">ISB</span>
           </button>
-          <button type="button" class="demo-ref-row" data-user="robert.wilson" data-role="central" title="Central Clinical Oversight across All Sites">
+          <button type="button" class="demo-ref-row" data-user="robert.wilson@standhf.example" data-role="central" title="Sign in using email: robert.wilson@standhf.example">
             <span class="dot cent"></span>
-            <span class="r-name">Robert Wilson</span>
-            <span class="r-site">Central · All Sites</span>
+            <div class="r-info">
+              <span class="r-name">Robert Wilson</span>
+              <span class="r-cred is-email">robert.wilson@standhf.example</span>
+            </div>
+            <span class="r-site">Central</span>
           </button>
-          <button type="button" class="demo-ref-row" data-user="michael.johnson" data-role="admin" title="Global System Administrator">
+          <button type="button" class="demo-ref-row" data-user="michael.johnson" data-role="admin" title="Sign in using username: michael.johnson">
             <span class="dot adm"></span>
-            <span class="r-name">Michael Johnson</span>
-            <span class="r-site">Super Admin · Global</span>
+            <div class="r-info">
+              <span class="r-name">Michael Johnson</span>
+              <span class="r-cred">michael.johnson</span>
+            </div>
+            <span class="r-site">Super Admin</span>
           </button>
         </div>
       </div>
@@ -266,14 +305,18 @@
   </div>
 </dialog>
 
-<script src="../assets/boot.js?v=20261018o"></script>
+<script src="../assets/boot.js?v=20261018p"></script>
 <script type="text/plain" data-src="access.js?v=20261018l"></script>
 <script type="text/plain" data-src="validator.js?v=20261016a"></script>
 <script src="../assets/btn-loader.js"></script>
 <script type="text/plain">
 const APP='../records/', DASH='../app/', ADMIN='../admin/', AUTH_KEY='standhf_auth', USER_KEY='standhf_user', ROLE_KEY='standhf_role';
 const REMEMBER_KEY='standhf_remember_user';
-const ACCOUNTS=accessStore().users.filter(u=>u.active).map(u=>({user:u.username,name:u.name,role:u.role}));
+const ACCOUNTS=accessStore().users.filter(u=>u.active).map(u=>{
+  const em = u.email || (u.personal && u.personal.email) || '';
+  const defaultId = (u.role === 'central' && em) ? em : u.username;
+  return { user: defaultId, username: u.username, email: em, name: u.name, role: u.role };
+});
 /* Each tab accepts its own roles: Site Investigator, Central Team (Read-only), and Super Admin */
 const TAB_ROLES={investigator:['investigator'],central:['central'],admin:['superadmin']};
 const TAB_LABEL={investigator:'Site Investigator',central:'Central Team',admin:'Super Admin'};
@@ -290,8 +333,34 @@ const $=id=>document.getElementById(id);
 function fail(msg,focusId){
   $('errMsg').textContent=msg;
   $('err').classList.add('show');
-  $(focusId).focus();
+  if(focusId && $(focusId)){
+    $(focusId).focus();
+    $(focusId).classList.add('fld-flash');
+  }
 }
+
+/* Clear error states on input */
+$('user').addEventListener('input', ()=>{
+  $('err').classList.remove('show');
+  $('user').classList.remove('fld-flash');
+});
+$('pass').addEventListener('input', ()=>{
+  $('err').classList.remove('show');
+  $('pass').classList.remove('fld-flash');
+});
+
+/* Real-time blur validation on login identifier using STANDHF_VALIDATOR */
+$('user').addEventListener('blur', ()=>{
+  const val = $('user').value.trim();
+  if(!val) return;
+  const valEngine = window.STANDHF_VALIDATOR || window.Validator;
+  if(valEngine && typeof valEngine.validate === 'function'){
+    const res = valEngine.validate('login_identifier', val, false);
+    if(!res.ok){
+      fail(res.msg, 'user');
+    }
+  }
+});
 
 /* Slide the indicator under the active tab */
 function moveThumb(){
@@ -331,6 +400,11 @@ $('togglePw').onclick=()=>{
   $('togglePw').firstElementChild.textContent=show?'visibility_off':'visibility';
 };
 
+/* Collapse/Expand demo accounts card */
+document.querySelector('.demo-ref-head').addEventListener('click', () => {
+  document.querySelector('.demo-ref-card').classList.toggle('expanded');
+});
+
 $('forgot').onclick=()=>{
   const dlg = $('dlgForgotNotice');
   if(dlg) dlg.showModal();
@@ -345,7 +419,7 @@ document.querySelectorAll('[data-close-modal]').forEach(b=>{
   });
 });
 
-/* Click a demo user row to quickly fill username & switch tab */
+/* Click a demo user row to quickly fill username or email & switch tab */
 document.querySelectorAll('.demo-ref-row').forEach(b => {
   b.addEventListener('click', () => {
     const u = b.getAttribute('data-user');
@@ -376,7 +450,7 @@ if(urlParams.get('setupComplete') === '1'){
   }
 }
 
-/* Only the username is remembered, never the password */
+/* Only the username or email is remembered, never the password */
 let remembered='';
 try{remembered=localStorage.getItem(REMEMBER_KEY)||''}catch(e){}
 if(!urlParams.get('setupComplete')){
@@ -398,8 +472,22 @@ $('form').addEventListener('submit',e=>{
   const rawInput = $('user').value.trim();
   const u = rawInput.toLowerCase();
   const p = $('pass').value;
-  if(!u) return fail('Enter your username or email address.', 'user');
-  if(!p) return fail('Enter your password.', 'pass');
+
+  // Apply validations from canonical validator (STANDHF_VALIDATOR)
+  const valEngine = window.STANDHF_VALIDATOR || window.Validator;
+  if(valEngine && typeof valEngine.validate === 'function'){
+    const userCheck = valEngine.validate('login_identifier', rawInput, true);
+    if(!userCheck.ok){
+      return fail(userCheck.msg, 'user');
+    }
+    const passCheck = valEngine.validate('password', p, true);
+    if(!passCheck.ok){
+      return fail(passCheck.msg, 'pass');
+    }
+  } else {
+    if(!u) return fail('Enter your username or email address.', 'user');
+    if(!p) return fail('Enter your password.', 'pass');
+  }
   
   const allUsers = accessStore().users;
   const userObj = allUsers.find(a => {
@@ -469,43 +557,6 @@ document.addEventListener('focusin',function(e){
 document.addEventListener('focusout',function(){
   setTimeout(function(){if(!document.activeElement||document.activeElement.tagName!=='INPUT'){document.querySelector('.auth-page').classList.remove('kbd');document.querySelector('.auth-page').scrollTop=0}},300);
 });
-</script>
-<script type="text/plain">
-(function(){
-  var btn = document.getElementById('loginThemeToggle');
-  if(!btn) return;
-  var isBlue = false;
-  try { isBlue = localStorage.getItem('standhf_theme') === 'blue'; } catch(e){}
-  var isLogo = !isBlue;
-  if(isLogo){
-    document.documentElement.setAttribute('data-theme', 'logo');
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
-  var txt = document.getElementById('loginThemeBtnText');
-  if(txt) txt.textContent = isLogo ? 'Blue Theme' : 'Logo Theme';
-  btn.title = isLogo ? 'Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue' : 'Using Clinical Blue Theme · Click to switch to STAND-HF Logo Theme (Default)';
-
-  btn.addEventListener('click', function(){
-    document.documentElement.classList.add('theme-transition');
-    var nowLogo = document.documentElement.getAttribute('data-theme') === 'logo';
-    var nextLogo = !nowLogo;
-    if(nextLogo){
-      document.documentElement.setAttribute('data-theme', 'logo');
-      try { localStorage.setItem('standhf_theme', 'logo'); } catch(e){}
-      if(txt) txt.textContent = 'Blue Theme';
-      btn.title = 'Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue';
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      try { localStorage.setItem('standhf_theme', 'blue'); } catch(e){}
-      if(txt) txt.textContent = 'Logo Theme';
-      btn.title = 'Using Clinical Blue Theme · Click to switch to STAND-HF Logo Theme (Default)';
-    }
-    setTimeout(function(){
-      document.documentElement.classList.remove('theme-transition');
-    }, 350);
-  });
-})();
 </script>
 <script src="../assets/whatsnew.js?v=20261015a"></script>
 </body>

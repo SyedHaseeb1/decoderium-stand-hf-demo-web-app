@@ -54,6 +54,7 @@ Stand-HF/                          <-- Workspace Root
 │       ├── lookups.js             <-- Clinical options, medications, codes
 │       ├── dialog.js              <-- Modal dialog utilities
 │       ├── file-card.js           <-- Attachment card renderer
+│       ├── whatsnew.js            <-- Changelog service & API connector (/api/changelog)
 │       └── (demo listings now live in data/*.json)
 ```
 
@@ -72,7 +73,7 @@ Stand-HF/                          <-- Workspace Root
    - All styling must strictly utilize CSS design tokens defined in [`assets/base.css`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/assets/base.css):
      - Colors: `var(--primary)`, `var(--primary-hover)`, `var(--card)`, `var(--ink)`, `var(--ink-2)`, `var(--border)`, `var(--danger)`, `var(--warn)`, `var(--success)`.
      - Brand accents: `var(--brand-red)`, `var(--brand-magenta)`, `var(--brand-soft)`.
-   - Typography: Google Font **Roboto** (`400`, `500`, `700`).
+   - Typography: Google Font **Roboto** (weights 100–900, self-hosted locally in `assets/fonts/roboto.woff2` for 100% offline capability).
    - Iconography: Google **Material Symbols Rounded** using `<span class="ms">icon_name</span>` (self-hosted locally in `assets/fonts/material-symbols-rounded.woff2` for offline performance).
 3. **Responsive & Tablet Priority**:
    - The primary field device is clinical tablets (10" landscape and portrait).
@@ -150,6 +151,8 @@ Follow clinical validation specifications in [`docs/06-validation-rules.md`](fil
 
 1. **Hard Errors (Block Save)**:
    - Required fields missing.
+   - Site Code: Must be selected from authorized site dropdown; free typing is blocked (`readonly data-cb-input`). Auto-selected if only 1 site is available.
+   - Investigator Name: Must be selected from assigned site's investigator dropdown; free typing is blocked (`readonly data-cb-input`). Auto-selected if only 1 investigator is available for the selected site.
    - Patient Name: Minimum 2 characters; letters, spaces, dots, apostrophes, and hyphens only.
    - Contact Number: **Exactly 11 digits** (e.g. 03001234567); non-digits and non-separators stripped as typed.
    - Consent Date: Mandatory date; **cannot be in the future**.
@@ -159,12 +162,21 @@ Follow clinical validation specifications in [`docs/06-validation-rules.md`](fil
    - Age 111–150 triggers an advisory: "Please verify patient age."
    - Extreme physiological or lab values outside standard clinical bounds require verification.
    - Non-active GDMT pillars require at least one documented reason.
-3. **Visit Schedule & Form Structure**:
+3. **Visit Schedule & Dynamic Window Tolerances**:
+   - **Dynamic Admin-Configured Threshold Rule**: The visit window tolerance (±w) and notification alert lead time are **dynamically driven by the Super Admin threshold setting** (`followupAlertThresholdDays()`, range 3–14 days, default 14).
+     - **Admin Control**: Whatever value Super Admin configures in the Admin Panel (`#cardFollowupThreshold`), the entire application must follow directly without hardcoded overrides.
+     - **CRF Visit Windows**: 
+       - **Baseline (B)**: Enrollment visit (auto-defaults date to consent date).
+       - **Month 3 (M3)**: Target Day 90 ± {threshold} days from Baseline (e.g. Day 90 ± 14 days by default, or ± 3, 5, 7 days as configured by Admin).
+       - **Month 6 (M6)**: Target Day 180 ± {threshold} days from Baseline (e.g. Day 180 ± 14 days by default, or ± 3, 5, 7 days as configured by Admin).
+     - **Application-Wide Propagation**:
+       - Visit banners in patient records display `Target day {t} ±{w}: {start} to {end}` using the active admin threshold.
+       - Soft validation warnings trigger if visit date is outside `Day {t} ±{w}`.
+       - Dashboard follow-up queues (Due / Overdue), study metrics, and on-time adherence rates calculate using the active admin threshold.
+       - Notification badges and bell alerts generate `{threshold}` days prior to target milestones.
+       - Instant live sync via `standhf_threshold_changed` and `storage` events across all tabs/views.
    - **Section B (Clinical & Functional)**: Single card containing Weight, Heart rate, Systolic BP, Diastolic BP, NYHA class, LVEF (%) [N/A at 3M], 1MSTS repetitions, and 1MSTS stop reason. Visit date, Echo date, and 1MSTS repeated are removed from UI.
    - **Section C (Foundational GDMT)**: 4 pillars with Generic drug, Strength dropdown, Frequency dropdown (`OD`, `BD`, `TDS`), and Status dropdown. Choosing a generic drug automatically marks Status as `'Active'`. Start date is removed. On large desktop monitors (>1366px without touch), Strength and Frequency dropdowns sit side-by-side; on tablet and mobile (<=1366px or touch tablets), they shift to vertical stacking so each dropdown expands across 100% of the card width.
-   - **Baseline (B)**: Enrollment visit (auto-defaults date to consent date).
-   - **Month 3 (M3)**: 90 days ± 14 days from Baseline.
-   - **Month 6 (M6)**: 180 days ± 14 days from Baseline.
 
 ---
 

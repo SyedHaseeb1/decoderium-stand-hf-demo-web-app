@@ -15,7 +15,7 @@
   <link rel="preload" href="../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261018p">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018t">
   <script>
     try {
       if (localStorage.getItem('standhf_theme') !== 'blue') {
@@ -91,7 +91,7 @@
         </label>
         <label class="ed-option">
           <input type="checkbox" name="edVisits" value="m6" checked>
-          <div><b>Month 6 (Day 180±21)</b><div class="muted">Final follow-up, LVEF, events</div></div>
+          <div><b>Month 6 (Day 180±14)</b><div class="muted">Final follow-up, LVEF, events</div></div>
         </label>
         <label class="ed-option">
           <input type="checkbox" name="edOnly4Pillars" value="1">
@@ -125,7 +125,7 @@
 <div class="snack" id="snack" role="status" aria-live="polite"></div>
 
 <!-- Required Shared Infrastructure Scripts in Strict Order -->
-<script src="../assets/boot.js?v=20261018o" data-api-delay="3000"></script>
+<script src="../assets/boot.js?v=20261018p" data-api-delay="3000"></script>
 <script type="text/plain" data-src="access.js?v=20261018l"></script>
 <script type="text/plain" data-src="validator.js?v=20261016a"></script>
 <script type="text/plain" data-src="lookups.js?v=20261015b"></script>
@@ -208,7 +208,7 @@ function act(v){
 function window_(p, k){
   const b = p.v?.b?.date;
   if (k === 'b' || !b) return null;
-  const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14: 21;
+  const t = k === 'm3' ? 90 : 180, w = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14;
   return [addD(b, t - w), addD(b, t + w), t, w];
 }
 
@@ -218,9 +218,10 @@ function vstat(p, k){
   const b = p.v?.b?.done ? p.v.b.date : null;
   let late = false, due = false, missed = false;
   if (k !== 'b' && b) {
-    const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21, T = new Date();
+    const t = k === 'm3' ? 90 : 180, w = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14, T = new Date();
+    const threshold = w;
     late = T > addD(b, t + w);
-    due = T >= addD(b, t - w);
+    due = T >= addD(b, t - threshold);
     missed = T > addD(b, t + w + 30) && !has(v);
   }
   return missed ? 'Missed' : late ? 'Overdue' : has(v) ? 'In Progress' : due ? 'Due' : 'Not Started';
@@ -232,7 +233,7 @@ const visitName = k => VK.find(a => a[0] === k)?.[1] || '';
 
 function onTime(p, k){
   if (k === 'b' || !p.v?.b?.date || !p.v?.[k]?.done || !p.v?.[k]?.date) return null;
-  const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21;
+  const t = k === 'm3' ? 90 : 180, w = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14;
   const d = Math.round((day(p.v[k].date) - day(p.v.b.date)) / DAY);
   return Math.abs(d - t) <= w;
 }
@@ -1031,7 +1032,7 @@ function renderSuperAdminView(allPts){
   ` : `
     <div class="hello">
       <div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:4px">
           <h1 id="welcome">Super Admin Study Executive Dashboard</h1>
           <span class="tag" style="background:#1b1d22;color:#fff;font-size:12px;padding:3px 10px"><i class="ms" style="font-size:14px;vertical-align:-2px">shield</i> Super Admin</span>
         </div>
@@ -2731,6 +2732,15 @@ window.addEventListener('hashchange', () => {
   applyHash();
   renderDashboard();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+window.addEventListener('standhf_threshold_changed', () => {
+  renderDashboard();
+});
+window.addEventListener('storage', e => {
+  if (e.key === 'standhf_followup_threshold_days' || e.key === 'standhf_access_v1') {
+    renderDashboard();
+  }
 });
 
 })();

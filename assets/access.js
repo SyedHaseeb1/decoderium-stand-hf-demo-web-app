@@ -394,3 +394,132 @@ document.addEventListener('paste', function(e){
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 });
+
+/* ------------------------------------------------------------------------
+   Follow-up Notification Lead Threshold (Days Before) & Alert Generator
+   Governs how many days prior to a scheduled follow-up milestone (e.g. Day 90 / Day 180)
+   the portal automatically generates follow-up due notifications.
+   ------------------------------------------------------------------------ */
+function followupAlertThresholdDays(){
+  try {
+    var s = accessStore();
+    if(s && typeof s.followupThresholdDays === 'number' && s.followupThresholdDays >= 3 && s.followupThresholdDays <= 14){
+      return s.followupThresholdDays;
+    }
+  } catch(e){}
+  try {
+    var raw = localStorage.getItem('standhf_followup_threshold_days');
+    if(raw) {
+      var n = parseInt(raw, 10);
+      if(n >= 3 && n <= 14) return n;
+    }
+  } catch(e){}
+  return 14; // protocol default: 14 days prior
+}
+
+function setFollowupAlertThresholdDays(days){
+  var n = parseInt(days, 10);
+  if(isNaN(n) || n < 3 || n > 14) return false;
+  try {
+    var s = accessStore();
+    s.followupThresholdDays = n;
+    saveAccess(s);
+  } catch(e){}
+  try {
+    localStorage.setItem('standhf_followup_threshold_days', String(n));
+  } catch(e){}
+  if(typeof window !== 'undefined' && typeof window.dispatchEvent === 'function'){
+    window.dispatchEvent(new CustomEvent('standhf_threshold_changed', { detail: { days: n } }));
+  }
+  return true;
+}
+
+/**
+ * Dynamic Follow-up Notifications Generator
+ * Evaluates patient registry against the admin-configured threshold days.
+ * Generates due / overdue alerts when visits fall within the configured lead window.
+ */
+function liveNotesFor(username){
+  var notes = [];
+  try {
+    var ptsRaw = localStorage.getItem('standhf_ecrf_v1');
+    if(!ptsRaw) return notes;
+    var pts = JSON.parse(ptsRaw);
+    if(!Array.isArray(pts)) return notes;
+
+    var u = findUser(username) || currentUser();
+    var isGlobal = (typeof can === 'function' && can('view_all_sites')) || (u && (u.role === 'superadmin' || u.role === 'central'));
+    var userSites = (typeof mySites === 'function') ? mySites() : (u && Array.isArray(u.sites) ? u.sites : []);
+
+    var leadDays = followupAlertThresholdDays();
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    var parseD = function(s){
+      if(!s) return null;
+      var d = new Date(s + 'T00:00:00');
+      return isNaN(d.getTime()) ? null : d;
+    };
+    var addD = function(d, n){ return new Date(d.getTime() + n * 86400000); };
+
+    pts.forEach(function(p){
+      if(!isGlobal && (!p.site || userSites.indexOf(p.site) < 0)) return;
+      if(!p.v) return;
+
+      var bDateStr = (p.v.b && p.v.b.date) || p.consent;
+      var bDate = parseD(bDateStr);
+      if(!bDate) return;
+
+      var visits = [
+        { k: 'm3', name: '3-Month', days: 90, win: 14 },
+        { k: 'm6', name: '6-Month', days: 180, win: 21 }
+      ];
+
+      visits.forEach(function(v){
+        var vr = p.v[v.k];
+        if(vr && vr.done) return;
+
+        var targetDate = addD(bDate, v.days);
+        var leadTriggerDate = addD(targetDate, -leadDays);
+        var overdueDate = addD(targetDate, v.win);
+
+        if(today >= leadTriggerDate){
+          var targetStr = targetDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          var daysDiff = Math.round((targetDate.getTime() - today.getTime()) / 86400000);
+
+          if(today > overdueDate){
+            var overDays = Math.round((today.getTime() - overdueDate.getTime()) / 86400000);
+            notes.push({
+              id: 'live-od-' + (p.uid || p.id) + '-' + v.k,
+              site: p.site,
+              type: 'overdue',
+              title: v.name + ' visit overdue',
+              text: p.id + ' (' + (p.name || 'Participant') + ') missed scheduled follow-up on ' + targetStr + '. Overdue by ' + overDays + ' days.',
+              time: 'Action required',
+              link: { page: 'records', patient: p.id, tab: v.k }
+            });
+          } else {
+            notes.push({
+              id: 'live-due-' + (p.uid || p.id) + '-' + v.k,
+              site: p.site,
+              type: 'due',
+              title: v.name + ' follow-up due',
+              text: p.id + ' (' + (p.name || 'Participant') + ') follow-up scheduled for ' + targetStr + ' (' + (daysDiff > 0 ? daysDiff + ' days remaining' : 'due today') + '). Alert generated ' + leadDays + ' days prior per admin threshold.',
+              time: daysDiff > 0 ? ('In ' + daysDiff + 'd') : 'Today',
+              link: { page: 'records', patient: p.id, tab: v.k }
+            });
+          }
+        }
+      });
+    });
+  } catch(e){
+    console.warn('[liveNotesFor] Evaluation error:', e);
+  }
+  return notes;
+}
+
+if(typeof window !== 'undefined'){
+  window.followupAlertThresholdDays = followupAlertThresholdDays;
+  window.setFollowupAlertThresholdDays = setFollowupAlertThresholdDays;
+  window.liveNotesFor = liveNotesFor;
+}

@@ -28,9 +28,10 @@
     const b = p.v?.b?.done ? p.v.b.date : null;
     let late = false, due = false, missed = false;
     if (k !== 'b' && b) {
-      const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21, T = new Date();
+      const t = k === 'm3' ? 90 : 180, w = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14, T = new Date();
+      const threshold = w;
       late = T > addD(b, t + w);
-      due = T >= addD(b, t - w);
+      due = T >= addD(b, t - threshold);
       missed = T > addD(b, t + w + 30) && !has(v);
     }
     return missed ? 'Missed' : late ? 'Overdue' : has(v) ? 'In Progress' : due ? 'Due' : 'Not Started';
@@ -39,13 +40,13 @@
   function window_(p, k){
     const b = p.v?.b?.date;
     if (k === 'b' || !b) return null;
-    const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21;
+    const t = k === 'm3' ? 90 : 180, w = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14;
     return [addD(b, t - w), addD(b, t + w), t, w];
   }
 
   function onTime(p, k){
     if (k === 'b' || !p.v?.b?.date || !p.v?.[k]?.done || !p.v?.[k]?.date) return null;
-    const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21;
+    const t = k === 'm3' ? 90 : 180, w = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14;
     const d = Math.round((day(p.v[k].date) - day(p.v.b.date)) / DAY);
     return Math.abs(d - t) <= w;
   }

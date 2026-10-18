@@ -15,7 +15,7 @@ This directory contains verified, protocol-compliant JSON dummy datasets and sch
 | [`clinical-options.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/clinical-options.json) | Dropdown options outside GDMT: HF etiology, NYHA class and stop reasons |
 | [`location-and-title-standards.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/location-and-title-standards.json) | Approved city, zone and clinical title lists, and the spellings they map to |
 | [`notifications.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/notifications.json) | Demo notifications per user |
-| [`whatsnew.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/whatsnew.json) | Release notes shown on sign-in, with the date and version |
+| [`whatsnew.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/whatsnew.json) | Release notes & changelog API payload (UI popup dialog now permanently hidden; served via `/api/changelog`) |
 | [`generate_data.js`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/generate_data.js) | Node.js generation script | Re-generates or expands the synthetic data with reproducible seeds. |
 
 ---

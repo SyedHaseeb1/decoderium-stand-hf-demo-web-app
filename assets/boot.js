@@ -39,14 +39,48 @@
     var shellSignal=function(name){ try{ if(window.parent && window.parent[name]) window.parent[name](); }catch(e){} };
     var shellReady=function(){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ shellSignal('standhfShellReady'); }); }); };
     if(apiDelay>0) shellSignal('standhfShellWaiting');
+    /* Dropdowns in the screen: opening one closes the others (nav.js does this only outside the shell) */
+    document.addEventListener('pointerdown',function(e){
+      var t=e.target;
+      document.querySelectorAll('.cb-list:not([hidden])').forEach(function(ul){
+        var wrap=ul.closest('.cb');
+        if(wrap&&wrap.contains(t))return;
+        if(typeof window.cbClose==='function'&&wrap)window.cbClose(wrap);else ul.hidden=true;
+      });
+      document.querySelectorAll('.sort-menu:not([hidden])').forEach(function(el){
+        if(t.closest&&t.closest('.list-sort,.sort-menu'))return;
+        el.hidden=true;
+      });
+    },{capture:true,passive:true});
+    /* The shell's theme button saves the choice; apply it to this screen straight away */
+    window.addEventListener('storage',function(e){
+      if(e.key!=='standhf_theme') return;
+      if(e.newValue==='logo') document.documentElement.setAttribute('data-theme','logo');
+      else document.documentElement.removeAttribute('data-theme');
+    });
     /* A dialog opened in the frame dims the whole shell (header and menu too), not only the frame */
-    var shellDim=function(on){ try{ if(window.parent && window.parent.standhfShellDim) window.parent.standhfShellDim(on); }catch(e){} };
+    var shellDim=function(count){ try{ if(window.parent && window.parent.standhfShellDim) window.parent.standhfShellDim(count); }catch(e){} };
+    var syncDim=function(){
+      var count=document.querySelectorAll('dialog[open]').length;
+      shellDim(count);
+    };
     if(window.HTMLDialogElement){
       var openModal=HTMLDialogElement.prototype.showModal;
-      HTMLDialogElement.prototype.showModal=function(){ openModal.apply(this,arguments); shellDim(true); };
+      HTMLDialogElement.prototype.showModal=function(){
+        openModal.apply(this,arguments);
+        syncDim();
+      };
+      var closeModal=HTMLDialogElement.prototype.close;
+      HTMLDialogElement.prototype.close=function(){
+        closeModal.apply(this,arguments);
+        setTimeout(syncDim, 0);
+      };
     }
     document.addEventListener('close',function(e){
-      if(e.target && e.target.tagName==='DIALOG'){ shellDim(!!document.querySelector('dialog[open]')); }
+      if(e.target && e.target.tagName==='DIALOG'){ setTimeout(syncDim, 0); }
+    },true);
+    document.addEventListener('cancel',function(e){
+      if(e.target && e.target.tagName==='DIALOG'){ setTimeout(syncDim, 0); }
     },true);
   }
 

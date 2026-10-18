@@ -25,9 +25,10 @@
     const b = p.v?.b?.done ? p.v.b.date : null;
     let late = false, due = false, missed = false;
     if (k !== 'b' && b) {
-      const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21, T = new Date();
+      const t = k === 'm3' ? 90 : 180, w = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14, T = new Date();
+      const threshold = w;
       late = T > addD(b, t + w);
-      due = T >= addD(b, t - w);
+      due = T >= addD(b, t - threshold);
       missed = T > addD(b, t + w + 30) && !has(v);
     }
     return missed ? 'Missed' : late ? 'Overdue' : has(v) ? 'In Progress' : due ? 'Due' : 'Not Started';

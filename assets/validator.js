@@ -86,6 +86,29 @@
       }
     },
 
+    // Login Identifier: System Username or Official Email Address
+    login_identifier: {
+      type: 'text',
+      maxLength: 100,
+      minLength: 3,
+      inputmode: 'email',
+      placeholder: 'e.g. emily.carter or emily@hospital.pk',
+      filterRe: /[^\w.@+-]/g,
+      clean: s => String(s || '').trim().toLowerCase().slice(0, 100),
+      validate: (val, req) => {
+        const raw = String(val || '').trim().toLowerCase();
+        if(!raw) return { ok: !req, lvl: req ? 'e' : '', msg: req ? 'Enter your username or email address' : '' };
+        if(raw.length < 3) return { ok: false, lvl: 'e', msg: 'Enter at least 3 characters' };
+        if(raw.length > 100) return { ok: false, lvl: 'e', msg: 'Cannot exceed 100 characters' };
+        if(raw.includes('@')){
+          if(!EMAIL_RE.test(raw)) return { ok: false, lvl: 'e', msg: 'Enter a valid email address' };
+        } else {
+          if(!USERNAME_RE.test(raw)) return { ok: false, lvl: 'e', msg: 'Enter a valid username or email' };
+        }
+        return { ok: true, lvl: '', msg: '' };
+      }
+    },
+
     // System Username / Handle
     username: {
       type: 'text',
@@ -455,8 +478,11 @@
     // Email
     if(key === 'email' || key === 'nuEmail' || key === 'euEmail') return SCHEMAS.email;
 
+    // Login Identifier (Username or Email on login screen)
+    if(key === 'user' || key === 'loginUser' || key === 'login_user' || key === 'login_identifier' || key === 'username_or_email') return SCHEMAS.login_identifier;
+
     // Username
-    if(key === 'username' || key === 'nuUser' || key === 'user' || key === 'nuUsername' || key === 'euUsername') return SCHEMAS.username;
+    if(key === 'username' || key === 'nuUser' || key === 'nuUsername' || key === 'euUsername') return SCHEMAS.username;
 
     // Password
     if(key === 'password' || key === 'pass') return SCHEMAS.password;

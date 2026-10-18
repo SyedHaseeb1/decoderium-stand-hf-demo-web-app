@@ -10,13 +10,16 @@
   <link rel="preload" href="../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261018p">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018t">
   <style>
     /* Critical styles: paint the layout and placeholders before the full stylesheet arrives */
     :root { --bg: #eceef1; --card: #ffffff; --soft: #f5f6f8; --soft-2: #e9ecf1; --line: #e3e6eb; --radius: 24px; }
     body { margin: 0; min-height: 100vh; background: var(--bg); font: 14px/1.45 'Roboto', system-ui, sans-serif; }
-    .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 16px; padding: 16px; min-height: 100vh; align-items: start; }
-    .side { position: sticky; top: 16px; height: calc(100vh - 32px); background: var(--card); border-radius: var(--radius); }
+    /* Desktop layout only; phones and tablets use the rules in base.css */
+    @media (min-width: 1025px) {
+      .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 16px; padding: 16px; min-height: 100vh; align-items: start; }
+      .side { position: sticky; top: 16px; height: calc(100vh - 32px); background: var(--card); border-radius: var(--radius); }
+    }
     .main { min-width: 0; }
     .frame-wrap { position: relative; }
     .skel { display: block; border-radius: 8px; background: linear-gradient(90deg, var(--soft-2) 25%, var(--card) 50%, var(--soft-2) 75%); background-size: 200% 100%; animation: skel-shine 1.4s linear infinite, skel-in 0.12s ease both; }
@@ -32,8 +35,24 @@
     /* The content frame fills the space under the header */
     .frame-wrap { position: relative; }
     #view { display: block; width: 100%; height: calc(100vh - 112px); min-height: 480px; border: 0; background: transparent; }
-    /* A dialog in the frame dims the whole window: the overlay covers the header and menu, the frame stays on top */
-    body.dim::before { content: ''; position: fixed; inset: 0; z-index: 50; background: rgba(15, 23, 42, 0.45); }
+    /* A dialog in the frame dims and blurs the whole window: the overlay covers the header and menu seamlessly */
+    body.dim::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(18, 20, 24, 0.5);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      pointer-events: auto;
+      transition: opacity 0.18s ease, background 0.18s ease, backdrop-filter 0.18s ease;
+    }
+    /* Dialog on dialog: deepen the blur and dimming to match stacked iframe backdrops */
+    body.dim.dim-2::before {
+      background: rgba(18, 20, 24, 0.75);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
     body.dim #view { position: relative; z-index: 60; }
   </style>
   <script>
@@ -59,7 +78,7 @@
 
 </div>
 
-<script src="../assets/boot.js?v=20261018o"></script>
+<script src="../assets/boot.js?v=20261018p"></script>
 <script type="text/plain" data-src="access.js?v=20261018l"></script>
 <script type="text/plain" data-src="validator.js?v=20261016a"></script>
 <script type="text/plain" data-src="dialog.js?v=20261015c"></script>
@@ -72,10 +91,17 @@
     var SCREENS = { dashboard: '../dashboard/', records: '../records/', admin: '../admin/' };
 
     /* Simple shell addresses: #/records, #/records/add, #/dashboard/performance, #/admin/users */
+    /* Sections each screen accepts; anything else is not a page */
+    var SECTIONS = {
+      dashboard: ['', 'performance', 'sites', 'export', 'gdmt'],
+      records: ['', 'add'],
+      admin: ['', 'users', 'sites', 'perms']
+    };
     function parseAddress(h) {
       var m = (h || '').match(/^#?\/?(dashboard|records|admin)(?:\/([^\/?#]+))?$/);
       if (!m) return null;
       var section = m[2] || '';
+      if (SECTIONS[m[1]].indexOf(section) < 0) return null;
       if (m[1] === 'records') return { screen: 'records', search: section === 'add' ? '?new=1' : '', hash: '' };
       return { screen: m[1], search: '', hash: section ? '#' + section : '' };
     }
@@ -95,9 +121,17 @@
     /* Highlight the menu item for the screen being requested, before the frame has loaded */
     function highlightTarget(target) {
       var t = new URL(target, location.href);
-      document.querySelectorAll('#side a.nav[href]').forEach(function (a) {
+      var links = [].slice.call(document.querySelectorAll('#side a.nav[href]'));
+      /* Exact item first; if the role has no such item (for example Export for investigators), the screen's own item */
+      var hit = links.find(function (a) {
         var u = new URL(a.href, location.href);
-        var on = u.pathname === t.pathname && u.search === t.search && u.hash === t.hash;
+        return u.pathname === t.pathname && u.search === t.search && u.hash === t.hash;
+      }) || links.find(function (a) {
+        var u = new URL(a.href, location.href);
+        return u.pathname === t.pathname && !u.search && !u.hash;
+      });
+      links.forEach(function (a) {
+        var on = a === hit;
         a.classList.toggle('active', on);
         if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
       });
@@ -111,7 +145,10 @@
       highlightTarget(target);
       /* A change of section only (same screen and query) does not reload the frame */
       var t = new URL(target), c = view.contentWindow && view.contentWindow.location;
-      if (!c || t.pathname !== c.pathname || t.search !== c.search) view.classList.add('pending');
+      if (!c || t.pathname !== c.pathname || t.search !== c.search) {
+        view.classList.add('pending');
+        window.standhfShellDim(0);
+      }
       view.setAttribute('src', target);
     }
 
@@ -125,7 +162,6 @@
       var screen = screenOf(u);
       if (!screen) return;
       e.preventDefault();
-      e.stopImmediatePropagation();
       show(screen, u.search, u.hash);
     }, true);
 
@@ -165,14 +201,18 @@
     }
     /* Called by a screen's tabs (see assets/boot.js) */
     window.standhfShellSync = markActive;
-    /* Called when a dialog opens or closes inside the frame */
-    window.standhfShellDim = function (on) { document.body.classList.toggle('dim', !!on); };
+    /* Called when a dialog opens or closes inside the frame (supports stacked dialog on dialog) */
+    window.standhfShellDim = function (count) {
+      var n = typeof count === 'number' ? count : (count ? 1 : 0);
+      document.body.classList.toggle('dim', n > 0);
+      document.body.classList.toggle('dim-2', n > 1);
+    };
     /* Keep the dimming in step with the frame's open dialogs (covers dialogs that close without a notice) */
     setInterval(function () {
       var d = view.contentDocument;
       if (!d || view.getAttribute('src') === 'about:blank') return;
-      var any = !!d.querySelector('dialog[open]');
-      if (any !== document.body.classList.contains('dim')) document.body.classList.toggle('dim', any);
+      var count = d.querySelectorAll('dialog[open]').length;
+      window.standhfShellDim(count);
     }, 300);
 
     /* The screen signals when it waits for its data (shimmer) and when it is ready to show (content) */
@@ -182,13 +222,22 @@
 
     view.addEventListener('load', function () {
       markActive();
+      var d = view.contentDocument;
+      var count = d ? d.querySelectorAll('dialog[open]').length : 0;
+      window.standhfShellDim(count);
       /* Section changes inside a screen (tabs, #hash) do not reload the frame, so listen for them too */
       try { view.contentWindow.addEventListener('hashchange', markActive); } catch (e) {}
     });
 
-    var saved = parseAddress(location.hash);
-    if (saved) show(saved.screen, saved.search, saved.hash);
-    else show('dashboard', '', '');
+    /* Routes a shell address (also when only the # part changes, which does not reload the page) */
+    function route() {
+      var a = parseAddress(location.hash);
+      if (location.hash.length > 1 && !a) { location.replace('../error/'); return; }
+      if (a) show(a.screen, a.search, a.hash);
+      else show('dashboard', '', '');
+    }
+    window.addEventListener('hashchange', route);
+    route();
   })();
 </script>
 </body>

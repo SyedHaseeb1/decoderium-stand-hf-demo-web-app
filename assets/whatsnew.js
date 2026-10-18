@@ -1,39 +1,99 @@
-/* "What's new" for the client demo. Shown on the sign-in page.
-   To announce a new change: edit data/whatsnew.json and change its version.
-   The checkbox "Don't show until the next change" hides it until VERSION changes. */
-(function(){
-  var KEY='standhf_whatsnew_hidden';
-  var src=document.currentScript&&document.currentScript.src;
-  /* Date, version and the list of changes live in data/whatsnew.json */
-  function show(data){
-  var DATE=data.date, VERSION=data.version, CONTENT=data.content;  /* DATE: shown to the client. VERSION: changes whenever the list changes, so the alert returns */
-  var seen=function(){try{return localStorage.getItem(KEY)===VERSION}catch(e){return false}};
-  var remember=function(v){try{if(v)localStorage.setItem(KEY,VERSION);else localStorage.removeItem(KEY)}catch(e){}};
-  if(seen())return;
-  var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
-  var wrap=document.createElement('div');
-  wrap.className='whatsnew';
-  wrap.setAttribute('role','dialog');
-  wrap.setAttribute('aria-modal','true');
-  wrap.setAttribute('aria-labelledby','wnTitle');
-  wrap.innerHTML=
-    '<div class="wn-card">'+
-      '<div class="wn-head"><h2 id="wnTitle">What\'s new in this demo</h2><small>Changes as of '+esc(DATE)+'</small></div>'+
-      '<div class="wn-body">'+CONTENT.map(function(g){
-        return '<section class="wn-group"><h3>'+esc(g.cat)+'</h3><ul>'+g.items.map(function(i){return '<li>'+esc(i)+'</li>'}).join('')+'</ul></section>';
-      }).join('')+'</div>'+
-      '<div class="wn-foot">'+
-        '<label class="wn-check"><input type="checkbox" id="wnHide"><span>Don\'t show until the next change</span></label>'+
-        '<button type="button" class="btn primary" id="wnGo">Continue to sign in</button>'+
-      '</div>'+
-    '</div>';
-  document.body.appendChild(wrap);
-  document.getElementById('wnGo').addEventListener('click',function(){
-    remember(document.getElementById('wnHide').checked);
-    wrap.remove();
-  });
-  document.getElementById('wnGo').focus();
-  }
-  if(!src)return;
-  fetch(new URL('../data/whatsnew.json', src)).then(function(r){return r.ok?r.json():null}).then(function(d){if(d)show(d)}).catch(function(){});
-})();
+/**
+ * STAND-HF Changelog & Release Notes API Service
+ * 
+ * Replaces the former client-side popup dialog with a structured backend API integration.
+ * The popup dialog is permanently suppressed/hidden from automatic UI display.
+ * 
+ * Endpoints:
+ * - GET  /api/changelog : Fetches the current changelog and release notes
+ * - POST /api/changelog : Submits/receives a list of content/changes when updates occur
+ */
+(function(window){
+  'use strict';
+
+  var API_URL = '/api/changelog';
+  var FALLBACK_URL = '../data/whatsnew.json';
+
+  var ChangelogAPI = {
+    /**
+     * Fetch the latest changelog from the backend API (or static fallback)
+     * @returns {Promise<{ date: string, version: string, content: Array<{ cat: string, items: string[] }> }>}
+     */
+    getChangelog: async function() {
+      try {
+        var res = await fetch(API_URL);
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch(e) {
+        // Network or endpoint not yet deployed, fallback below
+      }
+
+      try {
+        var fb = await fetch(FALLBACK_URL);
+        if (fb.ok) {
+          return await fb.json();
+        }
+      } catch(e) {
+        console.warn('[ChangelogAPI] Unable to load fallback changelog:', e);
+      }
+      return null;
+    },
+
+    /**
+     * Simple backend API receiver: receives a list of content/changes when updates occur
+     * @param {Array<{ cat: string, items: string[] }>|Object} changes - The list of change content
+     * @param {string} [version] - Optional version identifier
+     * @returns {Promise<{ ok: boolean, status: number, data?: any, error?: string }>}
+     */
+    submitChanges: async function(changes, version) {
+      var contentList = [];
+      if (Array.isArray(changes)) {
+        contentList = changes;
+      } else if (changes && Array.isArray(changes.content)) {
+        contentList = changes.content;
+      } else if (changes && changes.cat && Array.isArray(changes.items)) {
+        contentList = [changes];
+      }
+
+      var payload = {
+        date: new Date().toISOString().slice(0, 10),
+        version: version || ('v' + Date.now().toString(36)),
+        content: contentList
+      };
+
+      try {
+        var res = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        var data = {};
+        try { data = await res.json(); } catch(e){}
+
+        return {
+          ok: res.ok,
+          status: res.status,
+          data: data
+        };
+      } catch(err) {
+        // In local static prototype mode where full backend is pending, log and return graceful status
+        console.info('[ChangelogAPI] POST /api/changelog dispatched payload:', payload);
+        return {
+          ok: false,
+          error: err.message,
+          simulated: true,
+          payload: payload
+        };
+      }
+    }
+  };
+
+  window.STANDHF_CHANGELOG_API = ChangelogAPI;
+
+  // Modal dialog is permanently hidden and suppressed on page load per specification.
+})(window);
