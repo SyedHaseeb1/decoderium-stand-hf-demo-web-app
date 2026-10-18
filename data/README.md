@@ -15,7 +15,7 @@ This directory contains verified, protocol-compliant JSON dummy datasets and sch
 | [`clinical-options.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/clinical-options.json) | Dropdown options outside GDMT: HF etiology, NYHA class and stop reasons |
 | [`location-and-title-standards.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/location-and-title-standards.json) | Approved city, zone and clinical title lists, and the spellings they map to |
 | [`notifications.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/notifications.json) | Demo notifications per user |
-| [`whatsnew.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/whatsnew.json) | Release notes shown on sign-in, with the date and version |
+| [`whatsnew.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/whatsnew.json) | Release notes & changelog API payload (UI popup dialog now permanently hidden; served via `/api/changelog`) |
 | [`generate_data.js`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/generate_data.js) | Node.js generation script | Re-generates or expands the synthetic data with reproducible seeds. |
 
 ---
@@ -245,3 +245,30 @@ const events = {
 - **`central`** (`robert.wilson`): Clinical trial monitor / directorate. Views all sites and patients; exports complete research datasets; read-only administrative inspection.
 - **`investigator`** (`emily.carter`): Site investigator assigned to `RIC` (Rawalpindi). **Must only see patients where `site === 'RIC'`**. By default, `export_data` is disabled.
 - **`investigator`** (`adnan.khan`): Site investigator assigned to `KHI` (Karachi). **Must only see patients where `site === 'KHI'`**. By default, `export_data` is disabled.
+
+---
+
+## 7. User Account Entity & API Contract (`users.json`)
+
+User accounts support dual sign-in via either **Official Email** (required) or **Username** (optional):
+
+```typescript
+interface UserAccount {
+  email: string;              // Official Email (Required, unique identifier)
+  username?: string;          // System handle (Optional; auto-derived from email prefix if blank)
+  name: string;               // Full name of investigator or administrator (Required)
+  role: 'superadmin' | 'central' | 'investigator'; // System authorization role
+  sites: string[];            // Assigned site codes (e.g. ['RIC']; central carries all sites)
+  active: boolean;            // Account active status
+  mustChangePassword: boolean;// True for initial temporary password setup flow
+  password?: string;          // Stored password or initial temporary credential
+  passwordCreatedAt?: string; // ISO timestamp
+  personal?: {
+    designation?: string;     // Standardized clinical title
+    phone?: string;           // 11-digit mobile contact number
+    email?: string;           // Synchronized official email address
+  };
+}
+```
+
+Authentication accepts either the user's `email` or `username` along with their password.

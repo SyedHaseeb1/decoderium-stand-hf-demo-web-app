@@ -29,17 +29,8 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
   */
   var segment='';
 
-  /* Theme handling: default to Logo Theme unless user explicitly opted for 'blue' */
-  var savedTheme = '';
-  try { savedTheme = localStorage.getItem('standhf_theme') || ''; } catch(e){}
-  var isLogoTheme = savedTheme !== 'blue';
-  if(isLogoTheme){
-    document.documentElement.setAttribute('data-theme', 'logo');
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
-  var themeBtnTitle = isLogoTheme ? 'Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue' : 'Using Clinical Blue Theme · Click to switch to STAND-HF Logo Theme (Default)';
-  var themeBtnText = isLogoTheme ? 'Blue Theme' : 'Logo Theme';
+  /* Theme handling: force Logo Theme */
+  document.documentElement.setAttribute('data-theme', 'logo');
 
   var initManual=sessionStorage.getItem('standhf_manual_offline')==='1';
   var initOn=!initManual&&(typeof navigator!=='undefined'?navigator.onLine!==false:true);
@@ -53,10 +44,6 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
     '<header class="topbar">'+
       (ds.search ? '<label class="search"><i class="ms">search</i><input id="search" type="search" placeholder="'+esc(ds.search)+'" autocomplete="off" maxlength="70"></label>' : '')+
       segment+
-      '<button type="button" class="theme-toggle-btn" id="btnThemeToggle" aria-label="Toggle STAND-HF Logo Theme" title="'+themeBtnTitle+'">'+
-        '<span class="theme-dot"></span>'+
-        '<span class="theme-btn-label" id="themeBtnText">'+themeBtnText+'</span>'+
-      '</button>'+
       '<button type="button" class="'+initPillClass+'" id="sync" role="button" aria-live="polite" title="'+initPillTitle+'"'+(ds.own!==undefined?' data-own="1"':'')+'>'+initPillText+'</button>'+
       '<div class="notify"><button type="button" class="bell" id="bell" aria-label="Notifications" title="Notifications"><i class="ms">notifications</i><span class="badge" id="bellCount" hidden>0</span></button><div class="notify-panel" id="notifyPanel" role="dialog" aria-label="Notifications" hidden></div></div>'+
       '<div class="profile-wrap">'+
@@ -68,49 +55,15 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
             (user && user.avatar ? '<img src="'+esc(user.avatar)+'" alt="Avatar" class="avatar-img" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;aspect-ratio:1/1">' : esc(initials))+
           '</span><div class="pp-id"><b id="userName">'+esc(name)+'</b><small id="userRole">'+esc(roleLabel)+'</small></div></div>'+
           '<dl class="pp-list">'+
-            '<div><dt>Username</dt><dd>'+esc(sess.username||'')+'</dd></div>'+
+            (user && (user.email || (user.personal && user.personal.email)) ? '<div><dt>Email</dt><dd>'+esc(user.email || user.personal.email)+'</dd></div>' : '')+
+            (sess.username ? '<div><dt>Username</dt><dd>'+esc(sess.username)+'</dd></div>' : '')+
             '<div><dt>Sites</dt><dd>'+esc(scope)+'</dd></div>'+
           '</dl>'+
           '<a href="'+root+'setup/" class="btn" style="width:100%;justify-content:center;margin-bottom:8px;font-size:13px;gap:6px"><i class="ms" style="font-size:18px">manage_accounts</i>Edit Profile &amp; Password</a>'+
-          '<button type="button" class="btn" id="ppThemeToggle" style="width:100%;justify-content:center;margin-bottom:8px;font-size:13px;gap:6px">'+
-            '<i class="ms" style="font-size:18px">palette</i><span id="ppThemeText">'+(isLogoTheme ? 'Switch to Blue Theme' : 'Switch to Logo Theme (Default)')+'</span>'+
-          '</button>'+
           '<button type="button" class="btn pp-out" id="bOut"><i class="ms">logout</i>Sign out</button>'+
         '</div>'+
       '</div>'+
     '</header>';
-
-  /* Theme toggle listener */
-  function toggleTheme(){
-    document.documentElement.classList.add('theme-transition');
-    var currentIsLogo = document.documentElement.getAttribute('data-theme') === 'logo';
-    var nextIsLogo = !currentIsLogo;
-    if(nextIsLogo){
-      document.documentElement.setAttribute('data-theme', 'logo');
-      try { localStorage.setItem('standhf_theme', 'logo'); } catch(e){}
-      if(typeof toast === 'function') toast('STAND-HF Logo Theme (Default) applied.');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      try { localStorage.setItem('standhf_theme', 'blue'); } catch(e){}
-      if(typeof toast === 'function') toast('Clinical Blue Theme applied.');
-    }
-    var bText = nextIsLogo ? 'Blue Theme' : 'Logo Theme';
-    var bTitle = nextIsLogo ? 'Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue' : 'Using Clinical Blue Theme · Click to switch to STAND-HF Logo Theme (Default)';
-    var elText = document.getElementById('themeBtnText');
-    if(elText) elText.textContent = bText;
-    var elBtn = document.getElementById('btnThemeToggle');
-    if(elBtn) elBtn.title = bTitle;
-    var elPpText = document.getElementById('ppThemeText');
-    if(elPpText) elPpText.textContent = nextIsLogo ? 'Switch to Blue Theme' : 'Switch to Logo Theme (Default)';
-    setTimeout(function(){
-      document.documentElement.classList.remove('theme-transition');
-    }, 350);
-  }
-
-  var btnT = document.getElementById('btnThemeToggle');
-  if(btnT) btnT.addEventListener('click', toggleTheme);
-  var ppT = document.getElementById('ppThemeToggle');
-  if(ppT) ppT.addEventListener('click', toggleTheme);
 
   /* Sign out ends the session on every page */
   document.getElementById('bOut').addEventListener('click',function(){
@@ -119,7 +72,12 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
   /* Profile: round icon opens the profile panel */
   var pp=document.getElementById('profPanel'), pb=document.getElementById('profBtn');
   pb.addEventListener('click',function(e){e.stopPropagation();pp.hidden=!pp.hidden;pb.setAttribute('aria-expanded',String(!pp.hidden))});
-  document.addEventListener('click',function(e){if(!e.target.closest('.profile-wrap')){pp.hidden=true;pb.setAttribute('aria-expanded','false')}});
+  document.addEventListener('pointerdown',function(e){
+    if(!pp.hidden && !e.target.closest('.profile-wrap')){
+        pp.hidden=true;
+        pb.setAttribute('aria-expanded','false');
+    }
+  }, true);
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){pp.hidden=true;pb.setAttribute('aria-expanded','false')}});
 
   /* Connection */
@@ -193,7 +151,7 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
   window.addEventListener('offline',function(){applyNet(false,false)});
   setInterval(function(){
     probeNet().then(function(on){applyNet(on,false)});
-  },5000);
+  },15000);
   probeNet().then(function(on){applyNet(on,true)});
   /* Notifications: the dummy list for this user, limited to the sites they may see */
   var ICON={deleted:'delete',due:'event',overdue:'warning',missing:'event_busy',admin:'person_add',info:'description'};
@@ -239,8 +197,11 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
   var openNote=function(n){
     var url=root+(n.link.page==='admin'?'admin/index.html':'records/index.html');
     if(n.link.patient)url+='?patient='+encodeURIComponent(n.link.patient)+(n.link.tab?'&tab='+encodeURIComponent(n.link.tab):'');
-    location.href=url};
+    location.href=url;
+  };
   bell.addEventListener('click',function(e){e.stopPropagation();panel.hidden=!panel.hidden;if(!panel.hidden)paintNotes()});
+  window.addEventListener('standhf_threshold_changed',function(){if(typeof paintNotes==='function')paintNotes()});
+  window.addEventListener('storage',function(e){if(e.key==='standhf_followup_threshold_days'||e.key==='standhf_ecrf_v1'){if(typeof paintNotes==='function')paintNotes()}});
   panel.addEventListener('input',function(e){
     if(e.target&&e.target.id==='notifySearchInput'){
       var q=e.target.value.toLowerCase().trim();
@@ -260,7 +221,11 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
     var r=readSet();if(r.indexOf(n.id)<0){r.push(n.id);writeRead(r)}
     paintNotes();
     openNote(n)});
-  document.addEventListener('click',function(e){if(!e.target.closest('.notify'))panel.hidden=true});
+  document.addEventListener('pointerdown',function(e){
+    if(!panel.hidden && !e.target.closest('.notify')){
+        panel.hidden=true;
+    }
+  }, true);
   document.addEventListener('keydown',function(e){if(e.key==='Escape')panel.hidden=true});
   paintNotes();
 

@@ -11,9 +11,9 @@
     } catch(e) {}
     // Session gate: send anyone without a sign-in back to the login page.
     try{
-      if(sessionStorage.getItem('standhf_auth')!=='1')location.replace('../login/');
+      if(sessionStorage.getItem('standhf_auth')!=='1')(window.top||window).location.replace('../login/');
       if(sessionStorage.getItem('standhf_must_change_pw')==='1')location.replace('../setup/');
-    }catch(e){location.replace('../login/')}
+    }catch(e){(window.top||window).location.replace('../login/')}
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#C90085">
@@ -24,9 +24,10 @@
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018r">
   <style>
     .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
     .tint{background:var(--soft);border-radius:14px;padding:16px}
@@ -51,8 +52,8 @@
     .rx-list{display:grid;gap:8px;margin-top:12px}
     .rx-row{display:flex;flex-wrap:wrap;gap:8px}
     .rx-list{min-width:0}
-    dialog.viewer{border:0;border-radius:18px;padding:16px;width:min(960px,94vw);height:min(88vh,900px);background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
-    dialog.viewer::backdrop{background:rgba(27,29,34,.35)}
+    dialog.viewer{border:0;border-radius:18px;padding:16px;width:min(960px,94vw);height:min(88vh,900px);background:var(--card);color:var(--ink);box-shadow:0 24px 60px rgba(0,0,0,0.25)}
+    dialog.viewer::backdrop{background:rgba(18,20,24,0.5);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
     .viewer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
     .viewer-head b{font-size:16px}
     .viewer-body{height:calc(100% - 52px)}
@@ -135,17 +136,32 @@
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
 </script>
+  <script>
+    /* Inside the app shell, mark the page before the first paint so its own header and menu never show */
+    try { if (window.frameElement && window.frameElement.id === 'view') document.documentElement.classList.add('embedded'); } catch (e) {}
+  </script>
+  <script>
+    /* Open screens through the app shell, so the header and menu stay in place when moving between screens */
+    (function () {
+      if (window.top !== window) return;
+      var s = location.pathname.match(/\/(dashboard|records|admin)\/?$/);
+      if (!s) return;
+      var section = location.hash.replace('#', '');
+      if (s[1] === 'records' && /[?&]new=1/.test(location.search)) section = 'add';
+      location.replace('../app/#/' + s[1] + (section ? '/' + section : ''));
+    })();
+  </script>
 </head>
 <body data-page="records">
 <div class="app" id="app">
-  <aside class="side" id="side" aria-label="Main navigation"></aside>
+  <aside class="side" id="side" aria-label="Main navigation"><div class="skel-side" aria-hidden="true"><span class="skel skel-val" style="width:150px;height:44px;border-radius:12px;margin-bottom:10px"></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span></div><span class="sr-only">Loading menu</span></aside>
 
   <div class="main">
-    <div id="app-header" data-page="records"></div>
+    <div id="app-header" data-page="records"><div class="skel-hdr" aria-hidden="true"><span class="skel skel-btn" style="width:140px;height:40px;border-radius:999px"></span><div class="skel-hdr-end"><span class="skel skel-chip-lg" style="width:84px"></span><span class="skel skel-circle" ></span><span class="skel skel-circle" ></span></div></div><span class="sr-only">Loading header</span></div>
 
     <div class="hello">
       <div><h1>Patient records <span id="syncChip" class="sync-chip" hidden></span></h1><p id="pageSubtitle">Enter visit data, check it, and mark each visit complete.</p></div>
-      <div class="actions">
+      <div class="actions" id="gatedActions" style="display:none">
         <button type="button" class="pri" id="bNew"><i class="ms">person_add</i>New participant</button>
         <button type="button" id="bCsv"><i class="ms">download</i>Export CSV</button>
         <button type="button" id="bDemo"><i class="ms">dataset</i>Load demo</button>
@@ -153,18 +169,19 @@
       </div>
     </div>
 
-    <section class="kpis auto" id="tiles"></section>
+    <section class="kpis auto" id="tiles"><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div></section>
 
     <div class="lay">
-      <aside class="card pl" id="list"></aside>
-      <section class="card" id="pane"></section>
+      <aside class="card pl" id="list"><div class="skel-flex-between" aria-hidden="true" style="margin-bottom:12px"><span class="skel skel-line skel-40" style="width:120px;height:18px"></span><span class="skel skel-circle" style="width:28px;height:28px;flex-basis:28px"></span></div><div aria-hidden="true"><span class="skel skel-btn" style="height:44px;margin-bottom:12px"></span></div><div class="pl-scroll" aria-hidden="true"><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span><span class="skel skel-chip" style="width:120px;height:22px"></span></div></div></div><span class="sr-only">Loading patients</span></aside>
+      <section class="card" id="pane"><div class="skel-page" aria-hidden="true"><div class="skel-flex-between"><span class="skel skel-val" style="width:220px;height:26px"></span><span class="skel skel-line skel-40" style="width:90px"></span></div><div class="skel-tabs"><span class="skel " style="width:150px"></span><span class="skel " style="width:90px"></span><span class="skel " style="width:90px"></span><span class="skel " style="width:110px"></span><span class="skel " style="width:140px"></span></div><span class="skel skel-banner" ></span><div class="skel-card"><span class="skel skel-line skel-40" style="width:160px"></span><div class="skel-fields"><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div></div><div class="skel-fields"><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div></div></div><div class="skel-flex-between"><span class="skel skel-btn" style="width:140px"></span><span class="skel skel-btn" style="width:240px"></span></div></div><span class="sr-only">Loading participant record</span></section>
     </div>
     <div class="snack" id="snack" role="status" aria-live="polite"></div>
     <input type="file" id="fu" accept="application/pdf,image/jpeg,image/png" hidden>
-    <dialog class="viewer" id="viewer" aria-labelledby="vTitle"><div class="viewer-head"><b id="vTitle"></b><button type="button" class="icon-btn" id="vClose" aria-label="Close"><i class="ms">close</i></button></div><div class="viewer-body" id="vBody"></div></dialog>
   </div>
 </div>
-<script src="../assets/boot.js?v=20261018m"></script>
+
+<dialog class="viewer" id="viewer" aria-labelledby="vTitle"><div class="viewer-head"><b id="vTitle"></b><button type="button" class="icon-btn" id="vClose" aria-label="Close"><i class="ms">close</i></button></div><div class="viewer-body" id="vBody"></div></dialog>
+<script src="../assets/boot.js?v=20261018p" data-api-delay="3000"></script>
 <script type="text/plain" data-src="access.js?v=20261018l"></script>
 <script type="text/plain" data-src="validator.js?v=20261016a"></script>
 <script type="text/plain" data-src="lookups.js?v=20261016a"></script>
@@ -275,11 +292,12 @@ document.addEventListener('paste',e=>{const el=e.target;if(!el.matches||!el.matc
     el.dispatchEvent(new Event('change',{bubbles:true}));
   }});
 const num=x=>x===''||x==null?NaN:+x,day=s=>s?new Date(s+'T00:00:00'):null,addD=(s,n)=>{const d=day(s);d.setDate(d.getDate()+n);return d},fmt=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+const vWin=k=>(typeof followupAlertThresholdDays==='function')?followupAlertThresholdDays():14;
 
 function mk(site,inv,consent,age,sex,etio){const n=DB.pts.filter(p=>p.site===site).length+1;return{created:Date.now(),updated:Date.now(),owner:session().username,id:site+'-'+String(n).padStart(3,'0'),site,inv,consent,age,sex,etio,etioO:'',uid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:'',contact:'',sync:'Pending',audit:[],files:{b:[],m3:[],m6:[]},v:{b:{date:consent},m3:{},m6:{}}}}
 function has(v){return Object.keys(v).some(k=>k!=='done'&&v[k]!==''&&v[k]!=null&&typeof v[k]!=='object')||(v.g&&Object.values(v.g).some(x=>x.status))}
 function vstat(p,k){const v=p.v[k];if(v.done)return'Completed';const b=p.v.b.done?(p.v.b.date||p.consent):null;let late=false,due=false,missed=false;
- if(k!=='b'&&b){const t=k==='m3'?90:180,w=k==='m3'?14:21,T=new Date(),tg=addD(b,t);late=T>addD(b,t+w);due=T>=addD(b,t-w);missed=T>addD(b,t+w+30)&&!has(v)}
+ if(k!=='b'&&b){const t=k==='m3'?90:180,w=vWin(k),lead=w,T=new Date(),tg=addD(b,t);late=T>addD(b,t+w);due=T>=addD(b,t-lead);missed=T>addD(b,t+w+30)&&!has(v)}
  return missed?'Missed':late?'Overdue':has(v)?'In Progress':due?'Due':'Not Started'}
 function act(v){return PL.filter(([k])=>G(v,'g.'+k+'.status')==='Active').length}
 function warns(p,k){const v=p.v[k],b=p.v.b,w=[],x=n=>num(v[n]);
@@ -293,7 +311,7 @@ function warns(p,k){const v=p.v[k],b=p.v.b,w=[],x=n=>num(v[n]);
  if(k==='b'&&v.lvef&&+v.lvef>40)w.push(['w','LVEF above 40%: outside registry inclusion (LVEF 40% or less)']);
  if(k!=='b'&&v.date&&b.date&&day(v.date)<day(b.date))w.push(['e','Visit date cannot be before the baseline date']);
  if(k!=='b'&&v.date&&b.date&&day(v.date).getTime()===day(b.date).getTime())w.push(['w','Visit date is on the same day as baseline (early submission)']);
- if(k!=='b'&&v.date&&b.date){const t=k==='m3'?90:180,wd=k==='m3'?14:21,d=(day(v.date)-day(b.date))/864e5;if(Math.abs(d-t)>wd)w.push(['w','Outside window (day '+t+' ±'+wd+'): this visit is on day '+Math.round(d)])}
+ if(k!=='b'&&v.date&&b.date){const t=k==='m3'?90:180,wd=vWin(k),d=(day(v.date)-day(b.date))/864e5;if(Math.abs(d-t)>wd)w.push(['w','Outside window (day '+t+' ±'+wd+'): this visit is on day '+Math.round(d)])}
  PL.forEach(([q,n])=>{const g=G(v,'g.'+q)||{};
    if(g.status==='Active'&&!g.strength&&!g.dose)w.push(['w',n+': strength missing']);
    if(g.status==='Active'&&!g.freq)w.push(['w',n+': frequency missing']);
@@ -325,10 +343,12 @@ async function removePatient(){
   if(notify.length)pushNotice(notify,{type:'deleted',site:p.site,title:'Record deleted',text:p.id+(p.name?' ('+p.name+')':'')+' was deleted by '+signedIn()+'.',link:{page:'records'}});
   DB.pts=DB.pts.filter(x=>x!==p);
   DB.removed=(DB.removed||[]).concat([{id:p.id,name:p.name||'',site:p.site,by:signedIn(),at:new Date().toLocaleString('en-GB')}]);
-  sel=DB.pts.length?DB.pts[0].id:null;tab='info';
+  sel=firstVisibleId();tab='info';
   persist();pane();dash();toast('Patient '+p.id+' removed')}
 /* Online saves are Synced at once; only saves made while offline stay Pending until the connection returns */
-function save(p){if(!canEditPatient(p))return;p.updated=Date.now();if(tab!=='info'&&tab!=='sum'&&!p.v[tab].date){p.v[tab].date=(tab==='b'&&p.consent)?p.consent:new Date().toISOString().slice(0,10)}p.sync=DB.off?'Pending':'Synced';persist();dash()}
+function save(p){if(!canEditPatient(p))return;p.updated=Date.now();
+/* Baseline visit date is the consent date (it is not shown), so keep it in step until Baseline is complete */
+if(!p.v.b.done&&p.consent)p.v.b.date=p.consent;if(tab!=='info'&&tab!=='sum'&&!p.v[tab].date){p.v[tab].date=(tab==='b'&&p.consent)?p.consent:new Date().toISOString().slice(0,10)}p.sync=DB.off?'Pending':'Synced';persist();dash()}
 
 /* Validation rules: fieldState gives the level ('e' error, 'w' warning or '') and message for one field */
 const VREQ=['wt','hr','sbp','dbp','nyha','msts','lvef'], IREQ={name:1,contact:1,consent:1,age:1,sex:1,etio:1};
@@ -360,7 +380,7 @@ function fieldState(p,path){
   if(empty){if(req&&tried)set('e','Required');return st}
   const txt=String(val),n=num(val),bd=b.date?day(b.date):null,t0=todayStart();
   if(window.STANDHF_VALIDATOR){
-    const vRes=window.STANDHF_VALIDATOR.validate(f,val,req,{baselineDate:b.date,dbp:v.dbp,sbp:v.sbp,visitKey:k});
+    const vRes=window.STANDHF_VALIDATOR.validate(f,val,req,{baselineDate:f==='consent'?null:b.date,dbp:v.dbp,sbp:v.sbp,visitKey:k}); /* the baseline visit date is the consent date, so consent is not compared with it */
     if(vRes&&vRes.lvl)set(vRes.lvl,vRes.msg);
   }
   if(!isV){
@@ -373,7 +393,7 @@ function fieldState(p,path){
       else if(d.length<10) set('e','Contact number is too short (10–11 digits required)');
       else if(!contactOk(val)) set('e','Contact number must be valid digits');
     }
-    if(f==='consent'){if(day(val)>t0)set('e','Consent date cannot be in the future');else if(day(val).getFullYear()<1990)set('e','Check the year');else if(bd&&day(val)>bd)set('e','After the baseline visit date')}
+    if(f==='consent'){if(day(val)>t0)set('e','Consent date cannot be in the future');else if(day(val).getFullYear()<1990)set('e','Check the year')}
     if(f==='age'){if(!Number.isInteger(n))set('e','Whole years only');else if(n<18)set('e','Must be 18 or older');else if(n>150)set('e','Please check age')}
     return st;
   }
@@ -386,7 +406,7 @@ function fieldState(p,path){
   if(f==='wt'&&!/^\d{1,3}(\.\d)?$/.test(txt))set('e','Up to 3 digits and 1 decimal');
   if(/\.ini$/.test(f)&&!/^[A-Z]{1,5}$/.test(txt))set('e','Capital letters only, up to 5');
   switch(f){
-    case 'date': if(k!=='b'&&bd){const t=k==='m3'?90:180,w=k==='m3'?14:21,d=Math.round((day(val)-bd)/864e5);
+    case 'date': if(k!=='b'&&bd){const t=k==='m3'?90:180,w=vWin(k),d=Math.round((day(val)-bd)/864e5);
       if(day(val)<=bd)set('e','Must be after the baseline date');else if(Math.abs(d-t)>w)set('w','Outside day '+t+' ±'+w+' window (day '+d+')')}break;
     case 'wt': if(n<30||n>250)set('w','Expected 30 to 250 kg');break;
     case 'hr': if(n<30||n>220)set('w','Expected 30 to 220 bpm');break;
@@ -471,6 +491,8 @@ function sortPts(arr){
   if(listSort==='Name (A–Z)')return a.sort((x,y)=>(x.name||'').localeCompare(y.name||''));
   if(listSort==='Study ID')return a.sort((x,y)=>x.id.localeCompare(y.id));
   return a.sort((x,y)=>(y.created||0)-(x.created||0))}
+/* Default selection: the first patient of the list as the user sees it (current sort, this user's records) */
+function firstVisibleId(){const s=sortPts(DB.pts.filter(inScope));return s.length?s[0].id:null}
 
 const V_SHORT={'b':'B','m3':'3M','m6':'6M'};
 function ptVisitChip(p,k,n){
@@ -531,7 +553,7 @@ function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).len
     const isPending=rawSync==='Pending'||rawSync==='Not Synced';
     const syncIcon=isPending?'cloud_off':'cloud_done';
     const syncTxt=isPending?'Not Synced':'Synced';
-    return `<div class="pt ${p.id===sel?'on':''}" data-id="${p.id}"><div class="pt-head"><b class="pt-id">${p.id}</b><span class="pt-sync ${isPending?'pending':'synced'}" title="Sync status: ${syncTxt}"><i class="ms pt-sync-icon">${syncIcon}</i><span class="pt-sync-text">${syncTxt}</span></span></div><span class="pt-name">${esc(p.name||'Name missing')}</span>${p.inv&&p.inv!=='–'?`<span class="pt-inv">${esc(p.inv)}</span>`:''}<span class="pt-updated">Updated ${updatedTxt(p)}</span><span class="sr-only">${esc(p.contact||'')} ${esc(p.inv||'')}${p.id||''}</span><div class="pt-chips">${VK.map(([k,n])=>ptVisitChip(p,k,n)).join('<span class="pt-chip-sep"></span>')}</div></div>`;
+    return `<div class="pt ${!newMode && p.id===sel?'on':''}" data-id="${p.id}"><div class="pt-head"><b class="pt-id">${p.id}</b><span class="pt-sync ${isPending?'pending':'synced'}" title="Sync status: ${syncTxt}"><i class="ms pt-sync-icon">${syncIcon}</i><span class="pt-sync-text">${syncTxt}</span></span></div><span class="pt-name">${esc(p.name||'Name missing')}</span>${p.inv&&p.inv!=='–'?`<span class="pt-inv">${esc(p.inv)}</span>`:''}<span class="pt-updated">Updated ${updatedTxt(p)}</span><span class="sr-only">${esc(p.contact||'')} ${esc(p.inv||'')}${p.id||''}</span><div class="pt-chips">${VK.map(([k,n])=>ptVisitChip(p,k,n)).join('<span class="pt-chip-sep"></span>')}</div></div>`;
   }).join('')+'</div>';
   const scrollBox=document.querySelector('#list .pl-scroll');if(scrollBox)scrollBox.scrollTop=keepScroll;keepSelectedVisible();
   if(ptSearchQuery)filterPatientList(ptSearchQuery);
@@ -582,7 +604,15 @@ function pane(){saveView();
  if(helloH1&&helloH1.childNodes[0]) helloH1.childNodes[0].textContent='Patient records ';
  const p=cur(),el=$('pane');
  const editable=canEditPatient(p);
- if(p&&!p.inv&&signedIn()&&editable){p.inv=signedIn();p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:'inv',o:'',n:p.inv});persist()}
+ if(p&&editable&&!p.inv){
+   const siteInvs=names(p.site);
+   const assignedInv=siteInvs.length===1?siteInvs[0]:(signedRole()==='investigator'?signedIn():'');
+   if(assignedInv){
+     p.inv=assignedInv;
+     p.audit.push({by:signedIn()||'system',t:new Date().toLocaleString('en-GB'),f:'inv',o:'',n:p.inv});
+     persist();
+   }
+ }
  if(!p){el.innerHTML=canAddPatient()?'<p class="mut">Select a participant or create a new one to get started.</p>':'<p class="mut">Select a participant from the list to view clinical records.</p>';return}
  if(tabLocked(p,tab))tab='b';
  const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info" title="Participant Info"><span class="tab-full">Participant info</span><span class="tab-short">Info</span></button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);const shortN=k==='b'?'Baseline':k==='m3'?'3M':'6M';return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':`title="${n}"`}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}<span class="tab-full">${n}</span><span class="tab-short">${shortN}</span></button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum" title="Summary & Audit"><span class="tab-full">Summary & audit</span><span class="tab-short">Audit</span></button></div>`;
@@ -591,7 +621,7 @@ function pane(){saveView();
   if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${editable&&(!p.name||!p.contact)?banner('Patient name and contact number are required. Add them below.'):''}${secHeader('info-pt','Participant')}<div class="g tint" ${secBodyAttrs('info-pt')}><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel','inputmode="numeric" placeholder="e.g. 03001234567"')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
   else if(tab==='sum')h+=summary(p);
  else{const k=tab,v=p.v[k],name=VK.find(a=>a[0]===k)[1],b=p.v.b.date||p.consent;
-  let win='';if(k!=='b'){const t=k==='m3'?90:180,w=k==='m3'?14:21;win=b?`Target day ${t} ±${w}: ${fmt(addD(b,t-w))} to ${fmt(addD(b,t+w))}`:'Enter baseline date first'}
+  let win='';if(k!=='b'){const t=k==='m3'?90:180,w=vWin(k),tg=addD(b,t);win=b?`Target date: <strong>${fmt(tg)}</strong> (Day ${t} ±${w}: ${fmt(addD(b,t-w))} to ${fmt(addD(b,t+w))})`:'Enter baseline date first'}
   h+=`${v.done?okBanner(name+' is complete and locked.'+(editable?' Reopen the visit to make changes.':'')):''}<div class="visit-info">
     <strong>${name} visit</strong> — Status: <strong>${vstat(p,k)}</strong>${win?'<br>'+win:''}
   </div>
@@ -706,7 +736,7 @@ document.addEventListener('click',async e=>{const t=e.target.closest('[data-id],
         const todayD=day(today);
         const dElapsed=Math.round((todayD-bD)/864e5);
         const targetDays=tab==='m3'?90:180;
-        const windowTol=tab==='m3'?14:21;
+        const windowTol=vWin(tab);
         const targetDate=addD(bDateStr,targetDays);
         const isEarly=dElapsed<targetDays;
 
@@ -894,15 +924,51 @@ const INVESTIGATORS=STANDHF_DATA.users.users.filter(u=>u.role==='investigator').
 function signedIn(){try{return sessionStorage.getItem('standhf_user')||''}catch(e){return ''}}
 const ROLE_LABEL={superadmin:'Super Admin',investigator:'Site Investigator',central:'Central'};
 function signedRole(){try{return sessionStorage.getItem('standhf_role')||''}catch(e){return ''}}
-function names(){
+
+function currentContextSite(){
+  if(newMode){
+    const f = $('fNew');
+    const sInp = f ? f.querySelector('[data-cb="site"] input') : null;
+    if(sInp && sInp.value) return sInp.value.toUpperCase().trim();
+  } else {
+    const p = cur();
+    if(p && p.site) return p.site.toUpperCase().trim();
+  }
+  return '';
+}
+
+function getActiveInvestigators(stCode){
+  try {
+    const store = (typeof accessStore === 'function') ? accessStore() : null;
+    const users = (store && Array.isArray(store.users)) ? store.users : (STANDHF_DATA?.users?.users || []);
+    let invs = users.filter(u => u.active !== false && u.role === 'investigator');
+    if(stCode){
+      invs = invs.filter(u => Array.isArray(u.sites) && u.sites.includes(stCode));
+    }
+    const nms = invs.map(u => u.name).filter(Boolean);
+    if(nms.length) return [...new Set(nms)].sort((a,b)=>a.localeCompare(b));
+  } catch(e){}
+  return [];
+}
+
+function names(explicitSite){
+  const st = (explicitSite || currentContextSite() || '').toUpperCase().trim();
   if(signedRole()==='investigator'){
     const me = signedIn();
     return me ? [me] : [];
   }
-  return [...new Set([...INVESTIGATORS,signedIn(),...DB.pts.map(p=>p.inv)].filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const fromStore = getActiveInvestigators(st);
+  if(fromStore.length) return fromStore;
+  const all = [...INVESTIGATORS, signedIn(), ...DB.pts.map(p=>p.inv)].filter(Boolean);
+  return [...new Set(all)].sort((a,b)=>a.localeCompare(b));
 }
+
 /* Site choices come from the site list, limited to the sites this user is assigned to */
-function sites(){return [...new Set(mySites())].sort()}
+function sites(){
+  const myAssigned = (typeof userAssignedSites==='function') ? userAssignedSites(currentUser()) : mySites();
+  const list = (myAssigned && myAssigned.length) ? myAssigned : mySites();
+  return [...new Set(list)].sort();
+}
 const OPTS={inv:names,site:sites};
 /* Central dropdown: the same component as Investigator and Site code. Read-only, with a "Select" hint as placeholder, never a blank list item */
 function ddHtml(attrs,key,label,opts,value,stateClass,ariaInvalid,fm){
@@ -910,7 +976,8 @@ function ddHtml(attrs,key,label,opts,value,stateClass,ariaInvalid,fm){
   return `<label>${label}${fm.req}<div class="cb" data-cb="${esc(key)}"><input ${attrs} value="${esc(value||'')}" placeholder="Select" readonly data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" class="${stateClass}" ${ariaInvalid}><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div>${fm.msg}</label>`}
 
 function combo(path,key,label,value,ph){
-  return `<label>${label}<div class="cb" data-cb="${key}"><input ${path?`data-p="${path}"`:''} ${key==='site'?'maxlength="5" readonly':key==='inv'?'maxlength="70"':''} data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" value="${esc(value)}" placeholder="${ph||'Search or type a name'}"><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div></label>`;
+  const defaultPh = key==='site' ? 'Select site' : key==='inv' ? 'Select investigator' : 'Select';
+  return `<label>${label}<div class="cb" data-cb="${key}"><input ${path?`data-p="${path}"`:''} readonly data-cb-input role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" value="${esc(value)}" placeholder="${ph||defaultPh}"><span class="ms cb-ico">expand_more</span><ul class="cb-list" role="listbox" hidden></ul></div></label>`;
 }
 function cbItems(key,q){const all=OPTS[key](),t=q.trim(),lo=t.toLowerCase();
   return all.filter(o=>!lo||o.toLowerCase().includes(lo)).map(o=>({v:o}))}
@@ -962,7 +1029,8 @@ function cbChoose(wrap,i){
   const inp=wrap.querySelector('[data-cb-input]');
   inp.value=it.v;cbClose(wrap);
   if(inp) inp.blur();
-  if(inp.dataset.p||inp.dataset.sort)inp.dispatchEvent(new Event('change',{bubbles:true}));
+  inp.dispatchEvent(new Event('change',{bubbles:true}));
+  inp.dispatchEvent(new Event('input',{bubbles:true}));
 }
 
 function cbMove(wrap,d){
@@ -973,18 +1041,28 @@ function cbMove(wrap,d){
 document.addEventListener('focusin',e=>{
   const i=e.target.closest&&e.target.closest('[data-cb-input]');
   if(i&&!i.disabled&&!i.hasAttribute('disabled')){
-    cbOpen(i.closest('[data-cb]'),'');
+    const w=i.closest('[data-cb]');
+    if(!cbOpenNow(w)){
+      w._openedAt=Date.now();
+      cbOpen(w,'');
+    }
   }
 });
 
 document.addEventListener('click',e=>{
-  const i=e.target.closest&&e.target.closest('[data-cb-input]');
-  if(i&&!i.disabled&&!i.hasAttribute('disabled')) {
-    const wrap = i.closest('[data-cb]');
-    if(!cbOpenNow(wrap)){
-      cbOpen(wrap, i.hasAttribute('readonly') ? '' : i.value);
+  const cbWrap = e.target.closest && e.target.closest('[data-cb]');
+  if(cbWrap){
+    const inp = cbWrap.querySelector('[data-cb-input]');
+    if(inp && !inp.disabled && !inp.hasAttribute('disabled')) {
+      const justOpened = (Date.now() - (cbWrap._openedAt || 0)) < 300;
+      if(!cbOpenNow(cbWrap)){
+        cbWrap._openedAt = Date.now();
+        cbOpen(cbWrap, inp.hasAttribute('readonly') ? '' : inp.value);
+      } else if(!justOpened && (e.target.closest('.cb-ico') || inp.hasAttribute('readonly'))){
+        cbClose(cbWrap);
+      }
+      return;
     }
-    return;
   }
 
   // Tapping outside on screen dismisses the dropdown and closes the keyboard
@@ -1090,7 +1168,7 @@ function updatePageSubtitle(){
 function newErrors(site,nm,ct,inv){
   const out=[];
   if(!canAddPatient()) out.push({f:'site',msg:'Only authorized Site Investigators can enroll new patients.'});
-  else if(!site) out.push({f:'site',msg:'Enter a site code.'});
+  else if(!site) out.push({f:'site',msg:'Select a site code.'});
   else {
     const sChk = window.STANDHF_VALIDATOR ? window.STANDHF_VALIDATOR.validate('site', site, true) : null;
     if(sChk && !sChk.ok) out.push({f:'site',msg:sChk.msg});
@@ -1111,7 +1189,7 @@ function newErrors(site,nm,ct,inv){
 
   const iChk = window.STANDHF_VALIDATOR ? window.STANDHF_VALIDATOR.validate('inv', inv, true) : null;
   if(iChk && !iChk.ok) out.push({f:'inv',msg:iChk.msg});
-  else if(!inv) out.push({f:'inv',msg:'Enter the investigator name.'});
+  else if(!inv) out.push({f:'inv',msg:'Select an investigator from the list.'});
   else if(inv.length<2) out.push({f:'inv',msg:'Investigator name: at least 2 characters.'});
   else if(!NAME_RE.test(inv)) out.push({f:'inv',msg:"Investigator name: letters, spaces, . ' - only."});
 
@@ -1162,6 +1240,8 @@ function paneNew(){
     return;
   }
   newMode=true;
+  sel=null;
+  document.querySelectorAll('#list .pt').forEach(el=>el.classList.remove('on'));
   saveView();
   if(typeof window.standhfUpdateNav==='function') window.standhfUpdateNav();
   const helloH1=document.querySelector('.hello h1');
@@ -1169,9 +1249,10 @@ function paneNew(){
   const sub=$('pageSubtitle');
   if(sub) sub.textContent='Register and enroll a newly consented heart failure patient into the STAND-HF registry.';
 
-  const myAssigned = (typeof userAssignedSites==='function') ? userAssignedSites(currentUser()) : mySites();
-  const defaultSite = myAssigned.length === 1 ? myAssigned[0] : '';
-  const defaultInv = signedIn();
+  const siteList = sites();
+  const defaultSite = siteList.length === 1 ? siteList[0] : '';
+  const invList = names(defaultSite);
+  const defaultInv = invList.length === 1 ? invList[0] : (signedRole() === 'investigator' ? signedIn() : '');
 
   $('pane').innerHTML=`<form id="fNew" class="np" novalidate>
     <div class="pane-head-sticky np-sticky-head">
@@ -1205,8 +1286,31 @@ function paneNew(){
       <button type="submit" class="pri"><i class="ms">check</i> Create patient</button>
     </div>
   </form>`;
-  const siteBox=$('fNew').querySelector('[data-cb="site"]');
-  if(siteBox) siteBox.querySelector('input')?.focus();
+  const f=$('fNew');
+  if(f){
+    const siteBox=f.querySelector('[data-cb="site"]');
+    const siteInp=siteBox?.querySelector('input');
+    const invInp=f.querySelector('[data-cb="inv"] input');
+    if(siteInp&&invInp){
+      siteInp.addEventListener('change',()=>{
+        const st=siteInp.value.toUpperCase().trim();
+        const availableInvs=names(st);
+        if(availableInvs.length===1){
+          invInp.value=availableInvs[0];
+          const lb=invInp.closest('label');
+          if(lb){
+            lb.querySelectorAll('.np-msg').forEach(x=>x.remove());
+            invInp.classList.remove('fld-e');
+            invInp.removeAttribute('aria-invalid');
+          }
+        }else if(!availableInvs.includes(invInp.value)){
+          invInp.value='';
+        }
+      });
+    }
+    if(!defaultSite&&siteInp) siteInp.focus();
+    else if(f.querySelector('#nName')) f.querySelector('#nName').focus();
+  }
 }
 
 window.standhfIsNewMode=()=>!!newMode;
@@ -1219,6 +1323,7 @@ window.standhfOpenRecords=(targetPid)=>{
     history.pushState(null,'',u.pathname+u.search);
   }catch(e){}
   if(targetPid) sel=targetPid;
+  else if(!sel) sel=firstVisibleId();
   saveView();
   updatePageSubtitle();
   pane();
@@ -1234,6 +1339,8 @@ window.standhfOpenNew=()=>{
     return;
   }
   newMode=true;
+  sel=null;
+  document.querySelectorAll('#list .pt').forEach(el=>el.classList.remove('on'));
   if(isTabletOrMobile()) setListOpen(false, false);
   try{
     const u=new URL(location.href);
@@ -1278,8 +1385,8 @@ applyPerms();
   const mine=DB.pts.filter(inScope);
   const v=loadView();
   if(v&&v.listSort) listSort=v.listSort;
-  if(v&&mine.some(x=>x.id===v.sel)){sel=v.sel;tab=v.tab}
-  else if(mine.length) sel=mine[0].id;
+  sel=firstVisibleId();
+  if(v&&mine.some(x=>x.id===v.sel)&&v.sel===sel) tab=v.tab;
 }
 
 /* Connection comes from the shared header: it announces each change; saves stay Pending while offline */
@@ -1296,6 +1403,12 @@ function setConnection(on,quiet){
   dash();
 }
 window.addEventListener('standhf:connection',e=>setConnection(e.detail.online,e.detail.quiet));
+window.addEventListener('standhf_threshold_changed', ()=>{ pane(); dash(); });
+window.addEventListener('storage', e=>{
+  if(e.key==='standhf_followup_threshold_days'||e.key==='standhf_access_v1'){
+    pane(); dash();
+  }
+});
 if(typeof window.isStandhfOnline==='function') DB.off=!window.isStandhfOnline();
 
 /* Deep links from the investigator dashboard: ?new=1 or ?patient=ID&tab=b|m3|m6 */
@@ -1320,13 +1433,18 @@ if(typeof window.isStandhfOnline==='function') DB.off=!window.isStandhfOnline();
 pane();dash();
 
 /* User chip: show who is signed in */
-{const u=signedIn();$('userName').textContent=u||'Signed in';$('userRole').textContent=ROLE_LABEL[signedRole()]||'Study user';
- $('avatar').textContent=u.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?'}
+{const u=signedIn();if($('userName'))$('userName').textContent=u||'Signed in';if($('userRole'))$('userRole').textContent=ROLE_LABEL[signedRole()]||'Study user';
+ if($('avatar'))$('avatar').textContent=u.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?'}
 
 /* Buttons and actions follow the signed-in role's permissions */
 function applyPerms(){
   const gate={bNew:'add_patient',bCsv:'export_data',bDemo:'load_demo',bClr:'clear_all'};
-  Object.entries(gate).forEach(([id,perm])=>{const el=$(id);if(el)el.hidden=!can(perm)});
+  Object.entries(gate).forEach(([id,perm])=>{
+    const el=$(id);
+    if(el) el.style.display = can(perm) ? '' : 'none';
+  });
+  const gatedActions = $('gatedActions');
+  if(gatedActions) gatedActions.style.display = '';
   updatePageSubtitle();
 }
 

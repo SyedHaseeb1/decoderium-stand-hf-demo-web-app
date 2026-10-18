@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STAND-HF</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018t">
+  <style>
+    /* Critical styles: paint the layout and placeholders before the full stylesheet arrives */
+    :root { --bg: #eceef1; --card: #ffffff; --soft: #f5f6f8; --soft-2: #e9ecf1; --line: #e3e6eb; --radius: 24px; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); font: 14px/1.45 'Roboto', system-ui, sans-serif; }
+    /* No open/close animation while the menu is set to its saved state on load */
+    body.booting .app { transition: none !important; }
+    /* Desktop layout only; phones and tablets use the rules in base.css */
+    @media (min-width: 1025px) {
+      .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 16px; padding: 8px; min-height: 100vh; align-items: start; }
+      .side { position: sticky; top: 8px; height: calc(100vh - 16px); background: var(--card); border-radius: var(--radius); }
+    }
+    .main { min-width: 0; }
+    .frame-wrap { position: relative; }
+    .skel { display: block; border-radius: 8px; background: linear-gradient(90deg, var(--soft-2) 25%, var(--card) 50%, var(--soft-2) 75%); background-size: 200% 100%; animation: skel-shine 1.4s linear infinite, skel-in 0.12s ease both; }
+    .skel-val { height: 28px; width: 45%; border-radius: 8px; }
+    .skel-line { height: 12px; border-radius: 6px; }
+    .skel-40 { width: 40%; } .skel-60 { width: 60%; } .skel-80 { width: 80%; }
+    .skel-page { display: grid; gap: 16px; width: 100%; min-width: 0; }
+    .skel-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
+    .skel-card { height: 96px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); }
+    .skel-chart { height: 220px; border-radius: 14px; }
+    @keyframes skel-shine { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+    @keyframes skel-in { from { opacity: 0; } to { opacity: 1; } }
+    /* The content frame fills the space under the header */
+    .frame-wrap { position: relative; }
+    #view { display: block; width: 100%; height: 100vh; min-height: 480px; border: 0; background: transparent; }
+    /* A dialog in the frame dims and blurs the whole window: the overlay covers the header and menu seamlessly */
+    body.dim::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(18, 20, 24, 0.5);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      pointer-events: auto;
+      transition: opacity 0.18s ease, background 0.18s ease, backdrop-filter 0.18s ease;
+    }
+    /* Dialog on dialog: deepen the blur and dimming to match stacked iframe backdrops */
+    body.dim.dim-2::before {
+      background: rgba(18, 20, 24, 0.75);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    body.dim #view { position: relative; z-index: 60; }
+  </style>
+  <script>
+    /* Defined before anything else loads, so a screen's "waiting" and "ready" signals are never missed */
+    window.standhfShellWaiting = function () { var v = document.getElementById('view'); if (v) v.classList.remove('pending'); };
+    window.standhfShellReady = function () { var v = document.getElementById('view'); if (v) v.classList.remove('pending'); };
+  </script>
+  <script>
+    /* Auth gate: the shell needs a signed-in session, like every other page */
+    try {
+      if (sessionStorage.getItem('standhf_auth') !== '1') location.replace('../login/');
+    } catch(e) {
+      location.replace('../login/');
+    }
+  </script>
+</head>
+<body data-page="app" class="booting">
+<div class="app">
+
+  <aside class="side" id="side" aria-label="Main navigation"><div class="skel-side" aria-hidden="true"><span class="skel skel-val" style="width:150px;height:44px;border-radius:12px;margin-bottom:10px"></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span></div><span class="sr-only">Loading menu</span></aside>
+
+  <main class="main">
+    <div id="app-header" data-page="app"><div class="skel-hdr" aria-hidden="true"><span class="skel skel-btn" style="width:140px;height:40px;border-radius:999px"></span><div class="skel-hdr-end"><span class="skel skel-chip-lg" style="width:84px"></span><span class="skel skel-circle" ></span><span class="skel skel-circle" ></span></div></div><span class="sr-only">Loading header</span></div>
+    <div class="frame-wrap">
+      <iframe id="view" class="pending" title="STAND-HF screen" src="about:blank"></iframe>
+    </div>
+  </main>
+
+</div>
+
+<script src="../assets/boot.js?v=20261018p"></script>
+<script type="text/plain" data-src="access.js?v=20261018l"></script>
+<script type="text/plain" data-src="validator.js?v=20261016a"></script>
+<script type="text/plain" data-src="dialog.js?v=20261015c"></script>
+<script type="text/plain" data-src="header.js?v=20261018l" data-root="../"></script>
+<script type="text/plain" data-src="nav.js?v=20261018h"></script>
+<script type="text/plain">
+  /* Shell routing: the header and side menu stay put; the content frame loads each screen */
+  (function () {
+    var view = document.getElementById('view');
+    var SCREENS = { dashboard: '../dashboard/', records: '../records/', admin: '../admin/' };
+
+    /* Simple shell addresses: #/records, #/records/add, #/dashboard/performance, #/admin/users */
+    /* Sections each screen accepts; anything else is not a page */
+    var SECTIONS = {
+      dashboard: ['', 'performance', 'sites', 'export', 'gdmt'],
+      records: ['', 'add'],
+      admin: ['', 'users', 'sites', 'perms']
+    };
+    function parseAddress(h) {
+      var m = (h || '').match(/^#?\/?(dashboard|records|admin)(?:\/([^\/?#]+))?$/);
+      if (!m) return null;
+      var section = m[2] || '';
+      if (SECTIONS[m[1]].indexOf(section) < 0) return null;
+      if (m[1] === 'records') return { screen: 'records', search: section === 'add' ? '?new=1' : '', hash: '' };
+      return { screen: m[1], search: '', hash: section ? '#' + section : '' };
+    }
+    function remember(win) {
+      var p = win.location.pathname.match(/\/(dashboard|records|admin)\/?$/);
+      if (!p) return;
+      var section = win.location.hash.replace('#', '');
+      if (p[1] === 'records' && /[?&]new=1/.test(win.location.search)) section = 'add';
+      history.replaceState(null, '', '#/' + p[1] + (section ? '/' + section : ''));
+    }
+
+    function screenOf(url) {
+      var m = url.pathname.match(/\/(dashboard|records|admin)\/?$/);
+      return m ? m[1] : null;
+    }
+
+    /* Highlight the menu item for the screen being requested, before the frame has loaded */
+    function highlightTarget(target) {
+      var t = new URL(target, location.href);
+      var links = [].slice.call(document.querySelectorAll('#side a.nav[href]'));
+      /* Exact item first; if the role has no such item (for example Export for investigators), the screen's own item */
+      var hit = links.find(function (a) {
+        var u = new URL(a.href, location.href);
+        return u.pathname === t.pathname && u.search === t.search && u.hash === t.hash;
+      }) || links.find(function (a) {
+        var u = new URL(a.href, location.href);
+        return u.pathname === t.pathname && !u.search && !u.hash;
+      });
+      links.forEach(function (a) {
+        var on = a === hit;
+        a.classList.toggle('active', on);
+        if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+      });
+    }
+
+    function show(screen, search, hash) {
+      var target = new URL(SCREENS[screen] + (search || '') + (hash || ''), location.href).href;
+      /* Compare with the address the frame is really on (a screen can move the frame itself) */
+      var now = view.contentWindow && view.contentWindow.location ? view.contentWindow.location.href : '';
+      if (now === target) return;
+      highlightTarget(target);
+      /* A change of section only (same screen and query) does not reload the frame */
+      var t = new URL(target), c = view.contentWindow && view.contentWindow.location;
+      if (!c || t.pathname !== c.pathname || t.search !== c.search) {
+        view.classList.add('pending');
+        window.standhfShellDim(0);
+      }
+      view.setAttribute('src', target);
+    }
+
+    /* Menu and header links to a screen change the frame instead of leaving the shell */
+    document.addEventListener('click', function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target.closest && e.target.closest('a[href]');
+      if (!a || a.target) return;
+      var u = new URL(a.href, location.href);
+      if (u.origin !== location.origin) return;
+      var screen = screenOf(u);
+      if (!screen) return;
+      e.preventDefault();
+      show(screen, u.search, u.hash);
+    }, true);
+
+    /* Highlight the menu item for what the frame is showing (screen, query and section) */
+    function markActive() {
+      var win = view.contentWindow;
+      if (!win || !win.location || view.getAttribute('src') === 'about:blank') return;
+      var here = win.location.pathname + win.location.search + win.location.hash;
+      var links = [].slice.call(document.querySelectorAll('#side a.nav[href]'));
+      links.forEach(function (a) {
+        var u = new URL(a.href, location.href);
+        a.dataset.here = u.pathname + u.search + u.hash;
+      });
+      var hit = null;
+      /* Tabs inside a screen (Dashboard sections, new-patient form) set their own key */
+      var key = null;
+      try {
+        if (win.standhfDashNavKey) key = win.standhfDashNavKey;
+        else if (typeof win.standhfIsNewMode === 'function' && win.standhfIsNewMode()) key = 'add';
+      } catch (e) {}
+      if (key) hit = links.find(function (a) { return a.dataset.key === key; });
+      if (!hit) hit = links.find(function (a) { return a.dataset.here === here; });
+      if (!hit) {
+        /* No exact item: use the screen's plain item */
+        hit = links.find(function (a) {
+          var u = new URL(a.href, location.href);
+          return u.pathname === win.location.pathname && !u.search && !u.hash;
+        });
+      }
+      links.forEach(function (a) {
+        var on = a === hit;
+        a.classList.toggle('active', on);
+        if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+      });
+      if (win.document && win.document.title) document.title = win.document.title;
+      remember(win);
+    }
+    /* Called by a screen's tabs (see assets/boot.js) */
+    window.standhfShellSync = markActive;
+    /* Called when a dialog opens or closes inside the frame (supports stacked dialog on dialog) */
+    window.standhfShellDim = function (count) {
+      var n = typeof count === 'number' ? count : (count ? 1 : 0);
+      document.body.classList.toggle('dim', n > 0);
+      document.body.classList.toggle('dim-2', n > 1);
+      /* While a dialog is open the page behind does not scroll, and the dialog sits in the middle of what is visible */
+      document.documentElement.style.overflow = n > 0 ? 'hidden' : '';
+      var d = view.contentDocument;
+      if (n > 0 && d && d.documentElement) {
+        var fr = view.getBoundingClientRect();
+        var hidden = Math.max(0, -fr.top);
+        var visible = Math.min(view.offsetHeight, window.innerHeight - fr.top) - hidden;
+        d.documentElement.style.setProperty('--dlg-top', Math.round(hidden + visible / 2) + 'px');
+      }
+    };
+    /* Keep the dimming in step with the frame's open dialogs (covers dialogs that close without a notice) */
+    setInterval(function () {
+      var d = view.contentDocument;
+      if (!d || view.getAttribute('src') === 'about:blank') return;
+      var count = d.querySelectorAll('dialog[open]').length;
+      window.standhfShellDim(count);
+    }, 300);
+
+    /* The screen signals when it waits for its data (shimmer) and when it is ready to show (content) */
+    /* A screen that waits for its data shows its own shimmer; the frame is shown as soon as it asks to */
+    window.standhfShellWaiting = function () { view.classList.remove('pending'); };
+    window.standhfShellReady = function () { view.classList.remove('pending'); };
+
+    /* A click anywhere on the screen closes the header's notification and profile panels */
+    function closeHeaderPanels() {
+      document.querySelectorAll('.notify-panel:not([hidden]), .profile-panel:not([hidden])').forEach(function (el) { el.hidden = true; });
+    }
+    /* The frame is as tall as its screen, so the whole page (header included) scrolls together */
+    var frameSize = null;
+    function fit() {
+      var d = view.contentDocument;
+      if (!d || !d.documentElement || view.getAttribute('src') === 'about:blank') return;
+      /* Screens size their lists from the window height; pass the shell's real window height in */
+      d.documentElement.style.setProperty('--shell-vh', window.innerHeight + 'px');
+      /* The body is as tall as its content (no full-window minimum inside the shell), so no reset is needed */
+      view.style.height = Math.max(480, Math.ceil(d.body.getBoundingClientRect().height)) + 'px';
+    }
+    /* Toasts stay at the bottom of what is visible on screen, not the bottom of the (taller) screen */
+    var toastQueued = false;
+    function placeToasts() {
+      var d = view.contentDocument;
+      if (!d || !d.documentElement || view.getAttribute('src') === 'about:blank') return;
+      var fr = view.getBoundingClientRect();
+      var fh = view.offsetHeight;
+      var visibleBottom = Math.min(fh, window.innerHeight - fr.top);
+      d.documentElement.style.setProperty('--snack-bottom', Math.max(16, Math.round(fh - visibleBottom + 24)) + 'px');
+    }
+    function queueToasts() {
+      if (toastQueued) return;
+      toastQueued = true;
+      requestAnimationFrame(function () { toastQueued = false; placeToasts(); });
+    }
+    window.addEventListener('scroll', queueToasts, { passive: true });
+    window.addEventListener('resize', function () { fit(); queueToasts(); });
+    view.addEventListener('load', function () {
+      if (frameSize) frameSize.disconnect();
+      fit();
+      try {
+        frameSize = new ResizeObserver(fit);
+        frameSize.observe(view.contentDocument.body);
+      } catch (e) {}
+      try { view.contentWindow.addEventListener('pointerdown', closeHeaderPanels, true); } catch (e) {}
+      markActive();
+      queueToasts();
+      var d = view.contentDocument;
+      var count = d ? d.querySelectorAll('dialog[open]').length : 0;
+      window.standhfShellDim(count);
+      /* Section changes inside a screen (tabs, #hash) do not reload the frame, so listen for them too */
+      try { view.contentWindow.addEventListener('hashchange', markActive); } catch (e) {}
+    });
+
+    /* Routes a shell address (also when only the # part changes, which does not reload the page) */
+    function route() {
+      var a = parseAddress(location.hash);
+      if (location.hash.length > 1 && !a) { location.replace('../error/'); return; }
+      if (a) show(a.screen, a.search, a.hash);
+      else show('dashboard', '', '');
+    }
+    window.addEventListener('hashchange', route);
+    route();
+    /* Menu state is applied; allow the menu animation again after the first paint */
+    requestAnimationFrame(function () { requestAnimationFrame(function () { document.body.classList.remove('booting'); }); });
+  })();
+</script>
+</body>
+</html>

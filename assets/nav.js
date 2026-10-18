@@ -17,6 +17,18 @@
   const page=document.body.dataset.page;
   /* Which nav item is active: admin and dashboard sections follow the URL hash */
   const pageKey=()=>{
+    /* Inside the app shell the highlight follows the screen in the frame (never a default screen) */
+    if(page==='app'){
+      const v=document.getElementById('view');
+      const w=v&&v.contentWindow;
+      if(!w||!w.location||w.location.href==='about:blank') return null;
+      if(w.standhfDashNavKey) return w.standhfDashNavKey;
+      if(typeof w.standhfIsNewMode==='function'&&w.standhfIsNewMode()) return 'add';
+      if(/\/records\/?$/.test(w.location.pathname)) return 'records';
+      if(/\/admin\/?$/.test(w.location.pathname)){const h=w.location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:'adm-users'}
+      if(/\/dashboard\/?$/.test(w.location.pathname)) return 'dashboard';
+      return null;
+    }
     if(page==='admin'){const h=location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:'adm-users'}
     if(page==='dashboard'){
       if(window.standhfDashNavKey) return window.standhfDashNavKey;  // set by the open tab
@@ -187,30 +199,6 @@
 
   document.getElementById('navOut').onclick=()=>window.standhfSignOut(LOGIN);
 })();
-
-/* Central loader: shown until the page is ready, then removed */
-(function(){
-  var loader=document.createElement('div');
-  loader.className='loader';loader.id='loader';loader.setAttribute('role','status');loader.setAttribute('aria-label','Loading');
-  loader.innerHTML='<span class="spinner" aria-hidden="true"></span>';
-  if(document.body)document.body.appendChild(loader);
-  var hide=function(){loader.classList.add('done');setTimeout(function(){loader.remove()},250)};
-  if(document.readyState==='complete')hide();
-  else{window.addEventListener('load',hide);setTimeout(hide,1500)}
-})();
-
-/* Show the central loader for a moment, then run the action (used by Load demo) */
-window.withLoader=function(ms,fn){
-  var l=document.createElement('div');
-  l.className='loader';l.setAttribute('role','status');l.setAttribute('aria-label','Loading');
-  l.innerHTML='<span class="spinner" aria-hidden="true"></span>';
-  document.body.appendChild(l);
-  setTimeout(function(){
-    fn();
-    l.classList.add('done');
-    setTimeout(function(){l.remove()},250);
-  },ms);
-};
 
 /* Dropdowns: a touch or click outside an open dropdown closes it (so only one stays open) */
 document.addEventListener('pointerdown',function(e){

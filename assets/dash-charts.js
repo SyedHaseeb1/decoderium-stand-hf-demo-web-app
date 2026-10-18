@@ -25,9 +25,10 @@
     const b = p.v?.b?.done ? p.v.b.date : null;
     let late = false, due = false, missed = false;
     if (k !== 'b' && b) {
-      const t = k === 'm3' ? 90 : 180, w = k === 'm3' ? 14 : 21, T = new Date();
+      const t = k === 'm3' ? 90 : 180, w = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14, T = new Date();
+      const threshold = w;
       late = T > addD(b, t + w);
-      due = T >= addD(b, t - w);
+      due = T >= addD(b, t - threshold);
       missed = T > addD(b, t + w + 30) && !has(v);
     }
     return missed ? 'Missed' : late ? 'Overdue' : has(v) ? 'In Progress' : due ? 'Due' : 'Not Started';
@@ -155,7 +156,7 @@
       const codes = (sites || []).map(s => s.code);
       const totals = months.map(m => Object.values(m.counts).reduce((x, y) => x + y, 0));
       const max = Math.max(1, ...totals);
-      const W = opts.width || 620, H = opts.height || 240, pad = 36, top = 16;
+      const W = opts.width || 620, H = opts.height || 240, pad = 36, top = 28; /* room above the tallest bar for its value label */
       const gw = (W - pad - 10) / 6, bw = Math.min(36, gw * 0.55);
 
       let g = '';

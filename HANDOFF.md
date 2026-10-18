@@ -24,11 +24,19 @@ Related documents:
    | `demoNames` | `data/demo-names.json` |
 
 3. Scripts read from `STANDHF_DATA`. The notification feed and the release notes are fetched on their own (`assets/header.js` and `assets/whatsnew.js`).
-4. If a fetch fails, `boot.js` shows an error banner and the page does not start.
+4. If a fetch fails, `boot.js` redirects to `error/` (the error page). It passes the current page in `?from=`, so "Try again" returns the user to the same screen. The error page does not load `boot.js`, so the redirect cannot loop.
 
 **To move to the API:** replace the fetches in `assets/boot.js` with API calls, and keep the same `STANDHF_DATA` shape. Most of the front end will then need no changes.
 
 ---
+
+### 1a. App shell
+
+- `app/index.html` is the entry point after sign-in. It draws the header and side menu once, and loads each screen (Dashboard, Records, Admin) into a frame.
+- Menu and header links to a screen change the frame, so the header and menu are not rebuilt when moving between screens.
+- Each screen detects that it is inside the shell (`html.embedded`), skips its own header and menu, and skips header-only fields such as the signed-in name.
+- A screen opened directly (for example `dashboard/index.html`) still works on its own with its own header and menu.
+- Auth checks inside the frame send the whole window to sign-in (`window.top`).
 
 ## 2. Data files and their shapes
 
@@ -84,9 +92,12 @@ The investigator dropdown is built from the users with role `investigator` in `u
 - `type`: `deleted`, `due`, `overdue`, `missing`, `admin` or `info`.
 - `link`: `{ page, patient?, tab? }` to open a record.
 
-### `whatsnew.json`: release notes
+### `whatsnew.json`: release notes & backend changelog API
 - `date`, `version`, and `content`: a list of `{ cat, items[] }`.
-- The version controls when the sign-in dialog shows again. Change it with each release.
+- **UI Dialog Suppressed**: The client-side popup dialog on the sign-in page is now disabled and permanently hidden from the UI.
+- **Backend API Integration**: Changelog entries are managed via `STANDHF_CHANGELOG_API` (`assets/whatsnew.js`) connecting to `/api/changelog`:
+  - `GET /api/changelog`: Retrieves active changelog and release notes (with fallback to `data/whatsnew.json`).
+  - `POST /api/changelog`: Receives a list of content (`{ date, version, content: [{ cat, items: [] }] }`) whenever changes or updates occur.
 
 ### `dummy_data.json`: demo patients
 - `pts`: 44 patients, spread unevenly across the four sites (RIC 13, LHR 9, KHI 10, ISB 12). Each site's investigator owns that site's patients.

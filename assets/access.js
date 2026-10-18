@@ -73,9 +73,15 @@ function accessStore(){
         s.perms[r]=s.perms[r]||{};
         Object.entries(defs).forEach(([k,v])=>{if(!(k in s.perms[r]))s.perms[r][k]=v});
       });
-      /* Users carry sites only (zones belong to sites). An investigator has strictly 1 site */
+      /* Users carry sites only (zones belong to sites). An investigator has strictly 1 site.
+         Synchronize official email between root property and personal.email */
       s.users.forEach(u=>{
         delete u.zones;
+        if(!u.email && u.personal && u.personal.email) u.email = u.personal.email;
+        if(u.email && (!u.personal || !u.personal.email)){
+          u.personal = u.personal || {};
+          u.personal.email = u.email;
+        }
         if(u.role==='investigator'){
           const stCode=(Array.isArray(u.sites)&&u.sites.length)?u.sites[0]:(u.site||'');
           const found=s.sites.find(st=>st.code===stCode);
@@ -83,7 +89,15 @@ function accessStore(){
         }
       });
       /* Demo accounts added after a browser saved its list are added here, so they can sign in */
-      DEFAULT_ACCESS.users.forEach(u=>{if(!s.users.some(x=>x.username===u.username))s.users.push(JSON.parse(JSON.stringify(u)))});
+      DEFAULT_ACCESS.users.forEach(u=>{
+        var existing = s.users.find(x => x.username === u.username || (x.email && x.email === u.email));
+        if(!existing) s.users.push(JSON.parse(JSON.stringify(u)));
+        else if(!existing.email && u.email){
+          existing.email = u.email;
+          existing.personal = existing.personal || {};
+          existing.personal.email = u.email;
+        }
+      });
       return s;
     }
   }catch(e){}
@@ -93,6 +107,20 @@ function saveAccess(s){if(s)s._migrated_inv_export_v2=true;try{localStorage.setI
 
 const sessionVal=k=>{try{return sessionStorage.getItem(k)||''}catch(e){return ''}};
 function session(){return{username:sessionVal('standhf_username'),name:sessionVal('standhf_user'),role:sessionVal('standhf_role')}}
+
+/* Locate user by either username handle OR official email (case-insensitive) */
+function findUser(identifier){
+  if(!identifier) return null;
+  var id = String(identifier).toLowerCase().trim();
+  var s = accessStore();
+  if(!s || !Array.isArray(s.users)) return null;
+  return s.users.find(function(x){
+    var uMatch = (x.username || '').toLowerCase().trim() === id;
+    var eMatch = (x.email || (x.personal && x.personal.email) || '').toLowerCase().trim() === id;
+    return uMatch || eMatch;
+  }) || null;
+}
+
 function currentUser(){
   const s=session();
   const u=(s.username||'').toLowerCase().trim();
@@ -101,7 +129,8 @@ function currentUser(){
   if(!store||!Array.isArray(store.users))return null;
   return store.users.find(x=>{
     const xu=(x.username||'').toLowerCase().trim();
-    if(u&&xu===u)return true;
+    const xe=(x.email||(x.personal&&x.personal.email)||'').toLowerCase().trim();
+    if(u&&(xu===u||xe===u))return true;
     if(name&&(x.name||'').toLowerCase().trim()===name)return true;
     return false;
   })||null;
@@ -112,32 +141,36 @@ function generateTempPassword(){
   return 'Stand#' + num;
 }
 
-function updateUserPassword(username, newPass){
+function updateUserPassword(identifier, newPass){
   var s = accessStore();
-  var u = s.users.find(function(x){ return x.username === username; });
+  var u = findUser(identifier);
   if(!u) return false;
-  u.password = newPass;
-  u.mustChangePassword = false;
-  u.passwordUpdatedAt = new Date().toISOString();
+  var live = s.users.find(function(x){ return x.username === u.username; });
+  if(!live) return false;
+  live.password = newPass;
+  live.mustChangePassword = false;
+  live.passwordUpdatedAt = new Date().toISOString();
   saveAccess(s);
   return true;
 }
 
-function updateUserProfile(username, updates){
+function updateUserProfile(identifier, updates){
   var s = accessStore();
-  var u = s.users.find(function(x){ return x.username === username; });
+  var u = findUser(identifier);
   if(!u) return false;
-  u.personal = u.personal || {};
-  if(updates.phone !== undefined) u.personal.phone = updates.phone;
-  if(updates.avatar !== undefined) u.avatar = updates.avatar;
-  if(updates.profileUpdatedAt !== undefined) u.profileUpdatedAt = updates.profileUpdatedAt;
+  var live = s.users.find(function(x){ return x.username === u.username; });
+  if(!live) return false;
+  live.personal = live.personal || {};
+  if(updates.phone !== undefined) live.personal.phone = updates.phone;
+  if(updates.email !== undefined) { live.personal.email = updates.email; live.email = updates.email; }
+  if(updates.avatar !== undefined) live.avatar = updates.avatar;
+  if(updates.profileUpdatedAt !== undefined) live.profileUpdatedAt = updates.profileUpdatedAt;
   saveAccess(s);
   return true;
 }
 
-function verifyUserPassword(username, pass){
-  var s = accessStore();
-  var u = s.users.find(function(x){ return x.username === username; });
+function verifyUserPassword(identifier, pass){
+  var u = findUser(identifier);
   if(!u) return false;
   if(!u.password) return true; // legacy demo accounts without explicit password
   return u.password === pass;
@@ -361,3 +394,132 @@ document.addEventListener('paste', function(e){
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 });
+
+/* ------------------------------------------------------------------------
+   Follow-up Notification Lead Threshold (Days Before) & Alert Generator
+   Governs how many days prior to a scheduled follow-up milestone (e.g. Day 90 / Day 180)
+   the portal automatically generates follow-up due notifications.
+   ------------------------------------------------------------------------ */
+function followupAlertThresholdDays(){
+  try {
+    var s = accessStore();
+    if(s && typeof s.followupThresholdDays === 'number' && s.followupThresholdDays >= 3 && s.followupThresholdDays <= 14){
+      return s.followupThresholdDays;
+    }
+  } catch(e){}
+  try {
+    var raw = localStorage.getItem('standhf_followup_threshold_days');
+    if(raw) {
+      var n = parseInt(raw, 10);
+      if(n >= 3 && n <= 14) return n;
+    }
+  } catch(e){}
+  return 14; // protocol default: 14 days prior
+}
+
+function setFollowupAlertThresholdDays(days){
+  var n = parseInt(days, 10);
+  if(isNaN(n) || n < 3 || n > 14) return false;
+  try {
+    var s = accessStore();
+    s.followupThresholdDays = n;
+    saveAccess(s);
+  } catch(e){}
+  try {
+    localStorage.setItem('standhf_followup_threshold_days', String(n));
+  } catch(e){}
+  if(typeof window !== 'undefined' && typeof window.dispatchEvent === 'function'){
+    window.dispatchEvent(new CustomEvent('standhf_threshold_changed', { detail: { days: n } }));
+  }
+  return true;
+}
+
+/**
+ * Dynamic Follow-up Notifications Generator
+ * Evaluates patient registry against the admin-configured threshold days.
+ * Generates due / overdue alerts when visits fall within the configured lead window.
+ */
+function liveNotesFor(username){
+  var notes = [];
+  try {
+    var ptsRaw = localStorage.getItem('standhf_ecrf_v1');
+    if(!ptsRaw) return notes;
+    var pts = JSON.parse(ptsRaw);
+    if(!Array.isArray(pts)) return notes;
+
+    var u = findUser(username) || currentUser();
+    var isGlobal = (typeof can === 'function' && can('view_all_sites')) || (u && (u.role === 'superadmin' || u.role === 'central'));
+    var userSites = (typeof mySites === 'function') ? mySites() : (u && Array.isArray(u.sites) ? u.sites : []);
+
+    var leadDays = followupAlertThresholdDays();
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    var parseD = function(s){
+      if(!s) return null;
+      var d = new Date(s + 'T00:00:00');
+      return isNaN(d.getTime()) ? null : d;
+    };
+    var addD = function(d, n){ return new Date(d.getTime() + n * 86400000); };
+
+    pts.forEach(function(p){
+      if(!isGlobal && (!p.site || userSites.indexOf(p.site) < 0)) return;
+      if(!p.v) return;
+
+      var bDateStr = (p.v.b && p.v.b.date) || p.consent;
+      var bDate = parseD(bDateStr);
+      if(!bDate) return;
+
+      var visits = [
+        { k: 'm3', name: '3-Month', days: 90, win: 14 },
+        { k: 'm6', name: '6-Month', days: 180, win: 21 }
+      ];
+
+      visits.forEach(function(v){
+        var vr = p.v[v.k];
+        if(vr && vr.done) return;
+
+        var targetDate = addD(bDate, v.days);
+        var leadTriggerDate = addD(targetDate, -leadDays);
+        var overdueDate = addD(targetDate, v.win);
+
+        if(today >= leadTriggerDate){
+          var targetStr = targetDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          var daysDiff = Math.round((targetDate.getTime() - today.getTime()) / 86400000);
+
+          if(today > overdueDate){
+            var overDays = Math.round((today.getTime() - overdueDate.getTime()) / 86400000);
+            notes.push({
+              id: 'live-od-' + (p.uid || p.id) + '-' + v.k,
+              site: p.site,
+              type: 'overdue',
+              title: v.name + ' visit overdue',
+              text: p.id + ' (' + (p.name || 'Participant') + ') missed scheduled follow-up on ' + targetStr + '. Overdue by ' + overDays + ' days.',
+              time: 'Action required',
+              link: { page: 'records', patient: p.id, tab: v.k }
+            });
+          } else {
+            notes.push({
+              id: 'live-due-' + (p.uid || p.id) + '-' + v.k,
+              site: p.site,
+              type: 'due',
+              title: v.name + ' follow-up due',
+              text: p.id + ' (' + (p.name || 'Participant') + ') follow-up scheduled for ' + targetStr + ' (' + (daysDiff > 0 ? daysDiff + ' days remaining' : 'due today') + '). Alert generated ' + leadDays + ' days prior per admin threshold.',
+              time: daysDiff > 0 ? ('In ' + daysDiff + 'd') : 'Today',
+              link: { page: 'records', patient: p.id, tab: v.k }
+            });
+          }
+        }
+      });
+    });
+  } catch(e){
+    console.warn('[liveNotesFor] Evaluation error:', e);
+  }
+  return notes;
+}
+
+if(typeof window !== 'undefined'){
+  window.followupAlertThresholdDays = followupAlertThresholdDays;
+  window.setFollowupAlertThresholdDays = setFollowupAlertThresholdDays;
+  window.liveNotesFor = liveNotesFor;
+}

@@ -3,14 +3,14 @@
    appDialog.alert({ title, message, icon, tone, confirmText })              -> Promise<true>
    tone: "neutral" | "info" | "warning" | "danger"  (danger colours the confirm button red) */
 (function(){
-  var dlg=null;
   var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
-  var ensure=function(){
-    if(!dlg){dlg=document.createElement('dialog');dlg.className='app-dialog';dlg.setAttribute('aria-modal','true');document.body.appendChild(dlg)}
-    return dlg};
   var open=function(o,kind){
     return new Promise(function(resolve){
-      var d=ensure(), tone=o.tone||'neutral', done=false;
+      var d=document.createElement('dialog');
+      d.className='app-dialog';
+      d.setAttribute('aria-modal','true');
+      document.body.appendChild(d);
+      var tone=o.tone||'neutral', done=false;
       var okClass=tone==='danger'?'ad-ok danger':'ad-ok pri';
       var okText=o.confirmText||(kind==='alert'?'OK':'Confirm');
       var labelled='ad-title-'+Date.now();
@@ -35,6 +35,7 @@
           try{o.checkbox.onChange(cb?cb.checked:false)}catch(e){}
         }
         if(d.open)d.close();
+        setTimeout(function(){ if(d.parentNode)d.parentNode.removeChild(d); }, 100);
         resolve(v);
       };
       d.onclick=function(e){

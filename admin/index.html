@@ -12,9 +12,10 @@
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018t">
 <script>
   try {
     if (localStorage.getItem('standhf_theme') !== 'blue') {
@@ -24,13 +25,28 @@
   /* Register the service worker so the browser can install the app */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
 </script>
+  <script>
+    /* Inside the app shell, mark the page before the first paint so its own header and menu never show */
+    try { if (window.frameElement && window.frameElement.id === 'view') document.documentElement.classList.add('embedded'); } catch (e) {}
+  </script>
+  <script>
+    /* Open screens through the app shell, so the header and menu stay in place when moving between screens */
+    (function () {
+      if (window.top !== window) return;
+      var s = location.pathname.match(/\/(dashboard|records|admin)\/?$/);
+      if (!s) return;
+      var section = location.hash.replace('#', '');
+      if (s[1] === 'records' && /[?&]new=1/.test(location.search)) section = 'add';
+      location.replace('../app/#/' + s[1] + (section ? '/' + section : ''));
+    })();
+  </script>
 </head>
 <body data-page="admin" class="compact">
 <div class="app" id="app">
-  <aside class="side" id="side" aria-label="Main navigation"></aside>
+  <aside class="side" id="side" aria-label="Main navigation"><div class="skel-side" aria-hidden="true"><span class="skel skel-val" style="width:150px;height:44px;border-radius:12px;margin-bottom:10px"></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span></div><span class="sr-only">Loading menu</span></aside>
 
   <div class="main">
-    <div id="app-header" data-page="admin"></div>
+    <div id="app-header" data-page="admin"><div class="skel-hdr" aria-hidden="true"><span class="skel skel-btn" style="width:140px;height:40px;border-radius:999px"></span><div class="skel-hdr-end"><span class="skel skel-chip-lg" style="width:84px"></span><span class="skel skel-circle" ></span><span class="skel skel-circle" ></span></div></div><span class="sr-only">Loading header</span></div>
 
     <div class="hello">
       <div>
@@ -44,7 +60,7 @@
     </div>
 
     <!-- Main dynamic admin content -->
-    <div id="view"></div>
+    <div id="view"><div class="skel-page" aria-hidden="true"><div class="skel-pills"><span class="skel skel-pill"></span><span class="skel skel-pill"></span><span class="skel skel-pill"></span></div><div class="skel-card"><div class="skel-head"><span class="skel skel-line skel-40"></span><span class="skel skel-line skel-80"></span></div><div class="skel-rows"><div class="skel-row"><span class="skel skel-dot"></span><span class="skel"></span><span class="skel skel-end"></span></div><div class="skel-row"><span class="skel skel-dot"></span><span class="skel"></span><span class="skel skel-end"></span></div><div class="skel-row"><span class="skel skel-dot"></span><span class="skel"></span><span class="skel skel-end"></span></div><div class="skel-row"><span class="skel skel-dot"></span><span class="skel"></span><span class="skel skel-end"></span></div><div class="skel-row"><span class="skel skel-dot"></span><span class="skel"></span><span class="skel skel-end"></span></div><div class="skel-row"><span class="skel skel-dot"></span><span class="skel"></span><span class="skel skel-end"></span></div></div></div></div><span class="sr-only">Loading administration</span></div>
     <div class="snack" id="snack" role="status" aria-live="polite"></div>
   </div>
 </div>
@@ -71,30 +87,30 @@
         <div class="form-grid-2">
           <div class="form-field">
             <label for="nuName">Full Name <span class="req">*</span></label>
-            <input id="nuName" name="name" required autocomplete="name" maxlength="70">
+            <input id="nuName" name="name" required autocomplete="name" maxlength="70" placeholder="e.g. Dr. Ayesha Noor">
             <span class="muted" style="font-size:12px">As shown on official records</span>
             <span class="fmsg" data-for="nuName"></span>
           </div>
           <div class="form-field">
-            <label for="nuUser">Username <span class="req">*</span></label>
-            <input id="nuUser" name="username" required autocapitalize="off" spellcheck="false" autocomplete="off" maxlength="30">
-            <span class="muted" style="font-size:12px">Lowercase letters, numbers, dot or underscore</span>
-            <span class="fmsg" data-for="nuUser"></span>
+            <label for="nuEmail">Official Email <span class="req">*</span></label>
+            <input id="nuEmail" name="email" type="email" required autocapitalize="off" maxlength="100" placeholder="e.g. name@hospital.pk">
+            <span class="muted" style="font-size:12px">Used for portal sign-in and system notifications</span>
+            <span class="fmsg" data-for="nuEmail"></span>
           </div>
         </div>
 
         <div class="form-grid-2" style="margin-top:10px">
           <div class="form-field">
+            <label for="nuUser">Username <span class="muted" style="font-weight:normal;font-size:12px">(Optional)</span></label>
+            <input id="nuUser" name="username" autocapitalize="off" spellcheck="false" autocomplete="off" maxlength="30" placeholder="Auto-generated if left blank">
+            <span class="muted" style="font-size:12px">Optional handle. Generated from email if blank</span>
+            <span class="fmsg" data-for="nuUser"></span>
+          </div>
+          <div class="form-field">
             <label for="nuPhone">Mobile Number</label>
             <input id="nuPhone" name="phone" type="tel" inputmode="numeric" maxlength="11" placeholder="03001234567">
             <span class="muted" style="font-size:12px">11 digits</span>
             <span class="fmsg" data-for="nuPhone"></span>
-          </div>
-          <div class="form-field">
-            <label for="nuEmail">Official Email</label>
-            <input id="nuEmail" name="email" type="email" autocapitalize="off" maxlength="100">
-            <span class="muted" style="font-size:12px">Hospital address, e.g. name@hospital.pk</span>
-            <span class="fmsg" data-for="nuEmail"></span>
           </div>
         </div>
 
@@ -224,8 +240,8 @@
           <span class="fmsg" data-for="euPhone"></span>
         </div>
         <div class="form-field">
-          <label for="euEmail">Official Email</label>
-          <input id="euEmail" name="email" type="email" maxlength="100">
+          <label for="euEmail">Official Email <span class="req">*</span></label>
+          <input id="euEmail" name="email" type="email" required maxlength="100" placeholder="e.g. name@hospital.pk">
           <span class="fmsg" data-for="euEmail"></span>
         </div>
       </div>
@@ -303,6 +319,10 @@
       <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px">
         <span class="muted" style="font-size:13px">Full Name</span>
         <b id="credName" style="font-size:13.5px">Dr. Name</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px">
+        <span class="muted" style="font-size:13px">Official Email</span>
+        <b id="credEmail" style="font-size:13px;font-weight:600;word-break:break-all">email@example.com</b>
       </div>
       <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px">
         <span class="muted" style="font-size:13px">Username</span>
@@ -455,7 +475,7 @@
 </dialog>
 
 <!-- Scripts in strict dependency order -->
-<script src="../assets/boot.js?v=20261018m"></script>
+<script src="../assets/boot.js?v=20261018p" data-api-delay="3000"></script>
 <script type="text/plain" data-src="access.js?v=20261018l"></script>
 <script type="text/plain" data-src="validator.js?v=20261016a"></script>
 <script type="text/plain" data-src="lookups.js?v=20261015d"></script>
@@ -486,7 +506,7 @@ const tabFromHash=()=>{
 let currentTab=tabFromHash();
 
 /* Security gate: Super Admin, Central Team (Read-only Governance), or users with 'assign_investigators' */
-if(sessionVal('standhf_auth')!=='1')location.replace(LOGIN);
+if(sessionVal('standhf_auth')!=='1')(window.top||window).location.replace(LOGIN);
 if(sessionVal('standhf_must_change_pw')==='1')location.replace('../setup/');
 else if(session().role!==SUPER&&session().role!=='central'&&!can('assign_investigators'))location.replace(ECRF);
 
@@ -829,8 +849,8 @@ function adminTabsNav(){
       <a href="#sites" class="admin-tab ${currentTab==='sites'?'active':''}" title="Medical Centres &amp; Zones">
         <i class="ms">local_hospital</i> <span class="tab-full">Medical Centres &amp; Zones</span><span class="tab-short">Centres</span> <span class="tab-badge">${sCount}</span>
       </a>
-      <a href="#perms" class="admin-tab ${currentTab==='perms'?'active':''}" title="Role Permissions">
-        <i class="ms">shield</i> <span class="tab-full">Role Permissions</span><span class="tab-short">Permissions</span>
+      <a href="#perms" class="admin-tab ${currentTab==='perms'?'active':''}" title="Role Permissions &amp; Protocol Settings">
+        <i class="ms">tune</i> <span class="tab-full">Permissions &amp; Settings</span><span class="tab-short">Settings</span>
       </a>
     </nav>
   `;
@@ -896,8 +916,10 @@ function usersView(){
       const siteStr=(u.sites||[]).join(' ').toLowerCase();
       const desig=(u.personal?.designation||'').toLowerCase();
       const phone=(u.personal?.phone||'').toLowerCase();
+      const emailStr=(u.email||u.personal?.email||'').toLowerCase();
       return u.name.toLowerCase().includes(q) ||
-             u.username.toLowerCase().includes(q) ||
+             (u.username||'').toLowerCase().includes(q) ||
+             emailStr.includes(q) ||
              zoneStr.includes(q) ||
              siteStr.includes(q) ||
              desig.includes(q) ||
@@ -1004,7 +1026,10 @@ function usersView(){
                       </div>
                       <div>
                         <div class="admin-user-name">${esc(u.name)}</div>
-                        <div class="admin-user-sub"><span class="admin-user-handle">@${esc(u.username)}</span></div>
+                        <div class="admin-user-sub">
+                          ${u.username ? `<span class="admin-user-handle">@${esc(u.username)}</span>` : ''}
+                          ${(u.email || u.personal?.email) ? `<span style="font-size:12px;color:var(--ink-2);margin-left:${u.username?'6px':'0'}">&bull; ${esc(u.email || u.personal?.email)}</span>` : ''}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -1206,6 +1231,7 @@ function sitesView(){
    ------------------------------------------------------------- */
 function permsView(){
   const s=accessStore(), roles=['investigator','central'];
+  const leadDays = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14;
   const head=`<tr><th>Permission</th>${roles.map(r=>`<th class="num">${ROLE_NAMES[r]}</th>`).join('')}<th class="num">${ROLE_NAMES[SUPER]}</th></tr>`;
   const rows=PERMS.map(([k,l])=>`<tr><td>${l}</td>
     ${roles.map(r=>`<td class="num"><input type="checkbox" data-perm-role="${r}" data-perm-key="${k}" ${s.perms[r]&&s.perms[r][k]?'checked':''} ${isReadOnlyAdmin?'disabled':''} aria-label="${ROLE_NAMES[r]}: ${l}"></td>`).join('')}
@@ -1213,6 +1239,82 @@ function permsView(){
 
   return `
     ${adminTabsNav()}
+    
+    <!-- Follow-up Window & Notification Alert Threshold Configuration Card -->
+    <section class="card" id="cardFollowupThreshold" style="margin-bottom:20px">
+      <div class="card-head">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="ms" style="color:var(--brand-magenta);font-size:22px">notifications_active</span>
+            <h2 style="margin:0">Follow-up Window &amp; Notification Alert Threshold</h2>
+          </div>
+          <small>Configure the follow-up visit window tolerance (±days) and notification alert threshold across the entire portal. The entire application (CRF visit banners, validation rules, dashboard follow-up queues, on-time metrics, and notifications) dynamically follows this setting directly.</small>
+        </div>
+      </div>
+      <div style="padding:4px 0 0">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:20px;align-items:start">
+          
+          <!-- Control Column -->
+          <div style="display:grid;gap:10px">
+            <label for="inpFollowupThreshold" style="display:block;font-size:13px;font-weight:600;color:var(--ink);margin:0">
+              Visit Window Tolerance &amp; Alert Lead Time (±Days)
+            </label>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="position:relative;width:120px">
+                <input id="inpFollowupThreshold" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2"
+                  value="${leadDays}" 
+                  placeholder="14"
+                  autocomplete="off"
+                  ${isReadOnlyAdmin ? 'disabled' : ''}
+                  style="width:100%;height:40px;padding:0 36px 0 12px;font-size:15px;font-weight:700;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);box-sizing:border-box">
+                <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--ink-3);font-weight:600">days</span>
+              </div>
+              <button type="button" class="btn primary" id="btnSaveFollowupThreshold" ${isReadOnlyAdmin ? 'disabled' : ''} style="height:40px;gap:6px">
+                <i class="ms">save</i> Save
+              </button>
+            </div>
+            
+            <div style="font-size:12px;min-height:18px;display:flex;align-items:center">
+              <span id="msgThresholdHint" class="muted" style="font-size:12px">Allowed range: 3 to 14 days</span>
+              <span id="msgThresholdErr" style="display:none;align-items:center;gap:4px;color:var(--danger, #ef4444);font-size:12px;font-weight:500">
+                <span class="ms" style="font-size:14px">error</span> Must be between 3 and 14 days
+              </span>
+            </div>
+
+            <!-- Quick Presets -->
+            <div style="margin-top:4px">
+              <span class="muted" style="font-size:11.5px;font-weight:600;display:block;margin-bottom:6px">Quick Presets:</span>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <button type="button" class="btn btn-sm ${leadDays===3?'primary':''}" data-threshold-preset="3" ${isReadOnlyAdmin ? 'disabled' : ''}>3 Days</button>
+                <button type="button" class="btn btn-sm ${leadDays===5?'primary':''}" data-threshold-preset="5" ${isReadOnlyAdmin ? 'disabled' : ''}>5 Days</button>
+                <button type="button" class="btn btn-sm ${leadDays===7?'primary':''}" data-threshold-preset="7" ${isReadOnlyAdmin ? 'disabled' : ''}>7 Days (1 wk)</button>
+                <button type="button" class="btn btn-sm ${leadDays===14?'primary':''}" data-threshold-preset="14" ${isReadOnlyAdmin ? 'disabled' : ''}>14 Days (Default)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Explanation / Scenario Box -->
+          <div style="background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:14px 16px">
+            <div style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;color:var(--ink);margin-bottom:6px">
+              <i class="ms" style="font-size:18px;color:var(--primary)">lightbulb</i> Active System Rules
+            </div>
+            <p style="font-size:12.5px;line-height:1.5;color:var(--ink-2);margin:0 0 10px">
+              With the threshold set to <b style="color:var(--primary);font-size:13px"><span id="lblThresholdVal">${leadDays}</span> days</b>:
+              <br>• <b>CRF Visit Windows:</b> M3 is <b>Day 90 ±<span id="lblThresholdValWindow">${leadDays}</span></b> and M6 is <b>Day 180 ±<span id="lblThresholdValWindow2">${leadDays}</span></b>.
+              <br>• <b>Alert Lead Time:</b> Notifications and Due queues trigger <span id="lblThresholdValAlert">${leadDays}</span> days before the target date.
+            </p>
+            <div style="font-size:11.5px;color:var(--ink-3);display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px dashed var(--line);padding-top:8px">
+              <span><b>Month 3:</b> Window [90 - ${leadDays}, 90 + ${leadDays}] · Alert Day <span id="lblM3Day">${Math.max(1, 90 - leadDays)}</span></span>
+              <span>·</span>
+              <span><b>Month 6:</b> Window [180 - ${leadDays}, 180 + ${leadDays}] · Alert Day <span id="lblM6Day">${Math.max(1, 180 - leadDays)}</span></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Role Permissions Matrix Card -->
     <section class="card" id="cardPermsMatrix">
       <div class="card-head">
         <div>
@@ -1238,6 +1340,10 @@ function render(){
   if(!v)return;
   v.innerHTML=currentTab==='users'?usersView():currentTab==='sites'?sitesView():permsView();
   v.classList.remove('form-in');void v.offsetWidth;v.classList.add('form-in');
+
+  if(currentTab==='perms'){
+    validateThresholdInput(false);
+  }
 
   if(currentTab==='users'&&highlightUser){
     const hl=document.querySelector(`[data-user-row="${CSS.escape(highlightUser)}"]`);
@@ -1306,11 +1412,16 @@ $('btnCopyNuPass')?.addEventListener('click', () => {
   navigator.clipboard.writeText(p).then(() => toast('Temporary password copied')).catch(() => {});
 });
 
-function openCredentialsModal(name, username, role, tempPass, isReset){
+function openCredentialsModal(name, username, role, tempPass, isReset, email){
   const dlg = $('dlgUserCredentials');
   if(!dlg) return;
+  const s = typeof accessStore === 'function' ? accessStore() : null;
+  const matchedUser = s?.users?.find(u => u.username === username || (u.email && u.email.toLowerCase() === (email || '').toLowerCase()));
+  const userEmail = email || matchedUser?.email || matchedUser?.personal?.email || '';
+
   $('credTitle').textContent = isReset ? 'Temporary Password Reset' : 'User Account Provisioned';
   $('credName').textContent = name;
+  if($('credEmail')) $('credEmail').textContent = userEmail || '—';
   $('credHandle').textContent = '@' + username;
   $('credRole').textContent = ROLE_NAMES[role] || role;
   $('credPass').textContent = tempPass;
@@ -1324,10 +1435,12 @@ Portal Login: ${portalUrl}
 
 Initial Login Credentials:
 Full Name: ${name}
+Official Email: ${userEmail || '—'}
 Username: ${username}
 Temporary Password: ${tempPass}
 System Role: ${ROLE_NAMES[role] || role}
 
+Sign-In Tip: You can sign in using either your Official Email (${userEmail || username}) or Username (${username}).
 Note: You will be prompted to set your personal permanent password and complete initial profile setup upon first sign-in.`;
 
   $('credCopyText').value = inviteText;
@@ -1425,12 +1538,12 @@ $('fAddUser')?.addEventListener('submit',e=>{
   const f=e.target;
   const dlg=$('dlgAddUser');
   const name=$('nuName').value.trim();
-  const username=$('nuUser').value.trim().toLowerCase();
+  const email=$('nuEmail').value.trim();
+  let username=$('nuUser').value.trim().toLowerCase();
   const role=isCentral()?'investigator':(f.querySelector('input[name="role"]:checked')||{}).value;
   const rawDesig=$('nuDesig').value.trim();
   const desig=typeof window.normalizeDesignation==='function'?window.normalizeDesignation(rawDesig):rawDesig;
   const phone=contactClean($('nuPhone').value.trim());
-  const email=$('nuEmail').value.trim();
   const selectedSite = ($('nuSiteCode')?.value || $('nuSiteInput')?.value || '').replace(/^\[([A-Z0-9]+)\].*$/i, '$1').trim();
 
   // Validations
@@ -1440,16 +1553,40 @@ $('fAddUser')?.addEventListener('submit',e=>{
     if(!nChk.ok){ setMsg('nuName', nChk.msg, true); hasErr=true; }
     else setMsg('nuName', '', false);
 
-    const uChk = window.STANDHF_VALIDATOR.validate('username', username, true);
-    if(!uChk.ok){ setMsg('nuUser', uChk.msg, true); hasErr=true; }
-    else if(accessStore().users.some(u=>u.username===username)){ setMsg('nuUser','That username is already taken',true); hasErr=true; }
-    else setMsg('nuUser', '', false);
-
-    if(email){
-      const eChk = window.STANDHF_VALIDATOR.validate('email', email, false);
+    // Email is REQUIRED
+    if(!email){
+      setMsg('nuEmail', 'Official email is required', true);
+      hasErr=true;
+    } else {
+      const eChk = window.STANDHF_VALIDATOR.validate('email', email, true);
       if(!eChk.ok){ setMsg('nuEmail', eChk.msg, true); hasErr=true; }
-      else setMsg('nuEmail', '', false);
-    } else setMsg('nuEmail', '', false);
+      else if(accessStore().users.some(u=>(u.email||u.personal?.email||'').toLowerCase()===email.toLowerCase())){
+        setMsg('nuEmail', 'This email address is already registered', true);
+        hasErr=true;
+      } else {
+        setMsg('nuEmail', '', false);
+      }
+    }
+
+    // Username is OPTIONAL: auto-generate from email prefix if blank
+    if(!username && email && !hasErr){
+      const base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9._]/g, '').slice(0, 25) || 'user';
+      let cand = base;
+      let counter = 1;
+      while(accessStore().users.some(u=>u.username===cand)){
+        cand = base + counter;
+        counter++;
+      }
+      username = cand;
+      setMsg('nuUser', '', false);
+    } else if(username){
+      const uChk = window.STANDHF_VALIDATOR.validate('username', username, false);
+      if(!uChk.ok){ setMsg('nuUser', uChk.msg, true); hasErr=true; }
+      else if(accessStore().users.some(u=>u.username===username)){ setMsg('nuUser','That username is already taken',true); hasErr=true; }
+      else setMsg('nuUser', '', false);
+    } else {
+      setMsg('nuUser', '', false);
+    }
 
     if(phone){
       const pChk = window.STANDHF_VALIDATOR.validate('phone', phone, false);
@@ -1458,10 +1595,37 @@ $('fAddUser')?.addEventListener('submit',e=>{
     } else setMsg('nuPhone', '', false);
   } else {
     if(!name){setMsg('nuName','Enter the full name',true);hasErr=true}
-    const badUser=!username?'Enter a username':!/^[a-z0-9._]+$/.test(username)?'Use lowercase letters, numbers, dot or underscore':accessStore().users.some(u=>u.username===username)?'That username is already taken':'';
-    if(badUser){setMsg('nuUser',badUser,true);hasErr=true}
-    const badEmail=email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if(badEmail){setMsg('nuEmail','Enter a valid email address',true);hasErr=true}
+    if(!email){
+      setMsg('nuEmail','Official email is required',true);
+      hasErr=true;
+    } else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      setMsg('nuEmail','Enter a valid email address',true);
+      hasErr=true;
+    } else if(accessStore().users.some(u=>(u.email||u.personal?.email||'').toLowerCase()===email.toLowerCase())){
+      setMsg('nuEmail','This email address is already registered',true);
+      hasErr=true;
+    } else {
+      setMsg('nuEmail','',false);
+    }
+
+    if(!username && email && !hasErr){
+      const base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9._]/g, '').slice(0, 25) || 'user';
+      let cand = base;
+      let counter = 1;
+      while(accessStore().users.some(u=>u.username===cand)){
+        cand = base + counter;
+        counter++;
+      }
+      username = cand;
+      setMsg('nuUser','',false);
+    } else if(username){
+      const badUser=!/^[a-z0-9._]+$/.test(username)?'Use lowercase letters, numbers, dot or underscore':accessStore().users.some(u=>u.username===username)?'That username is already taken':'';
+      if(badUser){setMsg('nuUser',badUser,true);hasErr=true}
+      else setMsg('nuUser','',false);
+    } else {
+      setMsg('nuUser','',false);
+    }
+
     const pMsg = contactError(phone, false);
     if(pMsg){setMsg('nuPhone',pMsg,true);hasErr=true}
   }
@@ -1478,10 +1642,12 @@ $('fAddUser')?.addEventListener('submit',e=>{
   const tempPass = ($('nuTempPass')?.value || '').trim() || generateTempPassword();
   const saved=commit(s=>{
     if(s.users.some(u=>u.username===username))return 'Username already taken';
+    if(s.users.some(u=>(u.email||u.personal?.email||'').toLowerCase()===email.toLowerCase()))return 'Email already registered';
     const targetSiteObj=s.sites.find(st=>st.code===selectedSite);
     const userSites=role==='investigator'&&targetSiteObj?[targetSiteObj.code]:role==='central'?s.sites.map(st=>st.code):[];
     s.users.push({
       username,
+      email,
       name,
       role,
       sites:userSites,
@@ -1496,7 +1662,7 @@ $('fAddUser')?.addEventListener('submit',e=>{
 
   if(saved){
     $('dlgAddUser').close();
-    openCredentialsModal(name, username, role, tempPass, false);
+    openCredentialsModal(name, username, role, tempPass, false, email);
     toast(`${name} added as ${ROLE_NAMES[role]}`);
   }
 });
@@ -1654,15 +1820,19 @@ $('fEditUser')?.addEventListener('submit',e=>{
   const selectedSite = siteCodeVal || siteInputVal;
   const me=session().username;
 
+  // Email is REQUIRED
+  if(!email){
+    setMsg('euEmail', 'Official email is required', true);
+    return;
+  }
+
   if(window.STANDHF_VALIDATOR){
     const nChk = window.STANDHF_VALIDATOR.validate('name', name, true);
     if(!nChk.ok){ toast(nChk.msg); return; }
 
-    if(email){
-      const eChk = window.STANDHF_VALIDATOR.validate('email', email, false);
-      if(!eChk.ok){ setMsg('euEmail', eChk.msg, true); return; }
-      else setMsg('euEmail', '', false);
-    } else setMsg('euEmail', '', false);
+    const eChk = window.STANDHF_VALIDATOR.validate('email', email, true);
+    if(!eChk.ok){ setMsg('euEmail', eChk.msg, true); return; }
+    else setMsg('euEmail', '', false);
 
     if(phone){
       const pChk = window.STANDHF_VALIDATOR.validate('phone', phone, false);
@@ -1671,10 +1841,18 @@ $('fEditUser')?.addEventListener('submit',e=>{
     } else setMsg('euPhone', '', false);
   } else {
     if(!name){toast('Full name is required');return}
-    const badEmail=email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const badEmail=!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if(badEmail){setMsg('euEmail','Enter a valid email address',true);return}
+    else setMsg('euEmail','',false);
     const pMsg = contactError(phone, false);
     if(pMsg){setMsg('euPhone',pMsg,true);return}
+  }
+
+  // Check email uniqueness against other accounts
+  const dupOther = accessStore().users.find(u => u.username !== username && (u.email || u.personal?.email || '').toLowerCase() === email.toLowerCase());
+  if(dupOther){
+    setMsg('euEmail', 'This email address is already in use by another user', true);
+    return;
   }
 
   if(role==='investigator'&&!selectedSite){
@@ -1698,6 +1876,7 @@ $('fEditUser')?.addEventListener('submit',e=>{
     }
 
     user.name=name;
+    user.email=email;
     user.role=role;
     user.active=active;
     user.personal=user.personal||{};
@@ -1756,7 +1935,7 @@ $('btnExecuteResetPass')?.addEventListener('click', () => {
 
   $('dlgConfirmResetPass')?.close();
   $('dlgEditUser')?.close();
-  openCredentialsModal(user.name, user.username, user.role, newPass, true);
+  openCredentialsModal(user.name, user.username, user.role, newPass, true, user.email || user.personal?.email);
   toast(`Temporary password reset for ${user.name}`);
   pendingResetUsername = '';
 });
@@ -1965,11 +2144,41 @@ window.addEventListener('scroll', () => {
   if(openWrap) positionCb(openWrap);
 }, true);
 
+document.addEventListener('paste', e => {
+  if(e.target && e.target.id === 'inpFollowupThreshold'){
+    e.preventDefault();
+    const pasteData = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+    const digits = pasteData.replace(/\D/g, '');
+    if(!digits) return;
+    let n = parseInt(digits.slice(0, 2), 10);
+    if(isNaN(n) || n < 3) n = 3;
+    if(n > 14) n = 14;
+    e.target.value = String(n);
+    validateThresholdInput(true);
+  }
+});
+
 document.addEventListener('input', e => {
   if(e.target.matches && e.target.matches('[data-cb-input]:not([readonly])')){
     const wrap = e.target.closest('[data-cb]');
     if(wrap._justChose) return;
     openCb(wrap, e.target.value);
+  } else if(e.target.id === 'inpFollowupThreshold'){
+    const inp = e.target;
+    let digits = inp.value.replace(/\D/g, '').slice(0, 2);
+    if(digits !== ''){
+      let n = parseInt(digits, 10);
+      if(n > 14) n = 14;
+      digits = String(n);
+    }
+    if(inp.value !== digits) inp.value = digits;
+    validateThresholdInput(true);
+  }
+});
+
+document.addEventListener('change', e => {
+  if(e.target.id === 'inpFollowupThreshold'){
+    validateThresholdInput(true);
   }
 });
 
@@ -1982,6 +2191,14 @@ document.addEventListener('pointerdown', e => {
 });
 
 document.addEventListener('focusout', e => {
+  if(e.target && e.target.id === 'inpFollowupThreshold'){
+    const inp = e.target;
+    let n = parseInt(inp.value, 10);
+    if(isNaN(n) || n < 3) n = followupAlertThresholdDays() || 14;
+    else if(n > 14) n = 14;
+    inp.value = String(n);
+    validateThresholdInput(true);
+  }
   const i = e.target.closest && e.target.closest('[data-cb-input]');
   if(i) {
     setTimeout(() => {
@@ -1993,6 +2210,47 @@ document.addEventListener('focusout', e => {
 });
 
 document.addEventListener('keydown', e => {
+  if(e.target && e.target.id === 'inpFollowupThreshold'){
+    const inp = e.target;
+    // Allow navigation & standard edit shortcuts
+    if(['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) || e.ctrlKey || e.metaKey){
+      return;
+    }
+    // Up/down arrow key steppers
+    if(e.key === 'ArrowUp'){
+      e.preventDefault();
+      let n = parseInt(inp.value, 10);
+      if(isNaN(n) || n < 3) n = 3;
+      else if(n < 14) n++;
+      inp.value = String(n);
+      validateThresholdInput(true);
+      return;
+    }
+    if(e.key === 'ArrowDown'){
+      e.preventDefault();
+      let n = parseInt(inp.value, 10);
+      if(isNaN(n) || n > 14) n = 14;
+      else if(n > 3) n--;
+      inp.value = String(n);
+      validateThresholdInput(true);
+      return;
+    }
+    // Block any non-digit character (e.g. 'e', '-', '+', '.', letters, symbols)
+    if(!/^\d$/.test(e.key)){
+      e.preventDefault();
+      return;
+    }
+    // Prospective value check: strictly limit to max 14, and block leading 0
+    const start = inp.selectionStart ?? 0;
+    const end = inp.selectionEnd ?? 0;
+    const prospective = inp.value.slice(0, start) + e.key + inp.value.slice(end);
+    const num = parseInt(prospective, 10);
+    if(num > 14 || (prospective === '0' && prospective.length === 1)){
+      e.preventDefault();
+      return;
+    }
+  }
+
   const i = e.target.closest && e.target.closest('[data-cb-input]');
   if(!i) return;
   const w = i.closest('[data-cb]');
@@ -2012,6 +2270,54 @@ document.addEventListener('keydown', e => {
     closeCb(w);
   }
 });
+
+/* -------------------------------------------------------------
+   Follow-up Notification Threshold Validation Helper
+   ------------------------------------------------------------- */
+function validateThresholdInput(showFeedback = true){
+  const inp = $('inpFollowupThreshold');
+  const btn = $('btnSaveFollowupThreshold');
+  const msgErr = $('msgThresholdErr');
+  const msgHint = $('msgThresholdHint');
+  if(!inp) return false;
+
+  const raw = inp.value.trim();
+  const val = Number(raw);
+  const isValid = raw !== '' && Number.isInteger(val) && val >= 3 && val <= 14;
+
+  if(!isValid){
+    if(showFeedback){
+      if(msgErr) msgErr.style.display = 'inline-flex';
+      if(msgHint) msgHint.style.display = 'none';
+      inp.style.borderColor = 'var(--danger, #ef4444)';
+      inp.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+    }
+    if(btn) btn.disabled = true;
+    return false;
+  }
+
+  if(msgErr) msgErr.style.display = 'none';
+  if(msgHint) msgHint.style.display = 'inline';
+  inp.style.borderColor = 'var(--line)';
+  inp.style.boxShadow = 'none';
+  if(btn) btn.disabled = isReadOnlyAdmin;
+
+  // Live update calculation numbers
+  if($('lblThresholdVal')) $('lblThresholdVal').textContent = val;
+  if($('lblThresholdValWindow')) $('lblThresholdValWindow').textContent = val;
+  if($('lblThresholdValWindow2')) $('lblThresholdValWindow2').textContent = val;
+  if($('lblThresholdValAlert')) $('lblThresholdValAlert').textContent = val;
+  if($('lblThresholdCalcDay')) $('lblThresholdCalcDay').textContent = Math.max(1, 30 - val) + 'th';
+  if($('lblM3Day')) $('lblM3Day').textContent = Math.max(1, 90 - val);
+  if($('lblM6Day')) $('lblM6Day').textContent = Math.max(1, 180 - val);
+
+  // Sync preset active pills
+  document.querySelectorAll('[data-threshold-preset]').forEach(b => {
+    b.classList.toggle('primary', parseInt(b.dataset.thresholdPreset, 10) === val);
+  });
+
+  return val;
+}
 
 /* -------------------------------------------------------------
    Global Event Delegations (1-click filters, modals, selects)
@@ -2068,13 +2374,49 @@ document.addEventListener('click',e=>{
     return;
   }
 
+  // Follow-up Notification Threshold Preset Button Click
+  const presetBtn = e.target.closest('[data-threshold-preset]');
+  if(presetBtn){
+    if(isReadOnlyAdmin){
+      toast('Action prohibited: Central Directorate team has read-only administrative access.');
+      return;
+    }
+    const val = parseInt(presetBtn.dataset.thresholdPreset, 10);
+    const inp = $('inpFollowupThreshold');
+    if(inp) inp.value = val;
+    validateThresholdInput(false);
+    setFollowupAlertThresholdDays(val);
+    toast(`Follow-up notification threshold updated to ${val} days before milestone.`);
+    render();
+    return;
+  }
+
+  // Follow-up Notification Threshold Save Button Click
+  const saveThresholdBtn = e.target.closest('#btnSaveFollowupThreshold');
+  if(saveThresholdBtn){
+    if(isReadOnlyAdmin){
+      toast('Action prohibited: Central Directorate team has read-only administrative access.');
+      return;
+    }
+    const val = validateThresholdInput(true);
+    if(val === false){
+      const inp = $('inpFollowupThreshold');
+      if(inp) inp.focus();
+      return;
+    }
+    setFollowupAlertThresholdDays(val);
+    toast(`Follow-up notification threshold saved: alerts will generate ${val} days prior to scheduled visits.`);
+    render();
+    return;
+  }
+
   // Click outside closes open comboboxes
   if(!e.target.closest('[data-cb]')){
     closeAllCbs();
   }
 });
 
-// Live Search Inputs in View
+// Live Search & Input Handlers in View
 $('view')?.addEventListener('input', e => {
   if(e.target.id === 'usrSearchInput'){
     userSearchQuery = e.target.value;
@@ -2102,6 +2444,8 @@ $('view')?.addEventListener('input', e => {
         tr.style.display = (!q || tr.textContent.toLowerCase().includes(q)) ? '' : 'none';
       });
     }
+  } else if(e.target.id === 'inpFollowupThreshold'){
+    validateThresholdInput(true);
   }
 });
 
