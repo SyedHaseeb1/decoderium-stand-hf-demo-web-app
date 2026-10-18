@@ -213,6 +213,15 @@
       var n = typeof count === 'number' ? count : (count ? 1 : 0);
       document.body.classList.toggle('dim', n > 0);
       document.body.classList.toggle('dim-2', n > 1);
+      /* While a dialog is open the page behind does not scroll, and the dialog sits in the middle of what is visible */
+      document.documentElement.style.overflow = n > 0 ? 'hidden' : '';
+      var d = view.contentDocument;
+      if (n > 0 && d && d.documentElement) {
+        var fr = view.getBoundingClientRect();
+        var hidden = Math.max(0, -fr.top);
+        var visible = Math.min(view.offsetHeight, window.innerHeight - fr.top) - hidden;
+        d.documentElement.style.setProperty('--dlg-top', Math.round(hidden + visible / 2) + 'px');
+      }
     };
     /* Keep the dimming in step with the frame's open dialogs (covers dialogs that close without a notice) */
     setInterval(function () {
@@ -241,7 +250,23 @@
       /* The body is as tall as its content (no full-window minimum inside the shell), so no reset is needed */
       view.style.height = Math.max(480, Math.ceil(d.body.getBoundingClientRect().height)) + 'px';
     }
-    window.addEventListener('resize', fit);
+    /* Toasts stay at the bottom of what is visible on screen, not the bottom of the (taller) screen */
+    var toastQueued = false;
+    function placeToasts() {
+      var d = view.contentDocument;
+      if (!d || !d.documentElement || view.getAttribute('src') === 'about:blank') return;
+      var fr = view.getBoundingClientRect();
+      var fh = view.offsetHeight;
+      var visibleBottom = Math.min(fh, window.innerHeight - fr.top);
+      d.documentElement.style.setProperty('--snack-bottom', Math.max(16, Math.round(fh - visibleBottom + 24)) + 'px');
+    }
+    function queueToasts() {
+      if (toastQueued) return;
+      toastQueued = true;
+      requestAnimationFrame(function () { toastQueued = false; placeToasts(); });
+    }
+    window.addEventListener('scroll', queueToasts, { passive: true });
+    window.addEventListener('resize', function () { fit(); queueToasts(); });
     view.addEventListener('load', function () {
       if (frameSize) frameSize.disconnect();
       fit();
@@ -251,6 +276,7 @@
       } catch (e) {}
       try { view.contentWindow.addEventListener('pointerdown', closeHeaderPanels, true); } catch (e) {}
       markActive();
+      queueToasts();
       var d = view.contentDocument;
       var count = d ? d.querySelectorAll('dialog[open]').length : 0;
       window.standhfShellDim(count);

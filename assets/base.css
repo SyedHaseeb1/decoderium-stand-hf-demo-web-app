@@ -9243,3 +9243,16 @@ html.embedded, html.embedded body { overflow: hidden; }
 /* Dashboard placeholders: one layout per role (investigator, or Super Admin and Central Team) */
 html[data-skel-role="admin"] .skel-role-inv { display: none; }
 html:not([data-skel-role="admin"]) .skel-role-admin { display: none; }
+
+/* Dialogs inside the shell: centred on the visible part of the window (the shell sets --dlg-top) */
+html.embedded dialog[open] {
+  top: var(--dlg-top, 50%) !important;
+  bottom: auto !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translate(-50%, -50%);
+  margin: 0 !important;
+}
+
+/* Toasts inside the shell sit at the bottom of the visible window (the shell sets --snack-bottom) */
+html.embedded .snack { bottom: var(--snack-bottom, 24px) !important; }

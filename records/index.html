@@ -177,7 +177,6 @@
     </div>
     <div class="snack" id="snack" role="status" aria-live="polite"></div>
     <input type="file" id="fu" accept="application/pdf,image/jpeg,image/png" hidden>
-    <dialog class="viewer" id="viewer" aria-labelledby="vTitle"><div class="viewer-head"><b id="vTitle"></b><button type="button" class="icon-btn" id="vClose" aria-label="Close"><i class="ms">close</i></button></div><div class="viewer-body" id="vBody"></div></dialog>
   </div>
 </div>
 
@@ -347,7 +346,9 @@ async function removePatient(){
   sel=firstVisibleId();tab='info';
   persist();pane();dash();toast('Patient '+p.id+' removed')}
 /* Online saves are Synced at once; only saves made while offline stay Pending until the connection returns */
-function save(p){if(!canEditPatient(p))return;p.updated=Date.now();if(tab!=='info'&&tab!=='sum'&&!p.v[tab].date){p.v[tab].date=(tab==='b'&&p.consent)?p.consent:new Date().toISOString().slice(0,10)}p.sync=DB.off?'Pending':'Synced';persist();dash()}
+function save(p){if(!canEditPatient(p))return;p.updated=Date.now();
+/* Baseline visit date is the consent date (it is not shown), so keep it in step until Baseline is complete */
+if(!p.v.b.done&&p.consent)p.v.b.date=p.consent;if(tab!=='info'&&tab!=='sum'&&!p.v[tab].date){p.v[tab].date=(tab==='b'&&p.consent)?p.consent:new Date().toISOString().slice(0,10)}p.sync=DB.off?'Pending':'Synced';persist();dash()}
 
 /* Validation rules: fieldState gives the level ('e' error, 'w' warning or '') and message for one field */
 const VREQ=['wt','hr','sbp','dbp','nyha','msts','lvef'], IREQ={name:1,contact:1,consent:1,age:1,sex:1,etio:1};
@@ -379,7 +380,7 @@ function fieldState(p,path){
   if(empty){if(req&&tried)set('e','Required');return st}
   const txt=String(val),n=num(val),bd=b.date?day(b.date):null,t0=todayStart();
   if(window.STANDHF_VALIDATOR){
-    const vRes=window.STANDHF_VALIDATOR.validate(f,val,req,{baselineDate:b.date,dbp:v.dbp,sbp:v.sbp,visitKey:k});
+    const vRes=window.STANDHF_VALIDATOR.validate(f,val,req,{baselineDate:f==='consent'?null:b.date,dbp:v.dbp,sbp:v.sbp,visitKey:k}); /* the baseline visit date is the consent date, so consent is not compared with it */
     if(vRes&&vRes.lvl)set(vRes.lvl,vRes.msg);
   }
   if(!isV){
@@ -392,7 +393,7 @@ function fieldState(p,path){
       else if(d.length<10) set('e','Contact number is too short (10–11 digits required)');
       else if(!contactOk(val)) set('e','Contact number must be valid digits');
     }
-    if(f==='consent'){if(day(val)>t0)set('e','Consent date cannot be in the future');else if(day(val).getFullYear()<1990)set('e','Check the year');else if(bd&&day(val)>bd)set('e','After the baseline visit date')}
+    if(f==='consent'){if(day(val)>t0)set('e','Consent date cannot be in the future');else if(day(val).getFullYear()<1990)set('e','Check the year')}
     if(f==='age'){if(!Number.isInteger(n))set('e','Whole years only');else if(n<18)set('e','Must be 18 or older');else if(n>150)set('e','Please check age')}
     return st;
   }
