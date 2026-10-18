@@ -225,9 +225,9 @@ function secBodyAttrs(secId, extraStyle=''){
 
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const G=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o),S=(o,p,v)=>{const k=p.split('.');let a=o;k.slice(0,-1).forEach(x=>a=a[x]=a[x]||{});a[k.pop()]=v};
-const VK=[['b','Baseline'],['m3','3 Months'],['m6','6 Months']],PL=[['arni','ARNI'],['bb','Evidence-based beta-blocker'],['mra','MRA'],['sg','SGLT2 inhibitor']];
-const RS=[['hypo','Hypotension'],['brady','Bradycardia'],['renal','Renal dysfunction'],['k','Hyperkalemia'],['intol','Intolerance'],['cost','Cost / access'],['pref','Patient preference'],['phys','Physician decision']];
-const STOP=['','Chest pain','Presyncope / syncope','Intolerable dyspnea','Severe dizziness','Loss of balance','Marked pallor / diaphoresis','Participant request','Investigator safety concern'];
+const VK=[['b','Baseline'],['m3','3 Months'],['m6','6 Months']],PL=STANDHF_DATA.gdmt.pillars.map(p=>[p.key,p.formLabel]);
+const RS=Object.entries(STANDHF_DATA.gdmt.notUsedReasons);
+const STOP=['',...STANDHF_DATA.clinicalOptions.stopReasons];
 
 const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}};
 const cur=()=>DB.pts.find(p=>p.id===sel&&inScope(p));
@@ -780,7 +780,7 @@ function demoRx(label){const c=document.createElement('canvas');c.width=600;c.he
  x.fillStyle='#fff';x.font='bold 30px sans-serif';x.fillText('Prescription (demo)',24,46);
  x.fillStyle='#222';x.font='26px sans-serif';x.fillText(label,24,120);
  return new Promise(r=>c.toBlob(r,'image/png'))}
-const DEMO_NAMES=['Ali Raza','Sana Iqbal','Usman Tariq','Ayesha Noor','Bilal Ahmed','Hina Yousaf','Farhan Akhtar','Zainab Shah','Imran Hussain','Mariam Javed','Omar Farooq','Nadia Qureshi','Asad Mehmood','Sadia Rashid','Hamza Siddiqui','Kiran Abbas','Tariq Nawaz','Rabia Saleem','Waqar Younas','Fatima Zaidi','Danish Malik','Saima Bashir','Adnan Latif','Uzma Rehman','Kashif Iqbal','Maryam Ghani','Shahid Afridi','Noreen Akram','Faisal Mahmood','Lubna Pervaiz','Naveed Anwar','Huma Shafiq','Junaid Sheikh','Amna Hayat','Saad Karim','Rukhsana Bibi','Yasir Ali','Tahira Parveen','Zubair Ahmad','Khadija Nasir','Irfan Ullah','Sobia Riaz','Mudassar Rana','Rizwan Haider'];
+const DEMO_NAMES=STANDHF_DATA.demoNames.patientNames;
 const loadDemo=async()=>{
   try{
     await apiWait(900);
@@ -890,7 +890,7 @@ $('viewer').addEventListener('click',e=>{if(e.target===$('viewer'))$('viewer').c
 $('viewer').addEventListener('close',()=>{$('vBody').innerHTML=''});
 
 /* Searchable comboboxes (investigator, site) */
-const INVESTIGATORS=['Emily Carter','John Miller','Michael Johnson','Sarah Thompson','David Lee','Jessica Brown','Robert Wilson'];   // add known investigator names here
+const INVESTIGATORS=STANDHF_DATA.users.users.filter(u=>u.role==='investigator').map(u=>u.name);
 function signedIn(){try{return sessionStorage.getItem('standhf_user')||''}catch(e){return ''}}
 const ROLE_LABEL={superadmin:'Super Admin',investigator:'Site Investigator',central:'Central'};
 function signedRole(){try{return sessionStorage.getItem('standhf_role')||''}catch(e){return ''}}
@@ -1081,7 +1081,7 @@ function updatePageSubtitle(){
     const stCode = (u && u.sites && u.sites[0]) || mySites()[0] || '';
     const st = (typeof siteByCode === 'function') ? siteByCode(stCode) : null;
     const siteName = st ? st.name : (stCode || 'Assigned Centre');
-    const zoneName = st ? (st.zone || 'Central') : (u && u.zones && u.zones[0]) || 'Central';
+    const zoneName = st ? (st.zone || 'Central') : 'Central';
     el.textContent = `Patient Electronic Case Report Forms (e-CRF) · [${stCode}] ${siteName} (${zoneName} Zone)`;
   }
 }

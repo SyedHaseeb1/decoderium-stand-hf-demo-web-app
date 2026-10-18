@@ -128,7 +128,7 @@
 /* --- Core Configuration & Access Guard --- */
 const ECRF = '../records/', LOGIN = '../login/', ADMIN = '../admin/';
 const KEY = 'standhf_ecrf_v1';
-const PL = [['arni','ARNI'],['bb','Beta-blocker'],['mra','MRA'],['sg','SGLT2i']];
+const PL = STANDHF_DATA.gdmt.pillars.map(p => [p.key, p.label]);
 const VK = [['b','Baseline'],['m3','3 Months'],['m6','6 Months']];
 const DAY = 864e5;
 
@@ -1200,7 +1200,7 @@ let exportFilterState = {
   vstat: 'all',          // 'all' | 'completed' | 'in_progress' | 'overdue'
   gdmt: 'all',           // 'all' | '4' | 'suboptimal'
   pillar: 'all',         // 'all' | 'arni' | 'bb' | 'mra' | 'sg'
-  etio: 'all',           // 'all' | 'ischemic' | 'non_ischemic' | 'other'
+  etio: 'all',           // 'all' or one of the HF etiologies in clinical-options.json
   period: 'all',         // 'all' | '30' | '90' | '180'
   deidentify: true,      // true: mask names & contacts
   format: 'csv'          // 'csv' | 'tsv' | 'json'
@@ -1234,12 +1234,7 @@ function getExportFilteredCohort(ptsPool) {
   }
   // HF Etiology
   if (f.etio !== 'all') {
-    list = list.filter(p => {
-      const et = (p.etio || '').toLowerCase();
-      if (f.etio === 'ischemic') return et.includes('ischemic') && !et.includes('non');
-      if (f.etio === 'non_ischemic') return et.includes('non-ischemic') || et.includes('non ischemic') || et.includes('dilated') || et.includes('idiopathic');
-      return !et.includes('ischemic');
-    });
+    list = list.filter(p => p.etio === f.etio);
   }
   // GDMT 4/4 or sub-optimal
   if (f.gdmt === '4') {
@@ -1259,7 +1254,7 @@ function getExportFilteredCohort(ptsPool) {
       const last = ['m6','m3','b'].find(k => p.v?.[k]?.done);
       if (!last || !p.v[last].g) return false;
       const st = p.v[last].g[f.pillar]?.status;
-      return st === 'Prescribed' || st === 'Maintained' || st === 'Active';
+      return st === 'Active';
     });
   }
   // Visit status
@@ -1790,16 +1785,11 @@ function renderExportStudioSection(ptsPool, scopeTitle){
   );
   const pillarOpts = [
     { val: 'all', label: 'Any / All Pillars' },
-    { val: 'arni', label: 'Pillar 1: ARNI (Sacubitril/Valsartan)' },
-    { val: 'bb', label: 'Pillar 2: Evidence-based Beta Blocker' },
-    { val: 'mra', label: 'Pillar 3: MRA (Spironolactone/Eplerenone)' },
-    { val: 'sg', label: 'Pillar 4: SGLT2 Inhibitor' }
+    ...STANDHF_DATA.gdmt.pillars.map((p, i) => ({ val: p.key, label: `Pillar ${i + 1}: ${p.formLabel}` }))
   ];
   const etioOpts = [
     { val: 'all', label: 'All HF Etiologies' },
-    { val: 'ischemic', label: 'Ischemic Cardiomyopathy' },
-    { val: 'non_ischemic', label: 'Non-Ischemic / Dilated' },
-    { val: 'other', label: 'Other / Hypertensive / Valvular' }
+    ...STANDHF_DATA.clinicalOptions.etiologies.map(e => ({ val: e, label: e }))
   ];
   const periodOpts = [
     { val: 'all', label: 'All Time (Entire Study)' },

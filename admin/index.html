@@ -892,7 +892,7 @@ function usersView(){
   if(userSearchQuery.trim()){
     const q=userSearchQuery.trim().toLowerCase();
     filtered=filtered.filter(u=>{
-      const zoneStr=(u.zones||[]).join(' ').toLowerCase();
+      const zoneStr=(u.sites||[]).map(c=>(accessStore().sites.find(st=>st.code===c)||{}).zone||'').join(' ').toLowerCase();
       const siteStr=(u.sites||[]).join(' ').toLowerCase();
       const desig=(u.personal?.designation||'').toLowerCase();
       const phone=(u.personal?.phone||'').toLowerCase();
@@ -1478,16 +1478,13 @@ $('fAddUser')?.addEventListener('submit',e=>{
   const tempPass = ($('nuTempPass')?.value || '').trim() || generateTempPassword();
   const saved=commit(s=>{
     if(s.users.some(u=>u.username===username))return 'Username already taken';
-    const allKnownZones=getAllZones(s);
     const targetSiteObj=s.sites.find(st=>st.code===selectedSite);
-    const userSites=role==='investigator'&&targetSiteObj?[targetSiteObj.code]:[];
-    const userZones=role==='investigator'&&targetSiteObj?[targetSiteObj.zone||'Central']:role==='central'?allKnownZones:[];
+    const userSites=role==='investigator'&&targetSiteObj?[targetSiteObj.code]:role==='central'?s.sites.map(st=>st.code):[];
     s.users.push({
       username,
       name,
       role,
       sites:userSites,
-      zones:userZones,
       active:true,
       password: tempPass,
       mustChangePassword: true,
@@ -1711,13 +1708,10 @@ $('fEditUser')?.addEventListener('submit',e=>{
     if(role==='investigator'){
       const targetSiteObj=s.sites.find(st=>st.code===selectedSite);
       user.sites=targetSiteObj?[targetSiteObj.code]:(selectedSite?[selectedSite]:[]);
-      user.zones=targetSiteObj?[targetSiteObj.zone||'Central']:['Central'];
     } else if(role==='central'){
-      user.sites=[];
-      user.zones=getAllZones(s);
+      user.sites=s.sites.map(st=>st.code);
     } else {
       user.sites=[];
-      user.zones=[];
     }
     return '';
   });
@@ -1915,12 +1909,6 @@ $('fEditSite')?.addEventListener('submit',e=>{
     if(!s.zones) s.zones=['North','Central','South'];
     if(!s.zones.includes(zone)) s.zones.push(zone);
 
-    // Update derived zones on users that have this site
-    s.users.forEach(u=>{
-      if(u.role==='investigator'&&(u.sites||[]).includes(code)){
-        u.zones=[...new Set(u.sites.map(c=>s.sites.find(st=>st.code===c)?.zone).filter(Boolean))];
-      }
-    });
     return '';
   });
 

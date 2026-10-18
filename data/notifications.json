@@ -33,7 +33,7 @@
       "time": "Today, 08:30",
       "link": {
         "page": "records",
-        "patient": "RIC-001",
+        "patient": "ISB-008",
         "tab": "m3"
       }
     },
@@ -46,7 +46,7 @@
       "time": "Yesterday, 11:05",
       "link": {
         "page": "records",
-        "patient": "LHR-001",
+        "patient": "RIC-009",
         "tab": "m6"
       }
     },
@@ -59,7 +59,7 @@
       "time": "Mon, 16:20",
       "link": {
         "page": "records",
-        "patient": "RIC-002",
+        "patient": "LHR-008",
         "tab": "b"
       }
     }
@@ -74,7 +74,7 @@
       "time": "Today, 07:55",
       "link": {
         "page": "records",
-        "patient": "KHI-002",
+        "patient": "LHR-003",
         "tab": "m3"
       }
     },
@@ -87,7 +87,7 @@
       "time": "Yesterday, 10:02",
       "link": {
         "page": "records",
-        "patient": "ISB-002",
+        "patient": "ISB-001",
         "tab": "b"
       }
     }

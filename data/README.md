@@ -9,8 +9,13 @@ This directory contains verified, protocol-compliant JSON dummy datasets and sch
 | File | Description | Purpose |
 | :--- | :--- | :--- |
 | [`dummy_data.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/dummy_data.json) | Complete dataset of **44 patients** across all 4 clinical sites | Primary data file containing patient demographics, longitudinal visits (`b`, `m3`, `m6`), Section B clinical metrics, Section C GDMT pillars, Section D adverse events, audit trail, and prescription attachments. |
-| [`access.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/access.json) | User, site, zone, and permission configurations | System access model (Super Admin, Central Team, Site Investigators) and hospital sites (`RIC`, `LHR`, `KHI`, `ISB`). |
-| [`lookups.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/lookups.json) | Clinical dropdown lookups & drug catalogues | Foundational GDMT generic drug master lists, allowed strengths, default frequencies, NYHA classifications, and discontinuation reasons. |
+| [`access-control.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/access-control.json) | Roles, permissions and sites (with their zones) | System access model (Super Admin, Central Team, Site Investigators) and hospital sites (`RIC`, `LHR`, `KHI`, `ISB`). |
+| [`users.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/users.json) | Demo user accounts: name, role and the single site an investigator is assigned to (central team sees all sites) |
+| [`gdmt.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/gdmt.json) | GDMT drugs per pillar (name, strengths, default frequency, aliases), GDMT statuses, and the reasons a patient is not on a pillar |
+| [`clinical-options.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/clinical-options.json) | Dropdown options outside GDMT: HF etiology, NYHA class and stop reasons |
+| [`location-and-title-standards.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/location-and-title-standards.json) | Approved city, zone and clinical title lists, and the spellings they map to |
+| [`notifications.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/notifications.json) | Demo notifications per user |
+| [`whatsnew.json`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/whatsnew.json) | Release notes shown on sign-in, with the date and version |
 | [`generate_data.js`](file:///home/syedhaseeaio/Documents/Stand-HF/srs/data/generate_data.js) | Node.js generation script | Re-generates or expands the synthetic data with reproducible seeds. |
 
 ---

@@ -1,0 +1,137 @@
+{
+  "pillars": [
+    {
+      "key": "arni",
+      "label": "ARNI",
+      "drugs": [
+        {
+          "name": "Sacubitril Valsartan",
+          "strengths": [
+            "25mg",
+            "50mg",
+            "100mg",
+            "200mg"
+          ],
+          "defaultFreq": "BD",
+          "aliases": [
+            "Sacubitril + Valsartan"
+          ]
+        }
+      ],
+      "formLabel": "ARNI"
+    },
+    {
+      "key": "bb",
+      "label": "Beta-blocker",
+      "drugs": [
+        {
+          "name": "Bisoprolol fumarate",
+          "strengths": [
+            "2.5mg",
+            "5mg",
+            "10mg"
+          ],
+          "defaultFreq": "OD"
+        },
+        {
+          "name": "Carvedilol",
+          "strengths": [
+            "3.125mg",
+            "6.25mg",
+            "12.5mg",
+            "25mg"
+          ],
+          "defaultFreq": "BD"
+        },
+        {
+          "name": "Nebivolol",
+          "strengths": [
+            "1.5mg",
+            "2.5mg",
+            "5mg",
+            "10mg"
+          ],
+          "defaultFreq": "OD"
+        }
+      ],
+      "formLabel": "Evidence-based beta-blocker"
+    },
+    {
+      "key": "mra",
+      "label": "MRA",
+      "drugs": [
+        {
+          "name": "Spironolactone",
+          "strengths": [
+            "12.5mg",
+            "25mg",
+            "50mg"
+          ],
+          "defaultFreq": "OD"
+        },
+        {
+          "name": "Eplerenone",
+          "strengths": [
+            "25mg",
+            "50mg"
+          ],
+          "defaultFreq": "OD"
+        },
+        {
+          "name": "Finerenone",
+          "strengths": [
+            "10mg",
+            "20mg",
+            "40mg"
+          ],
+          "defaultFreq": "OD"
+        }
+      ],
+      "formLabel": "MRA"
+    },
+    {
+      "key": "sg",
+      "label": "SGLT2i",
+      "drugs": [
+        {
+          "name": "Dapagliflozin",
+          "strengths": [
+            "10mg"
+          ],
+          "defaultFreq": "OD"
+        },
+        {
+          "name": "Empagliflozin",
+          "strengths": [
+            "10mg"
+          ],
+          "defaultFreq": "OD"
+        },
+        {
+          "name": "Sotagliflozin",
+          "strengths": [
+            "200mg",
+            "400mg"
+          ],
+          "defaultFreq": "OD"
+        }
+      ],
+      "formLabel": "SGLT2 inhibitor"
+    }
+  ],
+  "statuses": [
+    "Active",
+    "Not started",
+    "Stopped"
+  ],
+  "notUsedReasons": {
+    "hypo": "Hypotension",
+    "brady": "Bradycardia",
+    "renal": "Renal dysfunction",
+    "k": "Hyperkalemia",
+    "intol": "Intolerance",
+    "cost": "Cost / access",
+    "pref": "Patient preference",
+    "phys": "Physician decision"
+  }
+}

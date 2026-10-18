@@ -17,7 +17,7 @@
   const fmtD = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const fmtShortD = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
   const DAY = 864e5;
-  const PL = [['arni','ARNI'],['bb','Beta-blocker'],['mra','MRA'],['sg','SGLT2i']];
+  const PL = STANDHF_DATA.gdmt.pillars.map(p => [p.key, p.label]);
   const G = (o, p) => p.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
   const act = v => PL.filter(([q]) => G(v, 'g.' + q + '.status') === 'Active').length;
   const has = v => Object.keys(v || {}).some(k => k !== 'done' && v[k] !== '' && v[k] != null && typeof v[k] !== 'object') || (v.g && Object.values(v.g).some(x => x.status));
@@ -381,14 +381,14 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Member</th><th>Username</th><th>Assigned Zone(s)</th><th>Status</th></tr>
+                  <tr><th>Member</th><th>Username</th><th>Assigned Sites</th><th>Status</th></tr>
                 </thead>
                 <tbody>
                   ${centralUsers.map(u => `
                     <tr>
                       <td><b>${esc(u.name)}</b></td>
                       <td><code>${esc(u.username)}</code></td>
-                      <td>${u.zones?.length ? u.zones.join(', ') : 'All Zones (National)'}</td>
+                      <td>${u.sites?.length ? u.sites.join(', ') : 'All Sites'}</td>
                       <td><span class="chip ${u.active ? 'In' : 'Not'}">${u.active ? 'Active' : 'Inactive'}</span></td>
                     </tr>
                   `).join('') || '<tr><td colspan="4" class="muted">No Central Team users configured.</td></tr>'}

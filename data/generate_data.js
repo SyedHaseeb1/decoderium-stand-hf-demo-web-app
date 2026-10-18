@@ -4,7 +4,7 @@
  * 
  * Generates protocol-compliant, high-fidelity JSON dummy data for:
  * - srs/data/dummy_data.json
- * (access.json and lookups.json are maintained by hand; the app reads them directly)
+ * (access-control.json and the other reference files are maintained by hand; the app reads them directly)
  */
 const fs = require('fs');
 const path = require('path');

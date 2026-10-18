@@ -1,33 +1,44 @@
-/* Option lists for dropdowns and the master lists, read from data/lookups.json (loaded by assets/boot.js).
+/* GDMT drugs and dropdown lists, read from data/gdmt.json and data/clinical-options.json (loaded by assets/boot.js).
    Use lookup(name) to get a copy of a list. Names are dotted: group.item */
-var LOOKUP_DATA=window.STANDHF_DATA.lookups;
-window.LOOKUPS=LOOKUP_DATA.options;
+var GDMT_DATA=window.STANDHF_DATA.gdmt;
+var CLINICAL_DATA=window.STANDHF_DATA.clinicalOptions;
+var LOCATION_DATA=window.STANDHF_DATA.locationStandards;
 
-/* GDMT strengths per generic drug (E-CRF changes specification) */
-window.GDMT_STRENGTHS=LOOKUP_DATA.gdmtStrengths;
-
-/* Recommended default frequencies per drug (OD for most, BD for Carvedilol & Sacubitril Valsartan) */
-window.GDMT_DEFAULT_FREQ=LOOKUP_DATA.gdmtDefaultFreq;
-
-/* Legacy dose list retained for backward compatibility with existing saved patient objects */
-window.GDMT_DOSES=LOOKUP_DATA.gdmtDoses;
+/* Each drug is stored once in gdmt.json. The lists and the per-drug lookups below are built from it */
+var GDMT_DRUGS=[].concat.apply([],GDMT_DATA.pillars.map(function(p){return p.drugs}));
+var NAMES_OF=function(d){return [d.name].concat(d.aliases||[])};
+window.LOOKUPS=Object.assign(
+  Object.fromEntries(GDMT_DATA.pillars.map(function(p){return ['gdmt.'+p.key, p.drugs.map(function(d){return d.name})]})),
+  {
+    /* Dosing frequencies are standard clinical abbreviations, so they stay in code */
+    'gdmt.frequency':['OD','BD','TDS'],
+    'gdmt.status':GDMT_DATA.statuses,
+    /* Sex is a fixed, well-known set, so it stays in code */
+    'patient.sex':['Male','Female'],
+    'patient.etiology':CLINICAL_DATA.etiologies
+  }
+);
+window.GDMT_STRENGTHS=Object.fromEntries(GDMT_DRUGS.flatMap(function(d){return NAMES_OF(d).map(function(n){return [n,d.strengths]})}));
+window.GDMT_DEFAULT_FREQ=Object.fromEntries(GDMT_DRUGS.flatMap(function(d){return NAMES_OF(d).map(function(n){return [n,d.defaultFreq]})}));
+/* Legacy dose list, kept for saved patient records (same values as the strengths) */
+window.GDMT_DOSES=Object.assign({},window.GDMT_STRENGTHS);
 window.lookup=function(name){return (window.LOOKUPS&&window.LOOKUPS[name])?window.LOOKUPS[name].slice():[]};
 
 /* =========================================================
    Master Curated Lists for Standardization (Prevents Data Fragmentation)
    Ensures cities, zones, and titles are spelled identically across the registry.
    ========================================================= */
-window.PAKISTAN_CITIES=LOOKUP_DATA.pakistanCities;
+window.PAKISTAN_CITIES=LOCATION_DATA.pakistanCities;
 
-window.PAKISTAN_ZONES=LOOKUP_DATA.pakistanZones;
+window.PAKISTAN_ZONES=LOCATION_DATA.pakistanZones;
 
-window.CLINICAL_DESIGNATIONS=LOOKUP_DATA.clinicalDesignations;
+window.CLINICAL_DESIGNATIONS=LOCATION_DATA.clinicalDesignations;
 
-window.CITY_ALIASES=LOOKUP_DATA.cityAliases;
+window.CITY_ALIASES=LOCATION_DATA.cityAliases;
 
-window.ZONE_ALIASES=LOOKUP_DATA.zoneAliases;
+window.ZONE_ALIASES=LOCATION_DATA.zoneAliases;
 
-window.DESIG_ALIASES=LOOKUP_DATA.designationAliases;
+window.DESIG_ALIASES=LOCATION_DATA.designationAliases;
 
 window.normalizeCity = function(name){
   if(!name) return '';

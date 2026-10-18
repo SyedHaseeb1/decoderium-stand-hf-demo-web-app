@@ -258,13 +258,13 @@ def build_pdf(filename="STAND-HF_Dashboard_Developer_Specification.pdf"):
             Paragraph("Master registry dataset matching browser <code>localStorage</code> (<code>standhf_ecrf_v1</code>). Contains patient records, visits (Baseline, 3M, 6M), Section B vitals, Section C GDMT pillars, Section D adverse events, audit history, and file attachments.", td_style)
         ],
         [
-            Paragraph("<code>srs/data/access.json</code>", td_code_style),
+            Paragraph("<code>srs/data/access-control.json</code>", td_code_style),
             Paragraph("JSON", td_style),
             Paragraph("4 Users · 4 Sites<br/>3 Geo Zones", td_style),
             Paragraph("System RBAC model. Configures Super Admin, Central Team, Site Investigators, permitted hospital sites (RIC, LHR, KHI, ISB), and zones (North, Central, South).", td_style)
         ],
         [
-            Paragraph("<code>srs/data/lookups.json</code>", td_code_style),
+            Paragraph("<code>srs/data/gdmt.json, clinical-options.json, location-and-title-standards.json</code>", td_code_style),
             Paragraph("JSON", td_style),
             Paragraph("Complete Master Lists", td_style),
             Paragraph("Clinical dropdown dictionaries: GDMT generic drugs, allowed strengths, default frequencies (OD, BD, TDS), NYHA classes, and non-initiation reasons.", td_style)

@@ -1,15 +1,16 @@
 /* STAND-HF access: sites, users, role permissions and the signed-in session.
    Shared by the sign-in page, the administration page and the E-CRF.
    Data is kept in this browser (prototype). */
-/* Roles, permissions, sites and demo users are read from data/access.json (loaded by assets/boot.js) */
-const ACCESS_DATA=window.STANDHF_DATA.access;
+/* Roles, permissions and sites are read from data/access-control.json, demo users from data/users.json (loaded by assets/boot.js) */
+const ACCESS_DATA=window.STANDHF_DATA.accessControl;
+const USERS_DATA=window.STANDHF_DATA.users.users;
 const ACCESS_KEY='standhf_access_v1';
 const ROLE_NAMES=ACCESS_DATA.roleNames;
 const PERMS=ACCESS_DATA.permissions;
 const ALL_PERMS=Object.fromEntries(PERMS.map(([k])=>[k,true]));
 /* Super Admin and Central team oversee the study; clinical patient data entry belongs strictly to assigned site investigators */
 const SUPER_NO=ACCESS_DATA.superNo;
-const DEFAULT_ACCESS=JSON.parse(JSON.stringify(ACCESS_DATA));
+const DEFAULT_ACCESS=Object.assign(JSON.parse(JSON.stringify(ACCESS_DATA)),{users:JSON.parse(JSON.stringify(USERS_DATA))});
 
 const AUDIT_CENTRAL_KEY='standhf_central_audit_v1';
 function centralAuditLog(){
@@ -39,8 +40,7 @@ function accessStore(){
     const s=JSON.parse(localStorage.getItem(ACCESS_KEY)||'null');
     if(s&&Array.isArray(s.sites)&&Array.isArray(s.users)&&s.perms){
       if(!Array.isArray(s.zones))s.zones=['North','Central','South'];
-      const zMap={RIC:'North',ISB:'North',LHR:'Central',KHI:'South'};
-      s.sites.forEach(st=>{if(!st.zone)st.zone=zMap[st.code]||'Central'});
+      s.sites.forEach(st=>{if(!st.zone)st.zone='Central'});
       /* Ensure central role is strictly read-only monitoring + export */
       if(s.perms.central){
         delete s.perms.central.assign_investigators;
@@ -73,21 +73,13 @@ function accessStore(){
         s.perms[r]=s.perms[r]||{};
         Object.entries(defs).forEach(([k,v])=>{if(!(k in s.perms[r]))s.perms[r][k]=v});
       });
-      /* Normalize investigator accounts so 1 investigator has strictly 1 site */
+      /* Users carry sites only (zones belong to sites). An investigator has strictly 1 site */
       s.users.forEach(u=>{
+        delete u.zones;
         if(u.role==='investigator'){
-          let stCode=(Array.isArray(u.sites)&&u.sites.length)?u.sites[0]:(u.site||'');
-          let found=s.sites.find(st=>st.code===stCode);
-          if(!found&&Array.isArray(u.zones)&&u.zones.length){
-            found=s.sites.find(st=>(st.zone||'').toLowerCase()===(u.zones[0]||'').toLowerCase());
-          }
-          if(!found&&s.sites.length){
-            found=s.sites[0];
-          }
-          if(found){
-            u.sites=[found.code];
-            u.zones=[found.zone||'Central'];
-          }
+          const stCode=(Array.isArray(u.sites)&&u.sites.length)?u.sites[0]:(u.site||'');
+          const found=s.sites.find(st=>st.code===stCode);
+          u.sites=found?[found.code]:[];
         }
       });
       /* Demo accounts added after a browser saved its list are added here, so they can sign in */
@@ -189,16 +181,6 @@ function userAssignedSites(u, s){
     const primary = explicit[0];
     if(s.sites.some(st => st.code === primary)) return [primary];
   }
-  // Fallback: match from zone or fallback to first registered site
-  const uZones = Array.isArray(u.zones) ? u.zones : (u.zone ? [u.zone] : []);
-  if(uZones.length){
-    const match = s.sites.find(st => {
-      const z = (st.zone || '').toLowerCase();
-      return uZones.some(uz => (uz || '').toLowerCase() === z);
-    });
-    if(match) return [match.code];
-  }
-  if(s.sites.length) return [s.sites[0].code];
   return [];
 }
 
@@ -273,7 +255,7 @@ function canEditPatient(p){
   return recordVisible(p);
 }
 
-/* Sites the signed-in user may see and enter data for (includes all hospitals in their assigned zones) */
+/* Sites the signed-in user may see and enter data for (a central team member sees every site) */
 function mySites(){
   const s=accessStore();
   if(can('view_all_sites'))return s.sites.map(x=>x.code);
@@ -282,7 +264,7 @@ function mySites(){
 
 /* Which records a user may see:
    - Super Admin: all sites and all zones (global oversight)
-   - Central Team: all sites and records under their assigned zones
+   - Central Team: all sites
    - Site Investigator: STRICTLY their own patients at their assigned medical centres */
 function recordVisible(p){
   if(!p) return false;

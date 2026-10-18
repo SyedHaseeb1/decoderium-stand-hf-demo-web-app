@@ -1,0 +1,95 @@
+{
+  "users": [
+    {
+      "username": "michael.johnson",
+      "name": "Michael Johnson",
+      "role": "superadmin",
+      "sites": [],
+      "active": true,
+      "mustChangePassword": false,
+      "personal": {
+        "designation": "",
+        "phone": "03001230000",
+        "email": "michael.johnson@standhf.example"
+      }
+    },
+    {
+      "username": "emily.carter",
+      "name": "Emily Carter",
+      "role": "investigator",
+      "sites": [
+        "RIC"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "personal": {
+        "designation": "Consultant Cardiologist",
+        "phone": "03001230001",
+        "email": "emily.carter@standhf.example"
+      }
+    },
+    {
+      "username": "robert.wilson",
+      "name": "Robert Wilson",
+      "role": "central",
+      "sites": [
+        "RIC",
+        "LHR",
+        "KHI",
+        "ISB"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "personal": {
+        "designation": "Clinical Research Coordinator",
+        "phone": "03001230002",
+        "email": "robert.wilson@standhf.example"
+      }
+    },
+    {
+      "username": "adnan.khan",
+      "name": "Adnan Khan",
+      "role": "investigator",
+      "sites": [
+        "KHI"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "personal": {
+        "designation": "Associate Professor of Cardiology",
+        "phone": "03001230003",
+        "email": "adnan.khan@standhf.example"
+      }
+    },
+    {
+      "username": "sana.iqbal",
+      "name": "Sana Iqbal",
+      "role": "investigator",
+      "sites": [
+        "LHR"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "personal": {
+        "designation": "Assistant Professor of Cardiology",
+        "phone": "03001230004",
+        "email": "sana.iqbal@standhf.example"
+      }
+    },
+    {
+      "username": "usman.tariq",
+      "name": "Usman Tariq",
+      "role": "investigator",
+      "sites": [
+        "ISB"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "personal": {
+        "designation": "Senior Registrar Cardiology",
+        "phone": "03001230005",
+        "email": "usman.tariq@standhf.example"
+      }
+    }
+  ]
+}

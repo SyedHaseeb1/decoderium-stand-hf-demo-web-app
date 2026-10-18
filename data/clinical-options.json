@@ -1,0 +1,24 @@
+{
+  "etiologies": [
+    "Ischemic",
+    "Non-ischemic",
+    "Other"
+  ],
+  "nyhaClasses": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+  ],
+  "stopReasons": [
+    "Chest pain",
+    "Presyncope / syncope",
+    "Intolerable dyspnea",
+    "Severe dizziness",
+    "Loss of balance",
+    "Marked pallor / diaphoresis",
+    "Participant request",
+    "Investigator safety concern"
+  ]
+}

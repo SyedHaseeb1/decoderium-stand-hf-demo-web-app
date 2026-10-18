@@ -12,7 +12,7 @@
   const pct = (a, b) => (b ? Math.round(100 * a / b) : null);
   const PALETTE = ['#1a5fb4','#1e7a4c','#9a5b00','#b3261e','#6b4fbb','#0f7c8c','#7a5c3e','#5b616d'];
   const colourOf = i => PALETTE[i % PALETTE.length];
-  const PL = [['arni','ARNI'],['bb','Beta-blocker'],['mra','MRA'],['sg','SGLT2i']];
+  const PL = STANDHF_DATA.gdmt.pillars.map(p => [p.key, p.label]);
   const G = (o, p) => p.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
   const act = v => PL.filter(([q]) => G(v, 'g.' + q + '.status') === 'Active').length;
   const day = s => new Date(s + 'T00:00:00');
@@ -278,11 +278,7 @@
         }
       });
 
-      const R_NAMES = {
-        hypo: 'Hypotension', brady: 'Bradycardia', renal: 'Renal dysfunction',
-        k: 'Hyperkalemia', intol: 'Intolerance', cost: 'Cost/access',
-        pref: 'Patient preference', phys: 'Physician decision'
-      };
+      const R_NAMES = STANDHF_DATA.gdmt.notUsedReasons;
 
       return `
         <div class="gdmt-grid">

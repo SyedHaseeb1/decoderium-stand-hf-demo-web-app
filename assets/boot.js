@@ -48,8 +48,16 @@
     else document.addEventListener('DOMContentLoaded',function(){resolve()});
   });
 
-  Promise.all([ready, Promise.all([fetchJson('access'), fetchJson('lookups')])]).then(function(res){
-    window.STANDHF_DATA={access:res[1][0], lookups:res[1][1]};
+  Promise.all([ready, Promise.all([
+    fetchJson('access-control'),
+    fetchJson('users'),
+    fetchJson('gdmt'),
+    fetchJson('clinical-options'),
+    fetchJson('location-and-title-standards'),
+    fetchJson('demo-names')
+  ])]).then(function(res){
+    var d=res[1];
+    window.STANDHF_DATA={accessControl:d[0], users:d[1], gdmt:d[2], clinicalOptions:d[3], locationStandards:d[4], demoNames:d[5]};
     var nodes=[].slice.call(document.querySelectorAll('script[type="text/plain"]'));
     return nodes.reduce(function(p,n){return p.then(function(){return runNode(n)})},Promise.resolve());
   }).catch(function(e){

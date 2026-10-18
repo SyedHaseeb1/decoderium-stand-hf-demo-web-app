@@ -695,8 +695,6 @@
         if (assignedSites.length > 1) {
           centreName += ` + ${assignedSites.length - 1} more`;
         }
-      } else if (Array.isArray(user.zones) && user.zones.length) {
-        centreName = user.zones.join(', ') + ' Zone';
       } else {
         centreName = 'Cardiology Registry Site';
       }

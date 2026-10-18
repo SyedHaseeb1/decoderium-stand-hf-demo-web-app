@@ -24,6 +24,103 @@
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
 </script>
+<style>
+/* Demo Accounts Reference Text Card */
+.demo-ref-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 14px auto 0;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+}
+.demo-ref-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.demo-ref-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.demo-ref-title .ms {
+  font-size: 16px;
+  color: var(--primary);
+}
+.demo-ref-sub {
+  font-size: 11px;
+  color: var(--ink-2);
+}
+.demo-ref-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+@media (max-width: 520px) {
+  .demo-ref-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.demo-ref-row {
+  border: 1px solid var(--line);
+  background: var(--soft);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+.demo-ref-row:hover {
+  background: var(--card);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+.demo-ref-row .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.demo-ref-row .dot.inv { background: var(--success); }
+.demo-ref-row .dot.cent { background: #1a5fb4; }
+.demo-ref-row .dot.adm { background: #C90085; }
+.demo-ref-row .r-name {
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+.demo-ref-row .r-site {
+  font-size: 10px;
+  color: var(--ink-2);
+  background: var(--soft-2);
+  padding: 1px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+</style>
 </head>
 <body class="auth-page">
 <button type="button" class="theme-toggle-btn" id="loginThemeToggle" style="position:fixed;top:16px;right:16px;z-index:999" title="Using STAND-HF Logo Theme (Default) · Click to switch to Clinical Blue">
@@ -98,6 +195,46 @@
       </button>
 
       <p class="auth-note" id="note" role="status"></p>
+      </div>
+
+      <!-- Demo Accounts Reference Card -->
+      <div class="demo-ref-card">
+        <div class="demo-ref-head">
+          <span class="demo-ref-title"><i class="ms">badge</i> Demo Accounts</span>
+          <span class="demo-ref-sub">Click user to fill · Password: <i>any</i></span>
+        </div>
+        <div class="demo-ref-grid">
+          <button type="button" class="demo-ref-row" data-user="emily.carter" data-role="investigator" title="Site Investigator at Rawalpindi Institute of Cardiology">
+            <span class="dot inv"></span>
+            <span class="r-name">Dr. Emily Carter</span>
+            <span class="r-site">RIC (Rawalpindi)</span>
+          </button>
+          <button type="button" class="demo-ref-row" data-user="adnan.khan" data-role="investigator" title="Site Investigator at National Institute of CV Diseases">
+            <span class="dot inv"></span>
+            <span class="r-name">Prof. Adnan Khan</span>
+            <span class="r-site">KHI (Karachi)</span>
+          </button>
+          <button type="button" class="demo-ref-row" data-user="sana.iqbal" data-role="investigator" title="Site Investigator at Punjab Institute of Cardiology">
+            <span class="dot inv"></span>
+            <span class="r-name">Dr. Sana Iqbal</span>
+            <span class="r-site">LHR (Lahore)</span>
+          </button>
+          <button type="button" class="demo-ref-row" data-user="usman.tariq" data-role="investigator" title="Site Investigator at Pakistan Institute of Medical Sciences">
+            <span class="dot inv"></span>
+            <span class="r-name">Dr. Usman Tariq</span>
+            <span class="r-site">ISB (Islamabad)</span>
+          </button>
+          <button type="button" class="demo-ref-row" data-user="robert.wilson" data-role="central" title="Central Clinical Oversight across All Sites">
+            <span class="dot cent"></span>
+            <span class="r-name">Robert Wilson</span>
+            <span class="r-site">Central · All Sites</span>
+          </button>
+          <button type="button" class="demo-ref-row" data-user="michael.johnson" data-role="admin" title="Global System Administrator">
+            <span class="dot adm"></span>
+            <span class="r-name">Michael Johnson</span>
+            <span class="r-site">Super Admin · Global</span>
+          </button>
+        </div>
       </div>
     </form>
   </div>
@@ -204,6 +341,20 @@ document.querySelectorAll('[data-close-modal]').forEach(b=>{
     const id=b.getAttribute('data-close-modal');
     const d=document.getElementById(id);
     if(d&&d.close) d.close();
+  });
+});
+
+/* Click a demo user row to quickly fill username & switch tab */
+document.querySelectorAll('.demo-ref-row').forEach(b => {
+  b.addEventListener('click', () => {
+    const u = b.getAttribute('data-user');
+    const r = b.getAttribute('data-role');
+    if(r && TAB_ROLES[r]) setTab(r, false);
+    $('user').value = u;
+    $('pass').value = 'demo123';
+    $('err').classList.remove('show');
+    $('note').textContent = '';
+    $('pass').focus();
   });
 });
 
