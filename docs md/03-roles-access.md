@@ -71,3 +71,4 @@ Export functionality is accessible via the **Data Export Studio** on the Executi
 4. **First-Time Password Initialization**: Users flagged with `mustChangePassword === true` (new accounts or after an admin reset) are redirected to `setup/` to set a secure password before accessing the portal.
 5. **Super Admin Account Safeguard**: The Super Admin cannot deactivate its own account, and at least one active Super Admin must always exist in the system.
 6. **Audit Trail Immutability**: All corrections to clinical visit entries, visit reopenings, user management actions, and export triggers require an audit log entry.
+7. **Authentication Identity (Dual Login)**: Users may authenticate using either their unique **Official Email** (mandatory upon account creation) or their **Username** (optional, auto-derived from email prefix if omitted).

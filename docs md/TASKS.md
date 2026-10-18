@@ -8,7 +8,7 @@ Modular task tracker for the STAND-HF E-CRF Portal.
 - Priority: **P1** pilot, **P2** Phase 1 full, **P3** Phase 2 or later.
 - Owner: fill in when assigned.
 
-**Status as of Oct 18, 2026:** 49 done, 78 to do. Items marked "prototype" are built in the browser-only prototype; server, real backend authentication and database persistence are still to do. Update the counts when tasks move.
+**Status as of Oct 18, 2026:** 55 done, 72 to do. Items marked "prototype" are built in the browser-only prototype; server, real backend authentication and database persistence are still to do. Update the counts when tasks move.
 
 ---
 
@@ -189,3 +189,9 @@ Modular task tracker for the STAND-HF E-CRF Portal.
 - [x] UI-06 Visit form with four sections, tablet layout, sticky intake header, and auto-collapse (P1) (prototype, 2026-10-18)
 - [x] UI-08 Brand Logo theme default with theme switcher and high-contrast tokens (P2) (prototype, 2026-10-18)
 - [x] DSH-03 GDMT 4-pillar coverage dashboard and adherence analytics (P3) (prototype, 2026-10-18)
+- [x] REG-06 Site and investigator dropdown selection with single-item auto-select and no free text (P1) (prototype, 2026-10-18)
+- [x] UI-10 Self-hosted Roboto WOFF2 typography and zero-flash shimmer navigation (P1) (prototype, 2026-10-18)
+- [x] UI-11 Unified full-screen modal backdrop and blur overlay across shell and frame (P1) (prototype, 2026-10-18)
+- [x] API-01 Backend Changelog API service (`/api/changelog`) receiving content lists and suppressing UI dialog (P1) (prototype, 2026-10-18)
+- [x] AUTH-08 Login form supporting username and official email with validator.js validation and mixed demo accounts (P1) (prototype, 2026-10-18)
+- [x] NOTIF-02 Admin follow-up notification lead threshold configuration with dynamic calculation rule and live notification generator (P1) (prototype, 2026-10-18)

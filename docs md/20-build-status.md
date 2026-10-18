@@ -10,11 +10,12 @@ Status date: **18 Oct 2026**.
 
 | Page | Path | Who | What it does |
 |------|------|-----|--------------|
-| Login | `login/` | All | Role-based tab login (`Site Investigator`, `Central Team`, `Super Admin`), demo account quick-fill, forgot-password support dialog, authentication gate. First-time users or password-reset accounts are automatically forced to `setup/`. |
+| App Shell | `app/` | All | Outer portal shell embedding sidebar, topbar, and iframe viewport (`#view`). Implements zero-flash instant shimmer navigation transitions and a **unified full-screen modal backdrop** (`body.dim::before` with `backdrop-filter: blur(2px)`) that blurs the entire window including header and rail seamlessly when any dialog opens. |
+| Login | `login/` | All | Role-based tab login (`Site Investigator`, `Central Team`, `Super Admin`), supporting both username and official email sign-in with central `validator.js` integration (`login_identifier` schema), mixed username/email demo account quick-fill list, forgot-password support dialog, authentication gate. The former changelog popup dialog is permanently suppressed and converted to the `/api/changelog` backend API service. First-time users or password-reset accounts are automatically forced to `setup/`. |
 | Password Setup | `setup/` | All | First-time password initialization and user-driven password updates. Validates minimum length (6+ chars), confirmation match, and updates `localStorage` account flags. |
 | Dashboard | `dashboard/` | All signed-in users | **Role-differentiated dashboard**: <br>• **Site Investigator**: Welcome banner with assigned centre, 5 KPI cards (My Patients, New, Baseline Complete %, Follow-ups Due, Pending Sync), 4 dedicated tabs (Overview, Upcoming Visits, Clinical Performance, Assigned Site), quick actions (Add patient, Patient records). Data Export is hidden by default.<br>• **Super Admin & Central Team**: Executive oversight with 5 multi-centre KPI cards, Overview, GDMT 4-Pillar coverage analytics, Site League ranking table, follow-up queue, and interactive **Data Export Studio**. |
 | Patient Records | `records/` | Site Investigator, Central Team | Full registry workflow: Patient list with search and badges, intake form with sticky header, visit forms (Baseline, Month 3, Month 6), prescription dropzone/viewer, auto-calculated summary, and audit log. |
-| Admin | `admin/` | Super Admin, Central Team | User management (1-investigator-to-1-site scoping, temporary password generation), Site directory (`RIC`, `LHR`, `KHI`, `ISB` with zones), and the **Role Permissions Matrix** (allowing Super Admin to dynamically grant/revoke capabilities like `export_data`). Central Team has read-only administrative visibility. |
+| Admin | `admin/` | Super Admin, Central Team | User management (1-investigator-to-1-site scoping, temporary password generation, official email sign-in clarity), Site directory (`RIC`, `LHR`, `KHI`, `ISB` with zones), **Follow-up Notification & Alert Threshold configuration** (allowing admins to set lead days before scheduled milestones, e.g. Day 90 / Day 180, that alerts trigger), and the **Role Permissions Matrix** (allowing Super Admin to dynamically grant/revoke capabilities like `export_data`). Central Team has read-only administrative visibility. |
 
 ### Script Loading Sequence
 Every protected HTML page loads scripts in strict order:
@@ -35,7 +36,8 @@ Every protected HTML page loads scripts in strict order:
 | `assets/access.js` | Source of truth for users, sites, role permissions, and active sessions. Provides `can()`, `mySites()`, `inScope()`, `currentUser()`, `session()`, and migration handling. |
 | `assets/header.js` | Universal topbar: search input, Today / Week / Month period selector (dashboard), network status indicator, notification drawer, theme toggle, user profile avatar, and sign-out. |
 | `assets/nav.js` | Side navigation rail on desktop; slide-out drawer on tablets and mobile (<=1024px). Displays STAND-HF branding, Sacuvia™ sponsor badge, and role-scoped navigation links. |
-| `assets/base.css` | Complete design system: CSS variables, **Brand Logo Theme** default (`--brand-red`, `--brand-magenta`, `--brand-soft`), classic theme, touch tablet targets (>=44px), card elevation, modals, comboboxes, and responsive breakpoints. |
+| `assets/base.css` | Complete design system: CSS variables, **Brand Logo Theme** default (`--brand-red`, `--brand-magenta`, `--brand-soft`), classic theme, touch tablet targets (>=44px), card elevation, seamless dialog backdrops, comboboxes, and responsive breakpoints. |
+| `assets/fonts/` | 100% self-hosted offline typography: Google Font Roboto Latin variable WOFF2 (`roboto.woff2`, weights 100–900) and Google Material Symbols Rounded (`material-symbols-rounded.woff2`) for zero-CDN offline reliability. |
 | `assets/dash-charts.js` | Lightweight SVG chart generation for enrollment trends, GDMT 4-pillar coverage, and clinical score distributions. |
 | `assets/lookups.js` | Clinical medication catalogues, generic drug options, standard dosages, frequencies (`OD`, `BD`, `TDS`), NYHA definitions, and discontinuation reasons. |
 
@@ -49,11 +51,15 @@ Every protected HTML page loads scripts in strict order:
 
 ### New Participant Registration
 - **Sticky intake header**: Top action bar with "Back to Participant Records" and "New Participant Registration" stays pinned while scrolling.
-- **Fields**: Study ID (auto-generated e.g. `RIC-001`), Site (filtered to user's assigned site), Investigator name, Consent date (cannot be in future), Patient name (min 2 characters, letters only), Contact number (strictly 11 digits, non-digits stripped as typed), Age (18–150; warning at 111–150), Sex, HF Etiology (with "Other" specification).
+- **Fields**: Study ID (auto-generated e.g. `RIC-001`), Site code (strictly selected from authorized dropdown, no free text allowed; auto-selected if user has access to only 1 site), Investigator name (strictly selected from assigned site's investigator list, no free text allowed; auto-selected if only 1 investigator exists for the site), Consent date (cannot be in future), Patient name (min 2 characters, letters only), Contact number (strictly 11 digits, non-digits stripped as typed), Age (18–150; warning at 111–150), Sex, HF Etiology (with "Other" specification).
+- **Auto-Selection & Dynamic Linking**:
+  - If the user is assigned to only one site (e.g. Site Investigator with `RIC`), the Site code dropdown auto-selects that site immediately.
+  - When a site is selected, the investigator dropdown dynamically filters to authorized investigators for that site. If only one investigator is available, they are automatically selected.
+  - Combobox inputs are strictly `readonly data-cb-input` with race-condition prevention (`_openedAt` timestamp guard) to guarantee smooth one-tap dropdown toggle without auto-closing glitches.
 - One-click validation surfaces missing or invalid fields in a summary banner and directly beside each input.
 
 ### Longitudinal Visits (Baseline, Month 3, Month 6)
-- **Visit schedule**: Month 3 unlocks when Baseline is complete; Month 6 unlocks when Month 3 is complete. Baseline date auto-defaults to consent date; Month 3 window is Day 90 ±14; Month 6 window is Day 180 ±14.
+- **Visit schedule**: Month 3 unlocks when Baseline is complete; Month 6 unlocks when Month 3 is complete. Baseline date auto-defaults to consent date; Month 3 window is Day 90 ±{threshold}; Month 6 window is Day 180 ±{threshold} (dynamically configured directly by Super Admin in Admin Settings, default ±14 days, range 3–14). All CRF visit banners, validation warnings, and follow-up queues follow this setting directly.
 - **Section A (Prescription Attachments)**: Drag-and-drop file upload (PDF, JPEG, PNG up to 10 MB). Displays file cards with thumbnails, download, and deletion (with confirmation and audit logging). Locked visits block file modification.
 - **Section B (Clinical & Functional)**: Single card containing Weight (kg), Heart rate (bpm), Systolic BP, Diastolic BP (must be lower than systolic), NYHA class (I–IV), LVEF (%) [captured at Baseline and Month 6; omitted at Month 3], 1MSTS repetitions in 60s, and 1MSTS stop reason. Visit date, Echo date, and 1MSTS repeated have been removed from UI.
 - **Section C (Foundational GDMT)**: 4 foundational pillars:

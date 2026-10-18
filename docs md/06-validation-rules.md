@@ -10,10 +10,12 @@ Rules fall into two types:
 
 | Field | Rule | Type | Source |
 |-------|------|------|--------|
-| Consent date | Required | Hard | `[PROP §2]` |
-| Patient name | Required | Hard | UI change (new) |
-| Contact number | **Exactly 11 digits** (e.g. 03001234567) | Hard | `[E-CRF Changes p.2]` |
-| Age | 18 or more | Hard | `[PROTO]` TBC |
+| Consent date | Required; cannot be in future | Hard | `[PROP §2]` |
+| Site code | Must be selected from authorized site dropdown (no free text). Auto-selected if user has access to 1 site | Hard | `[UI change (new)]` |
+| Investigator name | Must be selected from assigned site's investigator dropdown (no free text). Auto-selected if site has 1 investigator | Hard | `[UI change (new)]` |
+| Patient name | Required (minimum 2 characters; letters, spaces, dots, apostrophes, hyphens only) | Hard | UI change (new) |
+| Contact number | **Exactly 11 digits** (e.g. 03001234567); non-digits stripped as typed | Hard | `[E-CRF Changes p.2]` |
+| Age | 18 to 150 (warning if 111–150) | Hard | `[PROTO]` TBC |
 | Sex, HF etiology | Required | Hard | `[FSD §2.3]` |
 | Study ID | Auto-generated, read-only | Hard | `[BRIEF s4]` |
 | Consent date vs. Baseline visit date | Baseline date must not be before consent | Hard | `[PROTO]` |
@@ -24,8 +26,8 @@ Rules fall into two types:
 |-------|------|------|--------|
 | Visit date | Handled automatically in background (defaults to consent date for Baseline) | System | `[E-CRF Changes p.3]` |
 | Visit date (3M, 6M) | Must be after Baseline date | Hard | `[PROTO]` |
-| Visit window, 3M | Day 90 ±14 from Baseline | Soft | `[PROTO]` TBC |
-| Visit window, 6M | Day 180 ±21 from Baseline | Soft | `[PROTO]` TBC |
+| Visit window, 3M | Day 90 ±{threshold} from Baseline (dynamic: configured directly by Super Admin in Admin Settings, default ±14 days, range 3–14) | Soft | Admin Config |
+| Visit window, 6M | Day 180 ±{threshold} from Baseline (dynamic: configured directly by Super Admin in Admin Settings, default ±14 days, range 3–14) | Soft | Admin Config |
 | Weight | Numeric range TBC | Hard range, soft warning | `[BRIEF s9]` |
 | Heart rate | Placeholder 30 to 220 bpm | Soft | `[PROTO]` TBC |
 | Systolic BP | Placeholder 50 to 260 mmHg | Soft | `[PROTO]` TBC |

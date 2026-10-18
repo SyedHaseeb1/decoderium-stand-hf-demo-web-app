@@ -13,7 +13,7 @@ Updated: **Oct 18, 2026**.
 | 1 | **Login** (`login/`) | Role tabs (`Site Investigator`, `Central Team`, `Super Admin`), username and password, quick-fill demo credentials, forgot-password support modal, session gating. | **Complete**. Enforces first-time password setup redirection. |
 | 1b | **Password Setup** (`setup/`) | First-time password setup and voluntary user password changes. Validates length (6+ chars) and confirmation match. | **Complete**. Direct return to role dashboard upon success. |
 | 2 | **Site Investigator Dashboard** (`dashboard/`) | Personal outpatient clinical hub: 5 KPI tiles, Overview recruitment chart, Upcoming visits queue, Clinical performance, and Assigned centre details. | **Complete**. Role-scoped to the investigator's assigned centre. Export controls are hidden by default. |
-| 3 | **New Participant Registration** (`records/?new=1`) | Structured intake: auto-generated Study ID, site selector, investigator name, consent date, patient name, 11-digit contact number, age, sex, etiology. | **Complete**. Sticky header bar with quick return to records. |
+| 3 | **New Participant Registration** (`records/?new=1`) | Structured intake: auto-generated Study ID, site selector (strictly selected from dropdown, no free text; auto-selected if 1 site available), investigator selector (strictly selected from dropdown, no free text; auto-selected if 1 investigator available for site), consent date, patient name, 11-digit contact number, age, sex, etiology. | **Complete**. Sticky header bar with quick return to records. |
 | 4 | **Participant Records & CRFs** (`records/`) | Longitudinal registry: patient list with search and badges, Baseline (B), Month 3 (M3), Month 6 (M6) visit CRFs, summary, and audit log. | **Complete**. Auto-collapsing list on tablet input; 4-pillar GDMT titration; prescription attachments. |
 | 5 | **Executive Dashboard** (`dashboard/`) | National oversight for Super Admin and Central Team: 5 study KPIs, national recruitment curves, GDMT 4-pillar coverage, Site League Table, and follow-up alert queue. | **Complete**. Integrated interactive dashboard. |
 | 6 | **System Administration** (`admin/`) | User management (1-investigator-to-1-site scoping, password resets), Site directory, and the **Role Permissions Matrix** (`#perms`). | **Complete**. Super Admin edits; Central Team has read-only administrative inspection. |
@@ -77,5 +77,11 @@ The longitudinal visit CRF uses a single scrollable workflow divided into four s
   - High-contrast clinical cards, crisp borders (`var(--border)`), and readable typography (Google Font Roboto 400/500/700).
 - **Classic Theme**:
   - Accessible via the header theme toggle, utilizing traditional clinical blue accents.
+- **Offline Typography**:
+  - Google Font Roboto Latin variable WOFF2 (`assets/fonts/roboto.woff2`) and Google Material Symbols Rounded (`assets/fonts/material-symbols-rounded.woff2`) are 100% locally self-hosted and preloaded across all pages for offline resilience and zero font flicker.
+- **Unified Full-Screen Modal Backdrops**:
+  - Modals opened within the embedded iframe trigger a full-window frosted blur (`backdrop-filter: blur(2px)`) across sidebar rail, header bar, and content viewport simultaneously (`body.dim::before`), eliminating visual frame seams.
+- **Seamless Page Transitions & Shimmer**:
+  - Page navigation transitions utilize instant skeleton shimmer loading bars without blank white screen pauses.
 - **Offline & Connectivity Pill**:
   - Real-time network monitor in top header. Switches between "Online" (green) and "Offline" (amber bar at top of page) with automatic reconnection handling.

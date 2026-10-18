@@ -180,12 +180,12 @@ One section per screen or form. For each one: who uses it, the fields, the valid
 | Field | Required | Rule | Type |
 |-------|:-:|------|------|
 | Study ID | Auto | Generated from site code plus sequence. Read only | - |
-| Site | Yes | Only the user's assigned sites | Hard |
-| Patient name | Yes | Not empty | Hard. New from UI change |
-| Contact number | Yes | Format TBC (Q-19) | Hard. New from UI change |
-| Investigator name | Yes | Not empty | Hard |
-| Consent date | Yes | Not empty | Hard |
-| Age | Yes | 18 or more (TBC) | Hard |
+| Site | Yes | Must be selected from user's assigned sites via dropdown (no free text). Auto-selected if only 1 site is available | Hard |
+| Investigator name | Yes | Must be selected from assigned site's investigator list via dropdown (no free text). Auto-selected if only 1 investigator is available | Hard |
+| Patient name | Yes | Minimum 2 characters; letters, spaces, dots, apostrophes, hyphens only | Hard. New from UI change |
+| Contact number | Yes | Strictly 11 digits (e.g. 03001234567); non-digits stripped as typed | Hard. New from UI change |
+| Consent date | Yes | Cannot be in future | Hard |
+| Age | Yes | 18 to 150 (TBC) | Hard |
 | Sex | Yes | Male or Female | Hard |
 | HF etiology | Yes | Ischemic, Non-ischemic or Other | Hard |
 | Etiology other (text) | If "Other" | Not empty | Hard |
@@ -199,6 +199,9 @@ One section per screen or form. For each one: who uses it, the fields, the valid
 5. The patient appears in the site's list straight away.
 6. Editing a saved patient needs a reason. The change is recorded in the audit trail.
 7. Patient name and contact number are required. Saving without either is blocked, and the missing field is named.
+8. Site and Investigator inputs strictly require selecting from the dropdown; typing free text is disallowed.
+9. If there is only one site available for the user, it is auto-selected into the site field on load.
+10. If there is only one investigator available for the selected site (or the logged-in user is a site investigator), that investigator is auto-selected into the investigator field. Changing the site dynamically re-evaluates and auto-selects if the target site has only one investigator.
 
 ---
 
