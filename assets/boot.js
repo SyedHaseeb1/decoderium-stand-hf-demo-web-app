@@ -7,6 +7,48 @@
   var self=document.currentScript;
   var assetsUrl=new URL('.', self.src);
   var dataUrl=new URL('../data/', self.src);
+  /* Simulated API wait (ms) so the shimmer stays visible after sign-in. It applies only to the first page
+     loaded after sign-in (login sets standhf_fresh_login); moving between pages loads straight away.
+     Set per page with data-api-delay on this script. Remove it when the real API calls are in. */
+  var apiDelay=0;
+  try{
+    var attrDelay=self.getAttribute('data-api-delay');
+    var alwaysDelay=self.getAttribute('data-api-delay-always');
+    /* The shimmer shows the first time a screen opens in this session, and on the first screen after sign-in */
+    var seenKey='standhf_seen_'+location.pathname;
+    var fresh=sessionStorage.getItem('standhf_fresh_login')==='1';
+    var firstTime=sessionStorage.getItem(seenKey)!=='1';
+    if(alwaysDelay){
+      apiDelay=parseInt(alwaysDelay,10)||0;
+    } else if(attrDelay && (fresh || firstTime)){
+      apiDelay=parseInt(attrDelay,10)||0;
+    }
+    sessionStorage.setItem(seenKey,'1');
+    sessionStorage.removeItem('standhf_fresh_login');
+  }catch(e){}
+  /* Inside the app shell (app/index.html) the header and side menu belong to the shell, so a page skips its own */
+  var embedded=false;
+  try{ embedded=!!(window.top!==window && window.frameElement && window.frameElement.id==='view'); }catch(e){}
+  if(embedded){
+    document.documentElement.classList.add('embedded');
+    /* Tabs inside a screen call standhfUpdateNav; nav.js is not loaded here, so hand the update to the shell */
+    window.standhfUpdateNav=function(){
+      try{ if(window.parent && window.parent.standhfShellSync) window.parent.standhfShellSync(); }catch(e){}
+    };
+    /* Shell signals: "waiting" while this screen waits for its data, "ready" once it has drawn it and painted */
+    var shellSignal=function(name){ try{ if(window.parent && window.parent[name]) window.parent[name](); }catch(e){} };
+    var shellReady=function(){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ shellSignal('standhfShellReady'); }); }); };
+    if(apiDelay>0) shellSignal('standhfShellWaiting');
+    /* A dialog opened in the frame dims the whole shell (header and menu too), not only the frame */
+    var shellDim=function(on){ try{ if(window.parent && window.parent.standhfShellDim) window.parent.standhfShellDim(on); }catch(e){} };
+    if(window.HTMLDialogElement){
+      var openModal=HTMLDialogElement.prototype.showModal;
+      HTMLDialogElement.prototype.showModal=function(){ openModal.apply(this,arguments); shellDim(true); };
+    }
+    document.addEventListener('close',function(e){
+      if(e.target && e.target.tagName==='DIALOG'){ shellDim(!!document.querySelector('dialog[open]')); }
+    },true);
+  }
 
   var fetchJson=function(name){
     return fetch(new URL(name+'.json', dataUrl)).then(function(r){
@@ -15,16 +57,21 @@
     });
   };
 
-  var showError=function(){
-    var box=document.createElement('div');
-    box.setAttribute('role','alert');
-    box.style.cssText='position:fixed;left:16px;right:16px;top:16px;z-index:10000;padding:14px 16px;border-radius:12px;background:#b3261e;color:#fff;font:500 14px/1.4 Roboto,sans-serif;text-align:center';
-    box.textContent='Could not load the app data. Check your connection and refresh the page.';
-    document.body.appendChild(box);
+  /* Data failed to load: send the user to the error page, which keeps their place (?from=) and has a Try again button.
+     location.replace keeps the failed page out of the history, so Back does not return to it. */
+  var showError=function(err){
+    var here=location.pathname+location.search+location.hash;
+    var u = new URL('../error/?from='+encodeURIComponent(here), assetsUrl);
+    if(err && err.message) u.searchParams.set('msg', err.message);
+    if(!navigator.onLine) u.searchParams.set('code', 'offline');
+    location.replace(u.href);
   };
 
   /* Runs one placeholder. Files load in order (async=false), inline code runs at once. */
   var runNode=function(n){
+    if(embedded && n.hasAttribute('data-src') && /(^|\/)(header|nav)\.js/.test(n.getAttribute('data-src'))){
+      return Promise.resolve();
+    }
     var s=document.createElement('script');
     [].slice.call(n.attributes).forEach(function(a){
       if(a.name!=='type' && a.name!=='data-src') s.setAttribute(a.name,a.value);
@@ -58,10 +105,15 @@
   ])]).then(function(res){
     var d=res[1];
     window.STANDHF_DATA={accessControl:d[0], users:d[1], gdmt:d[2], clinicalOptions:d[3], locationStandards:d[4], demoNames:d[5]};
-    var nodes=[].slice.call(document.querySelectorAll('script[type="text/plain"]'));
-    return nodes.reduce(function(p,n){return p.then(function(){return runNode(n)})},Promise.resolve());
+    return new Promise(function(resolve){ setTimeout(resolve, apiDelay); }).then(function(){
+      if(embedded){ /* the shell draws the header and menu, so drop this page's placeholders for them */
+        ['side','app-header'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
+      }
+      var nodes=[].slice.call(document.querySelectorAll('script[type="text/plain"]'));
+      return nodes.reduce(function(p,n){return p.then(function(){return runNode(n)})},Promise.resolve());
+    }).then(function(){ if(embedded) shellReady(); });
   }).catch(function(e){
     console.error('[boot]',e);
-    showError();
+    showError(e);
   });
 })();

@@ -1,6 +1,7 @@
 {
   "users": [
     {
+      "email": "michael.johnson@standhf.example",
       "username": "michael.johnson",
       "name": "Michael Johnson",
       "role": "superadmin",
@@ -14,6 +15,7 @@
       }
     },
     {
+      "email": "emily.carter@standhf.example",
       "username": "emily.carter",
       "name": "Emily Carter",
       "role": "investigator",
@@ -29,6 +31,7 @@
       }
     },
     {
+      "email": "robert.wilson@standhf.example",
       "username": "robert.wilson",
       "name": "Robert Wilson",
       "role": "central",
@@ -47,6 +50,7 @@
       }
     },
     {
+      "email": "adnan.khan@standhf.example",
       "username": "adnan.khan",
       "name": "Adnan Khan",
       "role": "investigator",
@@ -62,6 +66,7 @@
       }
     },
     {
+      "email": "sana.iqbal@standhf.example",
       "username": "sana.iqbal",
       "name": "Sana Iqbal",
       "role": "investigator",
@@ -77,6 +82,7 @@
       }
     },
     {
+      "email": "usman.tariq@standhf.example",
       "username": "usman.tariq",
       "name": "Usman Tariq",
       "role": "investigator",

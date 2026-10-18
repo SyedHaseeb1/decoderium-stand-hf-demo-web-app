@@ -245,3 +245,30 @@ const events = {
 - **`central`** (`robert.wilson`): Clinical trial monitor / directorate. Views all sites and patients; exports complete research datasets; read-only administrative inspection.
 - **`investigator`** (`emily.carter`): Site investigator assigned to `RIC` (Rawalpindi). **Must only see patients where `site === 'RIC'`**. By default, `export_data` is disabled.
 - **`investigator`** (`adnan.khan`): Site investigator assigned to `KHI` (Karachi). **Must only see patients where `site === 'KHI'`**. By default, `export_data` is disabled.
+
+---
+
+## 7. User Account Entity & API Contract (`users.json`)
+
+User accounts support dual sign-in via either **Official Email** (required) or **Username** (optional):
+
+```typescript
+interface UserAccount {
+  email: string;              // Official Email (Required, unique identifier)
+  username?: string;          // System handle (Optional; auto-derived from email prefix if blank)
+  name: string;               // Full name of investigator or administrator (Required)
+  role: 'superadmin' | 'central' | 'investigator'; // System authorization role
+  sites: string[];            // Assigned site codes (e.g. ['RIC']; central carries all sites)
+  active: boolean;            // Account active status
+  mustChangePassword: boolean;// True for initial temporary password setup flow
+  password?: string;          // Stored password or initial temporary credential
+  passwordCreatedAt?: string; // ISO timestamp
+  personal?: {
+    designation?: string;     // Standardized clinical title
+    phone?: string;           // 11-digit mobile contact number
+    email?: string;           // Synchronized official email address
+  };
+}
+```
+
+Authentication accepts either the user's `email` or `username` along with their password.

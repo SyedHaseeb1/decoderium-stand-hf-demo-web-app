@@ -12,9 +12,10 @@
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018p">
 <script>
   try {
     if (localStorage.getItem('standhf_theme') !== 'blue') {
@@ -170,8 +171,8 @@
       </div>
 
       <label class="field">
-        <span>Username</span>
-        <input id="user" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="30">
+        <span>Username or Email</span>
+        <input id="user" name="username" type="text" autocomplete="username email" autocapitalize="off" spellcheck="false" maxlength="100" placeholder="e.g. emily.carter or emily@hospital.pk">
       </label>
 
       <label class="field">
@@ -185,7 +186,7 @@
       </label>
 
       <div class="auth-row">
-        <label class="check-row"><input type="checkbox" id="remember"><span>Remember my username</span></label>
+        <label class="check-row"><input type="checkbox" id="remember"><span>Remember me</span></label>
         <button type="button" class="link-btn" id="forgot">Forgot your password?</button>
       </div>
 
@@ -265,12 +266,12 @@
   </div>
 </dialog>
 
-<script src="../assets/boot.js?v=20261018m"></script>
+<script src="../assets/boot.js?v=20261018o"></script>
 <script type="text/plain" data-src="access.js?v=20261018l"></script>
 <script type="text/plain" data-src="validator.js?v=20261016a"></script>
 <script src="../assets/btn-loader.js"></script>
 <script type="text/plain">
-const APP='../records/', DASH='../dashboard/', ADMIN='../admin/', AUTH_KEY='standhf_auth', USER_KEY='standhf_user', ROLE_KEY='standhf_role';
+const APP='../records/', DASH='../app/', ADMIN='../admin/', AUTH_KEY='standhf_auth', USER_KEY='standhf_user', ROLE_KEY='standhf_role';
 const REMEMBER_KEY='standhf_remember_user';
 const ACCOUNTS=accessStore().users.filter(u=>u.active).map(u=>({user:u.username,name:u.name,role:u.role}));
 /* Each tab accepts its own roles: Site Investigator, Central Team (Read-only), and Super Admin */
@@ -381,31 +382,38 @@ try{remembered=localStorage.getItem(REMEMBER_KEY)||''}catch(e){}
 if(!urlParams.get('setupComplete')){
   setTab('investigator',false);
   if(remembered){
-    const acc=ACCOUNTS.find(a=>a.user===remembered);
+    const allUsersList = accessStore().users;
+    const acc = allUsersList.find(a => a.username === remembered || (a.email && a.email.toLowerCase() === remembered.toLowerCase()) || (a.personal && (a.personal.email || '').toLowerCase() === remembered.toLowerCase()));
     if(acc){
-      const targetTab=acc.role==='investigator'?'investigator':(acc.role==='central'?'central':'admin');
-      setTab(targetTab,false);
-      $('user').value=acc.user;
-      $('remember').checked=true;
+      const targetTab = acc.role === 'investigator' ? 'investigator' : (acc.role === 'central' ? 'central' : 'admin');
+      setTab(targetTab, false);
+      $('user').value = remembered;
+      $('remember').checked = true;
     }
   }
 }
 
 $('form').addEventListener('submit',e=>{
   e.preventDefault();
-  const u=$('user').value.trim().toLowerCase(),p=$('pass').value;
-  if(!u)return fail('Enter your username.','user');
-  if(!p)return fail('Enter your password.','pass');
+  const rawInput = $('user').value.trim();
+  const u = rawInput.toLowerCase();
+  const p = $('pass').value;
+  if(!u) return fail('Enter your username or email address.', 'user');
+  if(!p) return fail('Enter your password.', 'pass');
   
-  const allUsers=accessStore().users;
-  const userObj=allUsers.find(a=>a.username===u);
-  if(!userObj||!userObj.active)return fail('Username or password is incorrect.','user');
+  const allUsers = accessStore().users;
+  const userObj = allUsers.find(a => {
+    const uMatch = (a.username || '').toLowerCase() === u;
+    const eMatch = (a.email || (a.personal && a.personal.email) || '').toLowerCase() === u;
+    return uMatch || eMatch;
+  });
+  if(!userObj || !userObj.active) return fail('Username/email or password is incorrect.', 'user');
   
   // Verify password using verifyUserPassword
-  if(typeof verifyUserPassword==='function'){
-    if(!verifyUserPassword(u, p))return fail('Username or password is incorrect.','pass');
+  if(typeof verifyUserPassword === 'function'){
+    if(!verifyUserPassword(userObj.username, p)) return fail('Username/email or password is incorrect.', 'pass');
   } else {
-    if(userObj.password && userObj.password!==p)return fail('Username or password is incorrect.','pass');
+    if(userObj.password && userObj.password !== p) return fail('Username/email or password is incorrect.', 'pass');
   }
 
   // Ensure role tab matches user's role (or auto-switch)
@@ -415,7 +423,8 @@ $('form').addEventListener('submit',e=>{
   }
 
   try{
-    if($('remember').checked)localStorage.setItem(REMEMBER_KEY,userObj.username);else localStorage.removeItem(REMEMBER_KEY);
+    if($('remember').checked) localStorage.setItem(REMEMBER_KEY, rawInput);
+    else localStorage.removeItem(REMEMBER_KEY);
   }catch(err){}
 
   try{
@@ -428,7 +437,10 @@ $('form').addEventListener('submit',e=>{
   }
 
   // Keep the Login button busy for a few seconds while the session is prepared, then route
-  const go=url=>btnWait($('signin'),3000,()=>location.replace(url));
+  const go=url=>btnWait($('signin'),3000,()=>{
+    try{sessionStorage.setItem('standhf_fresh_login','1')}catch(e){}
+    location.replace(url);
+  });
 
   // If initial password setup is required, route immediately to setup page!
   if(userObj.mustChangePassword){

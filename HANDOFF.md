@@ -24,11 +24,19 @@ Related documents:
    | `demoNames` | `data/demo-names.json` |
 
 3. Scripts read from `STANDHF_DATA`. The notification feed and the release notes are fetched on their own (`assets/header.js` and `assets/whatsnew.js`).
-4. If a fetch fails, `boot.js` shows an error banner and the page does not start.
+4. If a fetch fails, `boot.js` redirects to `error/` (the error page). It passes the current page in `?from=`, so "Try again" returns the user to the same screen. The error page does not load `boot.js`, so the redirect cannot loop.
 
 **To move to the API:** replace the fetches in `assets/boot.js` with API calls, and keep the same `STANDHF_DATA` shape. Most of the front end will then need no changes.
 
 ---
+
+### 1a. App shell
+
+- `app/index.html` is the entry point after sign-in. It draws the header and side menu once, and loads each screen (Dashboard, Records, Admin) into a frame.
+- Menu and header links to a screen change the frame, so the header and menu are not rebuilt when moving between screens.
+- Each screen detects that it is inside the shell (`html.embedded`), skips its own header and menu, and skips header-only fields such as the signed-in name.
+- A screen opened directly (for example `dashboard/index.html`) still works on its own with its own header and menu.
+- Auth checks inside the frame send the whole window to sign-in (`window.top`).
 
 ## 2. Data files and their shapes
 

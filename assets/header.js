@@ -68,7 +68,8 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
             (user && user.avatar ? '<img src="'+esc(user.avatar)+'" alt="Avatar" class="avatar-img" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;aspect-ratio:1/1">' : esc(initials))+
           '</span><div class="pp-id"><b id="userName">'+esc(name)+'</b><small id="userRole">'+esc(roleLabel)+'</small></div></div>'+
           '<dl class="pp-list">'+
-            '<div><dt>Username</dt><dd>'+esc(sess.username||'')+'</dd></div>'+
+            (user && (user.email || (user.personal && user.personal.email)) ? '<div><dt>Email</dt><dd>'+esc(user.email || user.personal.email)+'</dd></div>' : '')+
+            (sess.username ? '<div><dt>Username</dt><dd>'+esc(sess.username)+'</dd></div>' : '')+
             '<div><dt>Sites</dt><dd>'+esc(scope)+'</dd></div>'+
           '</dl>'+
           '<a href="'+root+'setup/" class="btn" style="width:100%;justify-content:center;margin-bottom:8px;font-size:13px;gap:6px"><i class="ms" style="font-size:18px">manage_accounts</i>Edit Profile &amp; Password</a>'+

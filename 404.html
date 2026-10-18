@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>404 - Page Not Found | STAND-HF</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="./assets/STAND-HF-logo.svg">
+  <script>
+    (function(){
+      var here = location.pathname + location.search + location.hash;
+      location.replace('./error/?code=404&from=' + encodeURIComponent(here));
+    })();
+  </script>
+  <meta http-equiv="refresh" content="0; url=./error/?code=404">
+  <style>
+    body { font-family: sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #f8fafc; color: #334155; }
+    .box { text-align: center; padding: 24px; }
+    a { color: #C90085; font-weight: bold; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Page Not Found</h2>
+    <p>Redirecting to error portal...</p>
+    <p><a href="./error/?code=404">Click here if you are not redirected automatically.</a></p>
+  </div>
+</body>
+</html>

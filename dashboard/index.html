@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018o">
   <script>
     try {
       if (localStorage.getItem('standhf_theme') !== 'blue') {
@@ -23,20 +23,35 @@
     } catch(e) {}
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
   </script>
+  <script>
+    /* Inside the app shell, mark the page before the first paint so its own header and menu never show */
+    try { if (window.frameElement && window.frameElement.id === 'view') document.documentElement.classList.add('embedded'); } catch (e) {}
+  </script>
+  <script>
+    /* Open screens through the app shell, so the header and menu stay in place when moving between screens */
+    (function () {
+      if (window.top !== window) return;
+      var s = location.pathname.match(/\/(dashboard|records|admin)\/?$/);
+      if (!s) return;
+      var section = location.hash.replace('#', '');
+      if (s[1] === 'records' && /[?&]new=1/.test(location.search)) section = 'add';
+      location.replace('../app/#/' + s[1] + (section ? '/' + section : ''));
+    })();
+  </script>
 </head>
 <body data-page="dashboard">
 <div class="app">
 
   <!-- Side navigation -->
-  <aside class="side" id="side" aria-label="Main navigation"></aside>
+  <aside class="side" id="side" aria-label="Main navigation"><div class="skel-side" aria-hidden="true"><span class="skel skel-val" style="width:150px;height:44px;border-radius:12px;margin-bottom:10px"></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span></div><span class="sr-only">Loading menu</span></aside>
 
   <main class="main">
 
     <!-- data-timeline commented out: default shows all-time data -->
-    <div id="app-header" data-page="dashboard"></div>
+    <div id="app-header" data-page="dashboard"><div class="skel-hdr" aria-hidden="true"><span class="skel skel-btn" style="width:140px;height:40px;border-radius:999px"></span><div class="skel-hdr-end"><span class="skel skel-chip-lg" style="width:84px"></span><span class="skel skel-circle" ></span><span class="skel skel-circle" ></span></div></div><span class="sr-only">Loading header</span></div>
 
     <!-- Role-Aware Dashboard Content Shell -->
-    <div id="dashRoot"></div>
+    <div id="dashRoot"><div class="skel-page" aria-hidden="true"><div class="skel-flex-between" style="flex-wrap:wrap"><div class="skel-col" style="flex:1 1 320px"><span class="skel skel-val" style="width:280px;height:34px"></span><span class="skel skel-line skel-80" style="width:70%"></span></div><div class="skel-flex"><span class="skel skel-btn" style="width:170px"></span><span class="skel skel-btn" style="width:170px"></span></div></div><div class="skel-tabs"><span class="skel " style="width:130px"></span><span class="skel " style="width:160px"></span><span class="skel " style="width:190px"></span><span class="skel " style="width:180px"></span></div><div class="skel-kpis"><div class="skel-card skel-tile"><span class="skel skel-sq" ></span><span class="skel skel-val" style="width:50%"></span><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><div class="skel-card skel-tile"><span class="skel skel-sq" ></span><span class="skel skel-val" style="width:50%"></span><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><div class="skel-card skel-tile"><span class="skel skel-sq" ></span><span class="skel skel-val" style="width:50%"></span><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><div class="skel-card skel-tile"><span class="skel skel-sq" ></span><span class="skel skel-val" style="width:50%"></span><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><div class="skel-card skel-tile"><span class="skel skel-sq" ></span><span class="skel skel-val" style="width:50%"></span><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div></div><div class="skel-grid"><div class="skel-card"><div class="skel-flex-between"><span class="skel skel-line skel-40" ></span><span class="skel skel-line skel-40" ></span></div><div class="skel-triple" style="grid-template-columns:repeat(3,1fr)"><div class="skel-col" style="justify-items:center"><span class="skel skel-ring" ></span><span class="skel skel-line skel-40" style="width:50%;margin-top:8px"></span><span class="skel skel-line skel-60" style="width:40%"></span></div><div class="skel-col" style="justify-items:center"><span class="skel skel-ring" ></span><span class="skel skel-line skel-40" style="width:50%;margin-top:8px"></span><span class="skel skel-line skel-60" style="width:40%"></span></div><div class="skel-col" style="justify-items:center"><span class="skel skel-ring" ></span><span class="skel skel-line skel-40" style="width:50%;margin-top:8px"></span><span class="skel skel-line skel-60" style="width:40%"></span></div></div></div><div class="skel-card"><div class="skel-flex-between"><span class="skel skel-line skel-40" ></span><span class="skel skel-line skel-40" ></span></div><div class="skel-bars"><span class="skel " style="height:70%"></span><span class="skel " style="height:40%"></span><span class="skel " style="height:80%"></span><span class="skel " style="height:30%"></span><span class="skel " style="height:0%"></span><span class="skel " style="height:50%"></span></div></div></div><div class="skel-triple"><div class="skel-card"><div class="skel-flex-between"><span class="skel skel-line skel-40" ></span><span class="skel skel-circle" style="width:36px;height:36px;flex-basis:36px"></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-circle" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-circle" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-circle" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-circle" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-circle" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div></div><div class="skel-card"><div class="skel-flex"><span class="skel skel-circle" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div></div><div class="skel-flex" style="gap:10px"><span class="skel skel-sq" style="flex:1 1 0;width:auto;height:64px"></span><span class="skel skel-sq" style="flex:1 1 0;width:auto;height:64px"></span><span class="skel skel-sq" style="flex:1 1 0;width:auto;height:64px"></span></div><div class="skel-flex-between" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-line skel-40" ></span><span class="skel skel-chip" ></span></div><div class="skel-flex-between" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-line skel-40" ></span><span class="skel skel-chip" ></span></div><div class="skel-flex-between" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-line skel-40" ></span><span class="skel skel-chip" ></span></div><div class="skel-flex"><span class="skel skel-btn" style="flex:1 1 0"></span><span class="skel skel-btn" style="flex:1 1 0"></span></div></div><div class="skel-card"><div class="skel-flex-between"><span class="skel skel-line skel-40" ></span><span class="skel skel-circle" style="width:36px;height:36px;flex-basis:36px"></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-bar-left" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-bar-left" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-bar-left" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-bar-left" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div><div class="skel-flex" style="padding:12px 14px;border-radius:16px;background:var(--soft)"><span class="skel skel-bar-left" ></span><div class="skel-col"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span></div><span class="skel skel-chip" ></span></div></div></div><div class="skel-triple" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))"><div class="skel-card"><span class="skel skel-line skel-40" ></span><div class="skel-flex-between" style="padding:12px 0;border-bottom:1px solid var(--line)"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" style="width:60px"></span></div><div class="skel-flex-between" style="padding:12px 0;border-bottom:1px solid var(--line)"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" style="width:60px"></span></div><div class="skel-flex-between" style="padding:12px 0;border-bottom:1px solid var(--line)"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" style="width:60px"></span></div><div class="skel-flex-between" style="padding:12px 0;border-bottom:1px solid var(--line)"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" style="width:60px"></span></div></div><div class="skel-card"><span class="skel skel-line skel-40" ></span><span class="skel skel-line skel-60" ></span><div class="skel-flex-between" style="padding:10px 0;border-bottom:1px solid var(--line)"><span class="skel skel-line skel-40" style="width:70px"></span><span class="skel skel-line skel-40" style="width:70px"></span><span class="skel skel-line skel-40" style="width:70px"></span><span class="skel skel-line skel-40" style="width:70px"></span><span class="skel skel-line skel-40" style="width:70px"></span></div><div class="skel-flex-between" style="padding:14px 0"><span class="skel skel-line skel-40" style="width:70px"></span><span class="skel skel-line skel-40" style="width:70px"></span><span class="skel skel-line skel-40" style="width:70px"></span><span class="skel skel-line skel-40" style="width:70px"></span><span class="skel skel-line skel-40" style="width:70px"></span></div></div></div></div><span class="sr-only">Loading dashboard</span></div>
 
   </main>
 </div>
@@ -109,7 +124,7 @@
 <div class="snack" id="snack" role="status" aria-live="polite"></div>
 
 <!-- Required Shared Infrastructure Scripts in Strict Order -->
-<script src="../assets/boot.js?v=20261018m"></script>
+<script src="../assets/boot.js?v=20261018o" data-api-delay="3000"></script>
 <script type="text/plain" data-src="access.js?v=20261018l"></script>
 <script type="text/plain" data-src="validator.js?v=20261016a"></script>
 <script type="text/plain" data-src="lookups.js?v=20261015b"></script>
@@ -134,7 +149,7 @@ const DAY = 864e5;
 
 /* Guard: user must be authenticated */
 const auth = sessionVal('standhf_auth');
-if (auth !== '1') { location.replace(LOGIN); return; }
+if (auth !== '1') { (window.top||window).location.replace(LOGIN); return; }
 if (sessionVal('standhf_must_change_pw') === '1') { location.replace('../setup/'); return; }
 
 const sess = session();
@@ -2691,9 +2706,9 @@ function attachEvents(){
 
 // Initial Render with Hash Routing
 applyHash();
-renderDashboard();
 
-// Auto-seed from verified dataset if local storage is fresh/empty
+// Auto-seed from verified dataset if local storage is fresh/empty, then draw once with the data
+// (drawing before the seed finished showed empty stats first)
 (async function ensurePreloadedData(){
   if (!localStorage.getItem(KEY)) {
     try {
@@ -2703,11 +2718,11 @@ renderDashboard();
         const d = await res.json();
         if (Array.isArray(d?.pts) && d.pts.length) {
           localStorage.setItem(KEY, JSON.stringify(d));
-          renderDashboard();
         }
       }
     } catch(e){}
   }
+  renderDashboard();
 })();
 
 // Listen to hash changes (from sidebar or links anywhere)

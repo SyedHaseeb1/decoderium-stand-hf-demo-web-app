@@ -11,9 +11,9 @@
     } catch(e) {}
     // Session gate: send anyone without a sign-in back to the login page.
     try{
-      if(sessionStorage.getItem('standhf_auth')!=='1')location.replace('../login/');
+      if(sessionStorage.getItem('standhf_auth')!=='1')(window.top||window).location.replace('../login/');
       if(sessionStorage.getItem('standhf_must_change_pw')==='1')location.replace('../setup/');
-    }catch(e){location.replace('../login/')}
+    }catch(e){(window.top||window).location.replace('../login/')}
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#C90085">
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018o">
   <style>
     .upl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
     .tint{background:var(--soft);border-radius:14px;padding:16px}
@@ -135,13 +135,28 @@
   /* Register the service worker so the browser can install the app (full-screen from the home screen) */
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
 </script>
+  <script>
+    /* Inside the app shell, mark the page before the first paint so its own header and menu never show */
+    try { if (window.frameElement && window.frameElement.id === 'view') document.documentElement.classList.add('embedded'); } catch (e) {}
+  </script>
+  <script>
+    /* Open screens through the app shell, so the header and menu stay in place when moving between screens */
+    (function () {
+      if (window.top !== window) return;
+      var s = location.pathname.match(/\/(dashboard|records|admin)\/?$/);
+      if (!s) return;
+      var section = location.hash.replace('#', '');
+      if (s[1] === 'records' && /[?&]new=1/.test(location.search)) section = 'add';
+      location.replace('../app/#/' + s[1] + (section ? '/' + section : ''));
+    })();
+  </script>
 </head>
 <body data-page="records">
 <div class="app" id="app">
-  <aside class="side" id="side" aria-label="Main navigation"></aside>
+  <aside class="side" id="side" aria-label="Main navigation"><div class="skel-side" aria-hidden="true"><span class="skel skel-val" style="width:150px;height:44px;border-radius:12px;margin-bottom:10px"></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span></div><span class="sr-only">Loading menu</span></aside>
 
   <div class="main">
-    <div id="app-header" data-page="records"></div>
+    <div id="app-header" data-page="records"><div class="skel-hdr" aria-hidden="true"><span class="skel skel-btn" style="width:140px;height:40px;border-radius:999px"></span><div class="skel-hdr-end"><span class="skel skel-chip-lg" style="width:84px"></span><span class="skel skel-circle" ></span><span class="skel skel-circle" ></span></div></div><span class="sr-only">Loading header</span></div>
 
     <div class="hello">
       <div><h1>Patient records <span id="syncChip" class="sync-chip" hidden></span></h1><p id="pageSubtitle">Enter visit data, check it, and mark each visit complete.</p></div>
@@ -153,18 +168,18 @@
       </div>
     </div>
 
-    <section class="kpis auto" id="tiles"></section>
+    <section class="kpis auto" id="tiles"><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div><div class="kpi" aria-hidden="true"><span class="skel skel-val" ></span><span class="skel skel-line skel-60" ></span></div></section>
 
     <div class="lay">
-      <aside class="card pl" id="list"></aside>
-      <section class="card" id="pane"></section>
+      <aside class="card pl" id="list"><div class="skel-flex-between" aria-hidden="true" style="margin-bottom:12px"><span class="skel skel-line skel-40" style="width:120px;height:18px"></span><span class="skel skel-circle" style="width:28px;height:28px;flex-basis:28px"></span></div><div aria-hidden="true"><span class="skel skel-btn" style="height:44px;margin-bottom:12px"></span></div><div class="pl-scroll" aria-hidden="true"><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span></div></div><div class="skel-item"><span class="skel skel-line skel-60" ></span><span class="skel skel-line skel-40" ></span><div class="skel-flex" style="gap:6px"><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span><span class="skel skel-chip" style="width:90px;height:22px"></span></div></div></div><span class="sr-only">Loading patients</span></aside>
+      <section class="card" id="pane"><div class="skel-page" aria-hidden="true"><div class="skel-flex-between"><span class="skel skel-val" style="width:220px;height:26px"></span><span class="skel skel-line skel-40" style="width:90px"></span></div><div class="skel-tabs"><span class="skel " style="width:150px"></span><span class="skel " style="width:90px"></span><span class="skel " style="width:90px"></span><span class="skel " style="width:110px"></span><span class="skel " style="width:140px"></span></div><span class="skel skel-banner" ></span><div class="skel-card"><span class="skel skel-line skel-40" style="width:160px"></span><div class="skel-fields"><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div></div><div class="skel-fields"><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div><div class="skel-field"><span class="skel skel-line skel-60" ></span><span class="skel skel-input" ></span></div></div></div><div class="skel-flex-between"><span class="skel skel-btn" style="width:140px"></span><span class="skel skel-btn" style="width:240px"></span></div></div><span class="sr-only">Loading participant record</span></section>
     </div>
     <div class="snack" id="snack" role="status" aria-live="polite"></div>
     <input type="file" id="fu" accept="application/pdf,image/jpeg,image/png" hidden>
     <dialog class="viewer" id="viewer" aria-labelledby="vTitle"><div class="viewer-head"><b id="vTitle"></b><button type="button" class="icon-btn" id="vClose" aria-label="Close"><i class="ms">close</i></button></div><div class="viewer-body" id="vBody"></div></dialog>
   </div>
 </div>
-<script src="../assets/boot.js?v=20261018m"></script>
+<script src="../assets/boot.js?v=20261018o" data-api-delay="3000"></script>
 <script type="text/plain" data-src="access.js?v=20261018l"></script>
 <script type="text/plain" data-src="validator.js?v=20261016a"></script>
 <script type="text/plain" data-src="lookups.js?v=20261016a"></script>
@@ -1320,8 +1335,8 @@ if(typeof window.isStandhfOnline==='function') DB.off=!window.isStandhfOnline();
 pane();dash();
 
 /* User chip: show who is signed in */
-{const u=signedIn();$('userName').textContent=u||'Signed in';$('userRole').textContent=ROLE_LABEL[signedRole()]||'Study user';
- $('avatar').textContent=u.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?'}
+{const u=signedIn();if($('userName'))$('userName').textContent=u||'Signed in';if($('userRole'))$('userRole').textContent=ROLE_LABEL[signedRole()]||'Study user';
+ if($('avatar'))$('avatar').textContent=u.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?'}
 
 /* Buttons and actions follow the signed-in role's permissions */
 function applyPerms(){

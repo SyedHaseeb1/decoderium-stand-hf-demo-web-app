@@ -28,9 +28,10 @@
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="../assets/base.css?v=20261018l">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018p">
   <style>
     /* =========================================================
        STAND-HF Doctor-Friendly Account Setup
@@ -558,6 +559,10 @@
             <i class="ms" style="font-size:14px;color:var(--primary)">local_hospital</i>
             <span id="docHospitalName">Medical Centre</span>
           </p>
+          <p class="doctor-hospital" id="docEmailWrap" style="margin-top:3px;font-size:12.5px;color:var(--ink-2);display:none">
+            <i class="ms" style="font-size:14px;color:var(--ink-2)">mail</i>
+            <span id="docEmailText">email@hospital.pk</span>
+          </p>
           <div class="photo-actions-bar" id="photoActionsBar" style="display:none">
             <button type="button" class="photo-action-btn" id="btnChangePhoto"><i class="ms" style="font-size:14px">photo_camera</i> <span>Change</span></button>
             <button type="button" class="photo-action-btn danger" id="btnRemovePhoto"><i class="ms" style="font-size:14px">delete</i> <span>Remove</span></button>
@@ -644,7 +649,7 @@
 
         <!-- Cancel / Dashboard Buttons -->
         <div class="setup-cancel-row">
-          <a href="../dashboard/" class="btn" id="linkBackDash" style="display:none">
+          <a href="../app/" class="btn" id="linkBackDash" style="display:none">
             <i class="ms" style="font-size:18px">arrow_back</i> <span>Back to Dashboard</span>
           </a>
           <button type="button" class="btn btn-signout" id="btnCancelSignOut">
@@ -657,7 +662,7 @@
     </div>
   </main>
 
-  <script src="../assets/boot.js?v=20261018m"></script>
+  <script src="../assets/boot.js?v=20261018o"></script>
 <script type="text/plain" data-src="access.js?v=20261018l"></script>
   <script type="text/plain" data-src="validator.js?v=20261016a"></script>
   <script type="text/plain">
@@ -700,6 +705,15 @@
       }
     }
     $('docHospitalName').textContent = `${desig} · ${centreName}`;
+
+    // Show official email if available
+    const uEmail = user.email || user.personal?.email || '';
+    if (uEmail && $('docEmailText')) {
+      $('docEmailText').textContent = uEmail;
+      $('docEmailWrap').style.display = 'flex';
+    } else if ($('docEmailWrap')) {
+      $('docEmailWrap').style.display = 'none';
+    }
 
     // Prefill phone if exists
     if (user.personal?.phone) {
@@ -826,6 +840,7 @@
     function showError(msg) {
       $('cardAlertText').textContent = msg;
       $('cardAlert').style.display = 'flex';
+      $('cardAlert').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     function hideError() {
       $('cardAlert').style.display = 'none';
@@ -902,7 +917,7 @@
         location.replace(`../login/?setupComplete=1&user=${encodeURIComponent(user.username)}`);
       } else {
         // Returning user just updating photo or phone
-        location.replace('../dashboard/');
+        location.replace('../app/');
       }
     });
 

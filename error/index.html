@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>STAND-HF Error</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#C90085">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="../assets/STAND-HF-logo.svg">
+  <link rel="icon" type="image/png" sizes="512x512" href="../assets/icon-512.png">
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="../assets/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="../assets/base.css?v=20261018o">
+  <script>
+    try {
+      if (localStorage.getItem('standhf_theme') !== 'blue') {
+        document.documentElement.setAttribute('data-theme', 'logo');
+      }
+    } catch(e) {}
+  </script>
+  <style>
+    /* Robust fallback layout ensuring immediate presentation even during total CSS link failure */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(120% 120% at 50% 0%, color-mix(in srgb, var(--primary, #C90085) 12%, #f8fafc) 0%, #f1f5f9 100%);
+      color: var(--ink, #0f172a);
+      -webkit-font-smoothing: antialiased;
+    }
+    html[data-theme="blue"] body {
+      background: radial-gradient(120% 120% at 50% 0%, color-mix(in srgb, var(--primary, #1e40af) 12%, #f8fafc) 0%, #f1f5f9 100%);
+    }
+
+    .err-shell {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .err-logo-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      transition: transform 0.15s ease;
+    }
+    .err-logo-wrap:hover { transform: scale(1.02); }
+    .err-logo-wrap img {
+      display: block;
+      width: min(240px, 65vw);
+      height: auto;
+    }
+
+    .err-card {
+      width: 100%;
+      background: var(--card, #ffffff);
+      border: 1px solid var(--line, #e2e8f0);
+      border-radius: var(--radius, 20px);
+      box-shadow: 0 12px 36px -8px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04);
+      padding: 36px 32px 30px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    @media (max-width: 480px) {
+      .err-card { padding: 28px 20px 24px; }
+    }
+
+    /* Top decorative gradient line */
+    .err-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--brand-red, #dc2626), var(--primary, #C90085), var(--brand-blue, #2563eb));
+    }
+
+    /* Status badge pill */
+    .err-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+      background: var(--soft, #f1f5f9);
+      color: var(--ink-2, #475569);
+      border: 1px solid var(--line, #e2e8f0);
+    }
+    .err-badge.b-404 { background: #fff7ed; color: #c2410c; border-color: #ffedd5; }
+    .err-badge.b-500 { background: #fef2f2; color: #b91c1c; border-color: #fee2e2; }
+    .err-badge.b-offline { background: #fffbeb; color: #b45309; border-color: #fef3c7; }
+    .err-badge.b-sync { background: color-mix(in srgb, var(--primary, #C90085) 12%, transparent); color: var(--primary, #C90085); border-color: color-mix(in srgb, var(--primary, #C90085) 24%, transparent); }
+    .err-badge.b-auth { background: #f5f3ff; color: #6d28d9; border-color: #ede9fe; }
+
+    /* Hero Icon with ambient glowing halo */
+    .err-icon-halo {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      margin: 0 auto 16px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--soft, #f8fafc);
+      border: 1px solid var(--line, #e2e8f0);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+    }
+    .err-icon-halo::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.12;
+      animation: pulseHalo 2.4s ease-in-out infinite;
+      z-index: 0;
+    }
+    @keyframes pulseHalo {
+      0%, 100% { transform: scale(1); opacity: 0.12; }
+      50% { transform: scale(1.12); opacity: 0.04; }
+    }
+    .err-icon-halo .ms {
+      position: relative;
+      z-index: 1;
+      font-size: 38px;
+    }
+
+    /* Giant high-impact display error code */
+    .err-code-display {
+      font-size: clamp(40px, 12vw, 64px);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      margin: 0 0 6px;
+      opacity: 0.22;
+      user-select: none;
+    }
+
+    .err-card h1 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--ink, #0f172a);
+    }
+    .err-card p.err-msg {
+      margin: 0 0 24px;
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--ink-2, #475569);
+    }
+
+    /* Live network status alert */
+    .net-banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      animation: fadeIn 0.25s ease;
+    }
+    .net-banner.offline {
+      display: flex;
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    .net-banner.restored {
+      display: flex;
+      background: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    .net-banner .ms { font-size: 18px; }
+
+    /* Primary and Secondary Action Buttons */
+    .err-actions {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .err-actions .btn {
+      min-height: 46px;
+      font-size: 14.5px;
+      font-weight: 600;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 12px;
+      text-decoration: none;
+      box-sizing: border-box;
+      transition: transform 0.1s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .err-actions .btn:hover {
+      transform: translateY(-1px);
+    }
+    .err-actions .btn:active {
+      transform: translateY(0);
+    }
+    .err-actions .btn.primary {
+      background: var(--primary, #C90085);
+      color: #ffffff;
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--primary, #C90085) 30%, transparent);
+    }
+    .err-actions .btn.primary:hover {
+      background: var(--primary-hover, #a4006d);
+    }
+
+    /* Quick navigation link group */
+    .err-quicklinks {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line, #f1f5f9);
+      font-size: 13px;
+    }
+    .err-quicklinks a {
+      color: var(--ink-2, #64748b);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: color 0.15s ease;
+    }
+    .err-quicklinks a:hover {
+      color: var(--primary, #C90085);
+    }
+    .err-quicklinks a .ms { font-size: 16px; }
+
+    /* Diagnostic Technical Details Accordion */
+    .err-diagnostics {
+      width: 100%;
+      margin-top: 20px;
+      text-align: left;
+      border-radius: 12px;
+      background: var(--soft, #f8fafc);
+      border: 1px solid var(--line, #e2e8f0);
+      overflow: hidden;
+      font-size: 13px;
+    }
+    .err-diagnostics summary {
+      padding: 12px 16px;
+      font-weight: 500;
+      color: var(--ink-2, #475569);
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: background 0.15s ease;
+    }
+    .err-diagnostics summary:hover {
+      background: color-mix(in srgb, var(--ink) 4%, transparent);
+    }
+    .err-diagnostics summary::-webkit-details-marker { display: none; }
+    .err-diag-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .err-diag-title .ms { font-size: 17px; color: var(--ink-2, #64748b); }
+    .err-diag-body {
+      padding: 14px 16px;
+      border-top: 1px solid var(--line, #e2e8f0);
+      background: #ffffff;
+      display: grid;
+      gap: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #334155;
+    }
+    .diag-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      word-break: break-all;
+    }
+    .diag-label {
+      color: #64748b;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .diag-val {
+      text-align: right;
+      color: #0f172a;
+    }
+    .copy-diag-btn {
+      margin-top: 10px;
+      min-height: 34px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line, #cbd5e1);
+      background: #f8fafc;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: 100%;
+    }
+    .copy-diag-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+      border-color: #94a3b8;
+    }
+    .copy-diag-btn.copied {
+      background: #ecfdf5;
+      color: #047857;
+      border-color: #a7f3d0;
+    }
+    .copy-diag-btn .ms { font-size: 16px; }
+
+    /* Footer & Sponsor Note */
+    .err-foot {
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--ink-2, #64748b);
+      line-height: 1.5;
+    }
+    .err-foot strong { color: var(--ink, #334155); }
+    .err-foot a {
+      color: var(--primary, #C90085);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .err-foot a:hover { text-decoration: underline; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<main class="err-shell" role="main">
+  <!-- Brand Header Logo -->
+  <a class="err-logo-wrap" href="../login/" title="Return to STAND-HF Portal">
+    <img src="../assets/STAND-HF-logo.svg" alt="STAND-HF Registry Portal">
+  </a>
+
+  <!-- Error Presentation Card -->
+  <section class="err-card" role="alert" aria-live="assertive">
+    <div id="errBadge" class="err-badge b-500">
+      <span class="ms" style="font-size:14px">error</span>
+      <span id="errBadgeText">System Error</span>
+    </div>
+
+    <div id="errHalo" class="err-icon-halo" style="color:#dc2626">
+      <span id="errIcon" class="ms">error</span>
+    </div>
+
+    <div id="errCodeDisplay" class="err-code-display" aria-hidden="true">ERROR</div>
+
+    <h1 id="errHeading">Something Went Wrong</h1>
+    <p id="errMsg" class="err-msg">An unexpected issue occurred while loading clinical records. Check your connection or try refreshing the portal.</p>
+
+    <!-- Dynamic Network Status Alert (if offline or just restored) -->
+    <div id="netBanner" class="net-banner" role="status">
+      <span class="ms" id="netBannerIcon">wifi_off</span>
+      <span id="netBannerText">You appear to be offline. Verify your connection.</span>
+    </div>
+
+    <!-- Contextual Action Buttons -->
+    <div class="err-actions">
+      <button type="button" class="btn primary" id="btnPrimary">
+        <span class="ms">refresh</span>
+        <span id="btnPrimaryText">Try again</span>
+      </button>
+
+      <button type="button" class="btn" id="btnBack">
+        <span class="ms">arrow_back</span>
+        <span>Go back</span>
+      </button>
+    </div>
+
+    <!-- Quick Navigation Links -->
+    <nav class="err-quicklinks" aria-label="Quick links">
+      <a href="../login/" id="linkLogin"><span class="ms">login</span>Sign In</a>
+      <a href="../dashboard/" id="linkDashboard"><span class="ms">dashboard</span>Dashboard</a>
+      <a href="../records/" id="linkRecords"><span class="ms">folder_shared</span>Patient Records</a>
+    </nav>
+
+    <!-- Collapsible Diagnostics Details Accordion -->
+    <details class="err-diagnostics" id="diagDetails">
+      <summary>
+        <span class="err-diag-title">
+          <span class="ms">terminal</span>
+          <span>Technical Diagnostics</span>
+        </span>
+        <span class="ms" style="font-size:18px">expand_more</span>
+      </summary>
+      <div class="err-diag-body">
+        <div class="diag-row">
+          <span class="diag-label">Status / Type:</span>
+          <span class="diag-val" id="diagCode">App Data Load Error</span>
+        </div>
+        <div class="diag-row">
+          <span class="diag-label">Requested URL:</span>
+          <span class="diag-val" id="diagFrom">/</span>
+        </div>
+        <div class="diag-row">
+          <span class="diag-label">Network Status:</span>
+          <span class="diag-val" id="diagNet">Online</span>
+        </div>
+        <div class="diag-row">
+          <span class="diag-label">Active Session:</span>
+          <span class="diag-val" id="diagUser">Not signed in</span>
+        </div>
+        <div class="diag-row">
+          <span class="diag-label">Timestamp:</span>
+          <span class="diag-val" id="diagTime">--</span>
+        </div>
+        <button type="button" class="copy-diag-btn" id="btnCopyDiag">
+          <span class="ms">content_copy</span>
+          <span id="copyDiagText">Copy diagnostics for IT support</span>
+        </button>
+      </div>
+    </details>
+  </section>
+
+  <!-- Footer Sponsor & IT Support Details -->
+  <footer class="err-foot">
+    <p><strong>STAND-HF Registry</strong> &bull; Sponsored by <strong>Highnoon Laboratories Limited</strong></p>
+    <p>Need urgent technical assistance? Contact <a href="mailto:support@stand-hf.org?subject=STAND-HF%20Portal%20Issue%20Report">support@stand-hf.org</a></p>
+  </footer>
+</main>
+
+<script src="../assets/btn-loader.js?v=20261018a"></script>
+<script>
+  (function(){
+    var params = new URLSearchParams(location.search);
+    var code = (params.get('code') || params.get('type') || params.get('status') || '').toLowerCase();
+    var customMsg = params.get('msg') || '';
+    var rawFrom = params.get('from') || '';
+    var fromUrl = '';
+
+    // Sanitize destination to ensure only same-origin relative navigation
+    try {
+      if (rawFrom) {
+        var u = new URL(rawFrom, location.href);
+        if (u.origin === location.origin && u.pathname.indexOf('/error/') < 0) {
+          fromUrl = u.pathname + u.search + u.hash;
+        }
+      }
+    } catch(e) {}
+
+    // Check session authentication status
+    var isAuth = false;
+    var userDisplay = 'Guest / Not signed in';
+    try {
+      if (sessionStorage.getItem('standhf_auth') === '1') {
+        isAuth = true;
+        var rawUser = sessionStorage.getItem('standhf_user');
+        if (rawUser) {
+          var uObj = JSON.parse(rawUser);
+          userDisplay = (uObj.name || uObj.username || 'User') + ' (' + (uObj.role || 'clinical') + ')';
+        } else {
+          userDisplay = 'Authenticated Session';
+        }
+      }
+    } catch(e) {}
+
+    // Adjust quick links according to authentication status
+    var linkDashboard = document.getElementById('linkDashboard');
+    var linkRecords = document.getElementById('linkRecords');
+    var linkLogin = document.getElementById('linkLogin');
+    if (!isAuth) {
+      if (linkDashboard) linkDashboard.style.display = 'none';
+      if (linkRecords) linkRecords.style.display = 'none';
+    } else {
+      if (linkLogin) linkLogin.innerHTML = '<span class="ms">logout</span>Switch Account';
+    }
+
+    // References to DOM elements
+    var errBadge = document.getElementById('errBadge');
+    var errBadgeText = document.getElementById('errBadgeText');
+    var errHalo = document.getElementById('errHalo');
+    var errIcon = document.getElementById('errIcon');
+    var errCodeDisplay = document.getElementById('errCodeDisplay');
+    var errHeading = document.getElementById('errHeading');
+    var errMsg = document.getElementById('errMsg');
+    var btnPrimary = document.getElementById('btnPrimary');
+    var btnPrimaryText = document.getElementById('btnPrimaryText');
+    var btnBack = document.getElementById('btnBack');
+    var netBanner = document.getElementById('netBanner');
+    var netBannerIcon = document.getElementById('netBannerIcon');
+    var netBannerText = document.getElementById('netBannerText');
+    var diagCode = document.getElementById('diagCode');
+    var diagFrom = document.getElementById('diagFrom');
+    var diagNet = document.getElementById('diagNet');
+    var diagUser = document.getElementById('diagUser');
+    var diagTime = document.getElementById('diagTime');
+    var btnCopyDiag = document.getElementById('btnCopyDiag');
+    var copyDiagText = document.getElementById('copyDiagText');
+
+    // Populate diagnostic table
+    var nowIso = new Date().toISOString();
+    if (diagTime) diagTime.textContent = new Date().toLocaleTimeString() + ' (' + nowIso.slice(0, 10) + ')';
+    if (diagFrom) diagFrom.textContent = fromUrl || (rawFrom ? rawFrom.slice(0, 60) : 'Direct entry');
+    if (diagUser) diagUser.textContent = userDisplay;
+    if (diagNet) diagNet.textContent = navigator.onLine ? 'Connected (Online)' : 'Disconnected (Offline)';
+
+    // Determine error scenario
+    // 1. 404 Not Found
+    if (code === '404' || code === 'notfound') {
+      document.title = '404 - Page Not Found | STAND-HF';
+      errBadge.className = 'err-badge b-404';
+      errBadge.innerHTML = '<span class="ms" style="font-size:14px">explore_off</span><span>404 &bull; Page Not Found</span>';
+      errHalo.style.color = '#c2410c';
+      errIcon.textContent = 'search_off';
+      if (errCodeDisplay) { errCodeDisplay.textContent = '404'; errCodeDisplay.style.color = '#c2410c'; }
+      errHeading.textContent = 'Page or Record Not Found';
+      errMsg.textContent = customMsg || 'The clinical page, record URL, or file you requested does not exist or may have been relocated.';
+      btnPrimary.className = 'btn primary';
+      btnPrimary.innerHTML = '<span class="ms">' + (isAuth ? 'dashboard' : 'login') + '</span><span>' + (isAuth ? 'Go to Dashboard' : 'Return to Sign In') + '</span>';
+      btnPrimary.onclick = function(){
+        location.replace(isAuth ? '../dashboard/' : '../login/');
+      };
+      if (diagCode) diagCode.textContent = 'HTTP 404 (Not Found)';
+    }
+    // 2. 500 / 502 / Server down
+    else if (code === '500' || code === '502' || code === 'server') {
+      document.title = '500 - Server Error | STAND-HF';
+      errBadge.className = 'err-badge b-500';
+      errBadge.innerHTML = '<span class="ms" style="font-size:14px">dns</span><span>500 &bull; Server Outage</span>';
+      errHalo.style.color = '#b91c1c';
+      errIcon.textContent = 'dns';
+      if (errCodeDisplay) { errCodeDisplay.textContent = '500'; errCodeDisplay.style.color = '#b91c1c'; }
+      errHeading.textContent = 'Registry Server Error';
+      errMsg.textContent = customMsg || 'The STAND-HF central server is temporarily unavailable. All patient records in your local browser cache remain protected.';
+      btnPrimary.className = 'btn primary';
+      btnPrimary.innerHTML = '<span class="ms">refresh</span><span>Try again</span>';
+      btnPrimary.onclick = handleRetry;
+      if (diagCode) diagCode.textContent = 'HTTP 500 (Internal Server Error)';
+    }
+    // 3. 403 / Forbidden / Restricted site
+    else if (code === '403' || code === 'forbidden' || code === 'auth') {
+      document.title = '403 - Access Denied | STAND-HF';
+      errBadge.className = 'err-badge b-auth';
+      errBadge.innerHTML = '<span class="ms" style="font-size:14px">lock</span><span>403 &bull; Restricted Access</span>';
+      errHalo.style.color = '#6d28d9';
+      errIcon.textContent = 'lock';
+      if (errCodeDisplay) { errCodeDisplay.textContent = '403'; errCodeDisplay.style.color = '#6d28d9'; }
+      errHeading.textContent = 'Access Restricted';
+      errMsg.textContent = customMsg || 'Your current investigator role or medical center assignment does not grant permission to view this section.';
+      btnPrimary.className = 'btn primary';
+      btnPrimary.innerHTML = '<span class="ms">' + (isAuth ? 'dashboard' : 'login') + '</span><span>' + (isAuth ? 'Back to Dashboard' : 'Sign in as different user') + '</span>';
+      btnPrimary.onclick = function(){
+        location.replace(isAuth ? '../dashboard/' : '../login/');
+      };
+      if (diagCode) diagCode.textContent = 'HTTP 403 (Forbidden / Unauthorized)';
+    }
+    // 4. Offline / Network disconnected
+    else if (code === 'offline' || code === '503' || code === 'network' || !navigator.onLine) {
+      document.title = 'Connection Lost | STAND-HF';
+      errBadge.className = 'err-badge b-offline';
+      errBadge.innerHTML = '<span class="ms" style="font-size:14px">wifi_off</span><span>Network Offline</span>';
+      errHalo.style.color = '#b45309';
+      errIcon.textContent = 'wifi_off';
+      if (errCodeDisplay) { errCodeDisplay.textContent = 'OFFLINE'; errCodeDisplay.style.color = '#b45309'; }
+      errHeading.textContent = 'No Internet Connection';
+      errMsg.textContent = customMsg || 'Unable to establish a connection with the STAND-HF portal. Check your clinic Wi-Fi or cellular network, then retry.';
+      btnPrimary.className = 'btn primary';
+      btnPrimary.innerHTML = '<span class="ms">refresh</span><span>Reconnect &amp; Try again</span>';
+      btnPrimary.onclick = handleRetry;
+      if (diagCode) diagCode.textContent = 'Network Disconnected (Offline)';
+    }
+    // 5. Default / App bootstrap data error (boot.js) or unspecified error
+    else {
+      document.title = 'System Error | STAND-HF';
+      errBadge.className = 'err-badge b-500';
+      errBadge.innerHTML = '<span class="ms" style="font-size:14px">error</span><span>System Error</span>';
+      errHalo.style.color = '#dc2626';
+      errIcon.textContent = 'error';
+      if (errCodeDisplay) { errCodeDisplay.textContent = 'ERROR'; errCodeDisplay.style.color = '#dc2626'; }
+      errHeading.textContent = 'Something Went Wrong';
+      errMsg.textContent = customMsg || 'An unexpected issue occurred while communicating with the clinical registry. Your patient records remain secure in local storage.';
+      btnPrimary.className = 'btn primary';
+      btnPrimary.innerHTML = '<span class="ms">refresh</span><span>Reload Portal</span>';
+      btnPrimary.onclick = handleRetry;
+      if (diagCode) diagCode.textContent = 'System Data / Bootstrap Error';
+    }
+
+    // Go Back Handler
+    btnBack.onclick = function(){
+      if (fromUrl) {
+        location.replace(fromUrl);
+      } else if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        location.replace(isAuth ? '../dashboard/' : '../login/');
+      }
+    };
+
+    // Retry Handler with button loader integration
+    function handleRetry(){
+      if (window.btnWait) {
+        window.btnWait(btnPrimary, 800, function(){
+          if (fromUrl) {
+            location.replace(fromUrl);
+          } else {
+            location.reload();
+          }
+        });
+      } else {
+        if (fromUrl) location.replace(fromUrl); else location.reload();
+      }
+    }
+
+    // Live Network Online/Offline Listeners
+    function updateNetStatus(){
+      if (!navigator.onLine) {
+        netBanner.className = 'net-banner offline';
+        netBannerIcon.textContent = 'wifi_off';
+        netBannerText.textContent = 'You are currently offline. Check your internet connection.';
+        if (diagNet) diagNet.textContent = 'Disconnected (Offline)';
+      } else {
+        if (code === 'offline' || code === '503') {
+          netBanner.className = 'net-banner restored';
+          netBannerIcon.textContent = 'check_circle';
+          netBannerText.textContent = 'Connection restored! Click Try again to reload.';
+        } else {
+          netBanner.style.display = 'none';
+        }
+        if (diagNet) diagNet.textContent = 'Connected (Online)';
+      }
+    }
+    window.addEventListener('online', updateNetStatus);
+    window.addEventListener('offline', updateNetStatus);
+    updateNetStatus();
+
+    // Copy Diagnostics to Clipboard
+    if (btnCopyDiag) {
+      btnCopyDiag.addEventListener('click', function(){
+        var diagPayload = [
+          'STAND-HF Portal Diagnostic Report',
+          '---------------------------------',
+          'Error Code/Type: ' + (diagCode ? diagCode.textContent : 'N/A'),
+          'Originating URL: ' + (diagFrom ? diagFrom.textContent : location.href),
+          'Network State:   ' + (navigator.onLine ? 'Online' : 'Offline'),
+          'Active Session:  ' + userDisplay,
+          'Timestamp:       ' + nowIso,
+          'Browser/Agent:   ' + navigator.userAgent
+        ].join('\n');
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(diagPayload).then(function(){
+            btnCopyDiag.classList.add('copied');
+            copyDiagText.textContent = 'Diagnostic info copied!';
+            setTimeout(function(){
+              btnCopyDiag.classList.remove('copied');
+              copyDiagText.textContent = 'Copy diagnostics for IT support';
+            }, 3000);
+          }).catch(fallbackCopy);
+        } else {
+          fallbackCopy();
+        }
+
+        function fallbackCopy(){
+          var ta = document.createElement('textarea');
+          ta.value = diagPayload;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand('copy');
+            btnCopyDiag.classList.add('copied');
+            copyDiagText.textContent = 'Diagnostic info copied!';
+            setTimeout(function(){
+              btnCopyDiag.classList.remove('copied');
+              copyDiagText.textContent = 'Copy diagnostics for IT support';
+            }, 3000);
+          } catch(e) {}
+          document.body.removeChild(ta);
+        }
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>

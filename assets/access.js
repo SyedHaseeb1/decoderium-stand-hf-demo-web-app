@@ -73,9 +73,15 @@ function accessStore(){
         s.perms[r]=s.perms[r]||{};
         Object.entries(defs).forEach(([k,v])=>{if(!(k in s.perms[r]))s.perms[r][k]=v});
       });
-      /* Users carry sites only (zones belong to sites). An investigator has strictly 1 site */
+      /* Users carry sites only (zones belong to sites). An investigator has strictly 1 site.
+         Synchronize official email between root property and personal.email */
       s.users.forEach(u=>{
         delete u.zones;
+        if(!u.email && u.personal && u.personal.email) u.email = u.personal.email;
+        if(u.email && (!u.personal || !u.personal.email)){
+          u.personal = u.personal || {};
+          u.personal.email = u.email;
+        }
         if(u.role==='investigator'){
           const stCode=(Array.isArray(u.sites)&&u.sites.length)?u.sites[0]:(u.site||'');
           const found=s.sites.find(st=>st.code===stCode);
@@ -83,7 +89,15 @@ function accessStore(){
         }
       });
       /* Demo accounts added after a browser saved its list are added here, so they can sign in */
-      DEFAULT_ACCESS.users.forEach(u=>{if(!s.users.some(x=>x.username===u.username))s.users.push(JSON.parse(JSON.stringify(u)))});
+      DEFAULT_ACCESS.users.forEach(u=>{
+        var existing = s.users.find(x => x.username === u.username || (x.email && x.email === u.email));
+        if(!existing) s.users.push(JSON.parse(JSON.stringify(u)));
+        else if(!existing.email && u.email){
+          existing.email = u.email;
+          existing.personal = existing.personal || {};
+          existing.personal.email = u.email;
+        }
+      });
       return s;
     }
   }catch(e){}
@@ -93,6 +107,20 @@ function saveAccess(s){if(s)s._migrated_inv_export_v2=true;try{localStorage.setI
 
 const sessionVal=k=>{try{return sessionStorage.getItem(k)||''}catch(e){return ''}};
 function session(){return{username:sessionVal('standhf_username'),name:sessionVal('standhf_user'),role:sessionVal('standhf_role')}}
+
+/* Locate user by either username handle OR official email (case-insensitive) */
+function findUser(identifier){
+  if(!identifier) return null;
+  var id = String(identifier).toLowerCase().trim();
+  var s = accessStore();
+  if(!s || !Array.isArray(s.users)) return null;
+  return s.users.find(function(x){
+    var uMatch = (x.username || '').toLowerCase().trim() === id;
+    var eMatch = (x.email || (x.personal && x.personal.email) || '').toLowerCase().trim() === id;
+    return uMatch || eMatch;
+  }) || null;
+}
+
 function currentUser(){
   const s=session();
   const u=(s.username||'').toLowerCase().trim();
@@ -101,7 +129,8 @@ function currentUser(){
   if(!store||!Array.isArray(store.users))return null;
   return store.users.find(x=>{
     const xu=(x.username||'').toLowerCase().trim();
-    if(u&&xu===u)return true;
+    const xe=(x.email||(x.personal&&x.personal.email)||'').toLowerCase().trim();
+    if(u&&(xu===u||xe===u))return true;
     if(name&&(x.name||'').toLowerCase().trim()===name)return true;
     return false;
   })||null;
@@ -112,32 +141,36 @@ function generateTempPassword(){
   return 'Stand#' + num;
 }
 
-function updateUserPassword(username, newPass){
+function updateUserPassword(identifier, newPass){
   var s = accessStore();
-  var u = s.users.find(function(x){ return x.username === username; });
+  var u = findUser(identifier);
   if(!u) return false;
-  u.password = newPass;
-  u.mustChangePassword = false;
-  u.passwordUpdatedAt = new Date().toISOString();
+  var live = s.users.find(function(x){ return x.username === u.username; });
+  if(!live) return false;
+  live.password = newPass;
+  live.mustChangePassword = false;
+  live.passwordUpdatedAt = new Date().toISOString();
   saveAccess(s);
   return true;
 }
 
-function updateUserProfile(username, updates){
+function updateUserProfile(identifier, updates){
   var s = accessStore();
-  var u = s.users.find(function(x){ return x.username === username; });
+  var u = findUser(identifier);
   if(!u) return false;
-  u.personal = u.personal || {};
-  if(updates.phone !== undefined) u.personal.phone = updates.phone;
-  if(updates.avatar !== undefined) u.avatar = updates.avatar;
-  if(updates.profileUpdatedAt !== undefined) u.profileUpdatedAt = updates.profileUpdatedAt;
+  var live = s.users.find(function(x){ return x.username === u.username; });
+  if(!live) return false;
+  live.personal = live.personal || {};
+  if(updates.phone !== undefined) live.personal.phone = updates.phone;
+  if(updates.email !== undefined) { live.personal.email = updates.email; live.email = updates.email; }
+  if(updates.avatar !== undefined) live.avatar = updates.avatar;
+  if(updates.profileUpdatedAt !== undefined) live.profileUpdatedAt = updates.profileUpdatedAt;
   saveAccess(s);
   return true;
 }
 
-function verifyUserPassword(username, pass){
-  var s = accessStore();
-  var u = s.users.find(function(x){ return x.username === username; });
+function verifyUserPassword(identifier, pass){
+  var u = findUser(identifier);
   if(!u) return false;
   if(!u.password) return true; // legacy demo accounts without explicit password
   return u.password === pass;

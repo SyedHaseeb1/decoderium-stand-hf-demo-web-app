@@ -188,30 +188,6 @@
   document.getElementById('navOut').onclick=()=>window.standhfSignOut(LOGIN);
 })();
 
-/* Central loader: shown until the page is ready, then removed */
-(function(){
-  var loader=document.createElement('div');
-  loader.className='loader';loader.id='loader';loader.setAttribute('role','status');loader.setAttribute('aria-label','Loading');
-  loader.innerHTML='<span class="spinner" aria-hidden="true"></span>';
-  if(document.body)document.body.appendChild(loader);
-  var hide=function(){loader.classList.add('done');setTimeout(function(){loader.remove()},250)};
-  if(document.readyState==='complete')hide();
-  else{window.addEventListener('load',hide);setTimeout(hide,1500)}
-})();
-
-/* Show the central loader for a moment, then run the action (used by Load demo) */
-window.withLoader=function(ms,fn){
-  var l=document.createElement('div');
-  l.className='loader';l.setAttribute('role','status');l.setAttribute('aria-label','Loading');
-  l.innerHTML='<span class="spinner" aria-hidden="true"></span>';
-  document.body.appendChild(l);
-  setTimeout(function(){
-    fn();
-    l.classList.add('done');
-    setTimeout(function(){l.remove()},250);
-  },ms);
-};
-
 /* Dropdowns: a touch or click outside an open dropdown closes it (so only one stays open) */
 document.addEventListener('pointerdown',function(e){
   var t=e.target;
