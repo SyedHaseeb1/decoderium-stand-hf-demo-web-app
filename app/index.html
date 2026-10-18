@@ -15,10 +15,12 @@
     /* Critical styles: paint the layout and placeholders before the full stylesheet arrives */
     :root { --bg: #eceef1; --card: #ffffff; --soft: #f5f6f8; --soft-2: #e9ecf1; --line: #e3e6eb; --radius: 24px; }
     body { margin: 0; min-height: 100vh; background: var(--bg); font: 14px/1.45 'Roboto', system-ui, sans-serif; }
+    /* No open/close animation while the menu is set to its saved state on load */
+    body.booting .app { transition: none !important; }
     /* Desktop layout only; phones and tablets use the rules in base.css */
     @media (min-width: 1025px) {
-      .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 16px; padding: 16px; min-height: 100vh; align-items: start; }
-      .side { position: sticky; top: 16px; height: calc(100vh - 32px); background: var(--card); border-radius: var(--radius); }
+      .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 16px; padding: 8px; min-height: 100vh; align-items: start; }
+      .side { position: sticky; top: 8px; height: calc(100vh - 16px); background: var(--card); border-radius: var(--radius); }
     }
     .main { min-width: 0; }
     .frame-wrap { position: relative; }
@@ -34,7 +36,7 @@
     @keyframes skel-in { from { opacity: 0; } to { opacity: 1; } }
     /* The content frame fills the space under the header */
     .frame-wrap { position: relative; }
-    #view { display: block; width: 100%; height: calc(100vh - 112px); min-height: 480px; border: 0; background: transparent; }
+    #view { display: block; width: 100%; height: 100vh; min-height: 480px; border: 0; background: transparent; }
     /* A dialog in the frame dims and blurs the whole window: the overlay covers the header and menu seamlessly */
     body.dim::before {
       content: '';
@@ -56,6 +58,11 @@
     body.dim #view { position: relative; z-index: 60; }
   </style>
   <script>
+    /* Defined before anything else loads, so a screen's "waiting" and "ready" signals are never missed */
+    window.standhfShellWaiting = function () { var v = document.getElementById('view'); if (v) v.classList.remove('pending'); };
+    window.standhfShellReady = function () { var v = document.getElementById('view'); if (v) v.classList.remove('pending'); };
+  </script>
+  <script>
     /* Auth gate: the shell needs a signed-in session, like every other page */
     try {
       if (sessionStorage.getItem('standhf_auth') !== '1') location.replace('../login/');
@@ -64,7 +71,7 @@
     }
   </script>
 </head>
-<body data-page="app">
+<body data-page="app" class="booting">
 <div class="app">
 
   <aside class="side" id="side" aria-label="Main navigation"><div class="skel-side" aria-hidden="true"><span class="skel skel-val" style="width:150px;height:44px;border-radius:12px;margin-bottom:10px"></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-item" ></span><span class="skel skel-side-label" ></span><span class="skel skel-side-item" ></span></div><span class="sr-only">Loading menu</span></aside>
@@ -220,7 +227,29 @@
     window.standhfShellWaiting = function () { view.classList.remove('pending'); };
     window.standhfShellReady = function () { view.classList.remove('pending'); };
 
+    /* A click anywhere on the screen closes the header's notification and profile panels */
+    function closeHeaderPanels() {
+      document.querySelectorAll('.notify-panel:not([hidden]), .profile-panel:not([hidden])').forEach(function (el) { el.hidden = true; });
+    }
+    /* The frame is as tall as its screen, so the whole page (header included) scrolls together */
+    var frameSize = null;
+    function fit() {
+      var d = view.contentDocument;
+      if (!d || !d.documentElement || view.getAttribute('src') === 'about:blank') return;
+      /* Screens size their lists from the window height; pass the shell's real window height in */
+      d.documentElement.style.setProperty('--shell-vh', window.innerHeight + 'px');
+      /* The body is as tall as its content (no full-window minimum inside the shell), so no reset is needed */
+      view.style.height = Math.max(480, Math.ceil(d.body.getBoundingClientRect().height)) + 'px';
+    }
+    window.addEventListener('resize', fit);
     view.addEventListener('load', function () {
+      if (frameSize) frameSize.disconnect();
+      fit();
+      try {
+        frameSize = new ResizeObserver(fit);
+        frameSize.observe(view.contentDocument.body);
+      } catch (e) {}
+      try { view.contentWindow.addEventListener('pointerdown', closeHeaderPanels, true); } catch (e) {}
       markActive();
       var d = view.contentDocument;
       var count = d ? d.querySelectorAll('dialog[open]').length : 0;
@@ -238,6 +267,8 @@
     }
     window.addEventListener('hashchange', route);
     route();
+    /* Menu state is applied; allow the menu animation again after the first paint */
+    requestAnimationFrame(function () { requestAnimationFrame(function () { document.body.classList.remove('booting'); }); });
   })();
 </script>
 </body>

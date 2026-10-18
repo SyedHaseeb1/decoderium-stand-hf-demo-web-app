@@ -156,7 +156,7 @@
       const codes = (sites || []).map(s => s.code);
       const totals = months.map(m => Object.values(m.counts).reduce((x, y) => x + y, 0));
       const max = Math.max(1, ...totals);
-      const W = opts.width || 620, H = opts.height || 240, pad = 36, top = 16;
+      const W = opts.width || 620, H = opts.height || 240, pad = 36, top = 28; /* room above the tallest bar for its value label */
       const gw = (W - pad - 10) / 6, bw = Math.min(36, gw * 0.55);
 
       let g = '';

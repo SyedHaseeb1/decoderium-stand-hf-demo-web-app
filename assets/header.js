@@ -72,7 +72,12 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
   /* Profile: round icon opens the profile panel */
   var pp=document.getElementById('profPanel'), pb=document.getElementById('profBtn');
   pb.addEventListener('click',function(e){e.stopPropagation();pp.hidden=!pp.hidden;pb.setAttribute('aria-expanded',String(!pp.hidden))});
-  document.addEventListener('click',function(e){if(!e.target.closest('.profile-wrap')){pp.hidden=true;pb.setAttribute('aria-expanded','false')}});
+  document.addEventListener('pointerdown',function(e){
+    if(!pp.hidden && !e.target.closest('.profile-wrap')){
+        pp.hidden=true;
+        pb.setAttribute('aria-expanded','false');
+    }
+  }, true);
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){pp.hidden=true;pb.setAttribute('aria-expanded','false')}});
 
   /* Connection */
@@ -146,7 +151,7 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
   window.addEventListener('offline',function(){applyNet(false,false)});
   setInterval(function(){
     probeNet().then(function(on){applyNet(on,false)});
-  },5000);
+  },15000);
   probeNet().then(function(on){applyNet(on,true)});
   /* Notifications: the dummy list for this user, limited to the sites they may see */
   var ICON={deleted:'delete',due:'event',overdue:'warning',missing:'event_busy',admin:'person_add',info:'description'};
@@ -216,7 +221,11 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
     var r=readSet();if(r.indexOf(n.id)<0){r.push(n.id);writeRead(r)}
     paintNotes();
     openNote(n)});
-  document.addEventListener('click',function(e){if(!e.target.closest('.notify'))panel.hidden=true});
+  document.addEventListener('pointerdown',function(e){
+    if(!panel.hidden && !e.target.closest('.notify')){
+        panel.hidden=true;
+    }
+  }, true);
   document.addEventListener('keydown',function(e){if(e.key==='Escape')panel.hidden=true});
   paintNotes();
 

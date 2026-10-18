@@ -17,6 +17,18 @@
   const page=document.body.dataset.page;
   /* Which nav item is active: admin and dashboard sections follow the URL hash */
   const pageKey=()=>{
+    /* Inside the app shell the highlight follows the screen in the frame (never a default screen) */
+    if(page==='app'){
+      const v=document.getElementById('view');
+      const w=v&&v.contentWindow;
+      if(!w||!w.location||w.location.href==='about:blank') return null;
+      if(w.standhfDashNavKey) return w.standhfDashNavKey;
+      if(typeof w.standhfIsNewMode==='function'&&w.standhfIsNewMode()) return 'add';
+      if(/\/records\/?$/.test(w.location.pathname)) return 'records';
+      if(/\/admin\/?$/.test(w.location.pathname)){const h=w.location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:'adm-users'}
+      if(/\/dashboard\/?$/.test(w.location.pathname)) return 'dashboard';
+      return null;
+    }
     if(page==='admin'){const h=location.hash.slice(1);return ['users','sites','perms'].includes(h)?'adm-'+h:'adm-users'}
     if(page==='dashboard'){
       if(window.standhfDashNavKey) return window.standhfDashNavKey;  // set by the open tab

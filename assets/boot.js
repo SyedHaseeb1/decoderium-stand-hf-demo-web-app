@@ -39,6 +39,10 @@
     var shellSignal=function(name){ try{ if(window.parent && window.parent[name]) window.parent[name](); }catch(e){} };
     var shellReady=function(){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ shellSignal('standhfShellReady'); }); }); };
     if(apiDelay>0) shellSignal('standhfShellWaiting');
+    /* No wait on this visit: drop the shimmer markup now, so it can never show while the screen draws */
+    if(embedded && !(apiDelay>0)){
+      document.querySelectorAll('.skel, .skel-page, .skel-hdr, .skel-side, .skel-item').forEach(function(n){ n.remove(); });
+    }
     /* Dropdowns in the screen: opening one closes the others (nav.js does this only outside the shell) */
     document.addEventListener('pointerdown',function(e){
       var t=e.target;

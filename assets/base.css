@@ -386,7 +386,7 @@ button .ms {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   gap: 16px;
-  padding: 16px;
+  padding: 8px;
   min-height: 100vh;
   align-items: start;
   transition: grid-template-columns 0.2s ease;
@@ -398,8 +398,8 @@ button .ms {
 
 .side {
   position: sticky;
-  top: 16px;
-  height: calc(100vh - 32px);
+  top: 8px;
+  height: calc(100vh - 16px);
   background: var(--card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -2552,9 +2552,8 @@ button.list-head:hover {
 }
 
 .pane-head-sticky {
-  position: sticky;
-  top: 0;
-  z-index: 130; /* above every dropdown list (the GDMT lists use 120), so a list never covers the sticky header */
+  position: relative;
+  z-index: 1;
   background: var(--card);
   margin: 0 -24px 18px;
   padding: 16px 24px 14px;
@@ -3815,9 +3814,11 @@ dialog.app-dialog::backdrop {
   }
 }
 
-/* Patient list as a side column that folds to a rail */
-.lay:has(> .pl.collapsed) {
-  grid-template-columns: 64px minmax(0, 1fr);
+/* Patient list as a side column that folds to a rail (wider screens only; phones fold in a header row) */
+@media (min-width: 721px) {
+  .lay:has(> .pl.collapsed) {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
 }
 
 @media (min-width: 721px) {
@@ -9163,8 +9164,11 @@ button.is-loading > :not(.btn-spinner) {
 
 /* Shimmer shapes that mirror the real screens (dashboard and records) */
 .skel-circle { width: 44px; height: 44px; border-radius: 50%; flex: 0 0 44px; }
+@media (max-width: 640px) {
+  .skel-circle { width: 32px; height: 32px; flex: 0 0 32px; }
+}
 .skel-sq { width: 44px; height: 44px; border-radius: 12px; flex: 0 0 44px; }
-.skel-ring { width: 120px; height: 120px; border-radius: 50%; margin: 6px auto 0; }
+.skel-ring { width: min(120px, 100%); aspect-ratio: 1; height: auto; border-radius: 50%; margin: 6px auto 0; }
 .skel-bars { display: flex; align-items: flex-end; gap: 18px; height: 220px; padding: 0 12px; }
 .skel-bars .skel { flex: 1 1 0; min-width: 0; border-radius: 8px 8px 0 0; }
 .skel-chip { height: 24px; width: 92px; border-radius: 999px; flex: 0 0 auto; }
@@ -9201,6 +9205,15 @@ html.embedded .side,
 html.embedded #app-header { display: none !important; }
 html.embedded .app { grid-template-columns: minmax(0, 1fr) !important; }
 html.embedded .main { min-width: 0; }
+/* Inside the shell the frame is sized to its content, so the screen must not force a full-window minimum height */
+html.embedded body, html.embedded .app { min-height: 0; }
+/* The frame is sized to its content and never scrolls itself, so a touch on it scrolls the page at once */
+html.embedded, html.embedded body { overflow: hidden; }
+/* Lists scroll within the shell window, not the (taller) frame */
+@media (min-width: 721px) {
+  /* Same height as the side menu (the window minus its 16px margins) */
+  html.embedded .pl:not(.collapsed) { height: calc(var(--shell-vh, 100vh) - 16px); max-height: calc(var(--shell-vh, 100vh) - 16px); }
+}
 
 /* Page headers on phones: let the title row shrink and wrap instead of running off the screen */
 @media (max-width: 1024px) {
@@ -9208,3 +9221,25 @@ html.embedded .main { min-width: 0; }
   .hello p { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
   .hello h1 { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 }
+
+/* Phones inside the shell: the open patient list is shorter, so it scrolls within its own panel */
+@media (max-width: 720px) {
+  /* One scroller only, inside the card: the card and its header stay put; just the patient rows scroll */
+  html.embedded .pl:not(.collapsed) { max-height: none; overflow: visible; }
+  html.embedded .pl:not(.collapsed) .pl-scroll { max-height: 380px; overflow-y: auto; }
+  /* The card keeps its rounded top: the header that sits on it takes the same top corners */
+  html.embedded .pl:not(.collapsed) .list-head { border-radius: var(--radius) var(--radius) 0 0; }
+}
+
+/* Shimmer on phones: tabs wrap, the progress rings stack, and the rings and bars are smaller */
+@media (max-width: 720px) {
+  .skel-tabs { flex-wrap: wrap; }
+  .skel-tabs { max-width: 100%; box-sizing: border-box; }
+  .skel-tabs .skel { flex: 1 1 30%; width: auto !important; min-width: 0; }
+  .skel-ring { width: 96px; height: 96px; }
+  .skel-bars { height: 160px; }
+}
+
+/* Dashboard placeholders: one layout per role (investigator, or Super Admin and Central Team) */
+html[data-skel-role="admin"] .skel-role-inv { display: none; }
+html:not([data-skel-role="admin"]) .skel-role-admin { display: none; }
