@@ -484,10 +484,10 @@ function ptVisitChip(p,k,n){
     iconHtml='<span class="chip-ico-done"><i class="ms">check</i></span>';
     cls='Done Completed';
   } else if(s==='Due'){
-    /* Due is inside the visit window: amber (yellow) like Overdue; becomes Overdue once past the window */
+    /* Due is inside the visit window: yellow; becomes Overdue once past the window */
     label='Due';
     iconHtml='<i class="ms chip-ico-warn">error</i>';
-    cls='Due Overdue';
+    cls='Due';
   } else if(s==='In Progress'){
     label='In Progress';
     iconHtml='<i class="ms chip-ico-clock">schedule</i>';

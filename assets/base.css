@@ -2438,15 +2438,15 @@ button.list-head:hover {
 
 .chip.InProgress,
 .chip.In {
-  background: #eaf4fe !important;
-  color: #0778fa !important;
+  background: #dee8f1 !important;
+  color: #0772ee !important;
   border: 1px solid rgba(7, 120, 250, 0.18) !important;
 }
 .chip.InProgress .chip-lbl,
 .chip.In .chip-lbl,
 .chip.InProgress b,
 .chip.In b {
-  color: #0778fa !important;
+  color: #0772ee !important;
 }
 
 /* Overdue / Missed */
@@ -2532,15 +2532,15 @@ button.list-head:hover {
 .pt.on .chip.In,
 [data-theme="logo"] .pt.on .chip.InProgress,
 [data-theme="logo"] .pt.on .chip.In {
-  background: #16283d !important;
-  color: #58b6ef !important;
+  background: #275f99 !important;
+  color: #ffffff !important;
   border: 1px solid rgba(96, 165, 250, 0.32) !important;
 }
 .pt.on .chip.InProgress .chip-ico-clock,
 .pt.on .chip.In .chip-ico-clock,
 [data-theme="logo"] .pt.on .chip.InProgress .chip-ico-clock,
 [data-theme="logo"] .pt.on .chip.In .chip-ico-clock {
-  color: #58b6ef !important;
+  color: #ffffff !important;
 }
 .pt.on .chip.InProgress .chip-lbl,
 .pt.on .chip.In .chip-lbl,
@@ -2554,7 +2554,7 @@ button.list-head:hover {
 [data-theme="logo"] .pt.on .chip.In b,
 [data-theme="logo"] .pt.on .chip.InProgress span,
 [data-theme="logo"] .pt.on .chip.In span {
-  color: #58b6ef !important;
+  color: #ffffff !important;
 }
 
 /* Overdue / Missed */
@@ -8927,4 +8927,187 @@ label.search input[type="search"]:focus-visible {
 [data-theme="logo"] .pt.on .pt-sync.synced .pt-sync-text,
 [data-theme="logo"] .pt.on .pt-sync.synced span:not(.ms) {
   color: #e5e7eb !important;
+}
+
+/* Patient list colours (per reference screenshot): black selected card, solid green Completed,
+   grey Not Started on resting cards, navy Not Started on the selected card */
+.pt.on,
+[data-theme="logo"] .pt.on {
+  background: #000000;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+.pt.on .pt-chips .chip.Completed,
+.pt.on .pt-chips .chip.Done {
+  background: #26b06a !important;
+}
+
+.pt.on .pt-chips .chip.NotStarted,
+.pt.on .pt-chips .chip.Not {
+  background: #25405f !important;
+}
+.pt.on .pt-chips .chip.NotStarted .chip-lbl,
+.pt.on .pt-chips .chip.Not .chip-lbl,
+.pt.on .pt-chips .chip.NotStarted b,
+.pt.on .pt-chips .chip.Not b,
+.pt.on .pt-chips .chip.NotStarted span,
+.pt.on .pt-chips .chip.Not span {
+  color: #e2ecf7 !important;
+}
+
+.pt .pt-chips .chip.Completed,
+.pt .pt-chips .chip.Done {
+  background: #1f9d5c !important;
+  color: #ffffff !important;
+}
+.pt .pt-chips .chip.Completed .chip-lbl,
+.pt .pt-chips .chip.Completed b,
+.pt .pt-chips .chip.Completed span,
+.pt .pt-chips .chip.Done .chip-lbl,
+.pt .pt-chips .chip.Done b,
+.pt .pt-chips .chip.Done span {
+  color: #ffffff !important;
+}
+
+.pt .pt-chips .chip.NotStarted,
+.pt .pt-chips .chip.Not {
+  background: #dfe2e7 !important;
+  color: #3b4350 !important;
+}
+.pt .pt-chips .chip.NotStarted .chip-lbl,
+.pt .pt-chips .chip.Not .chip-lbl,
+.pt .pt-chips .chip.NotStarted b,
+.pt .pt-chips .chip.Not b,
+.pt .pt-chips .chip.NotStarted span,
+.pt .pt-chips .chip.Not span {
+  color: #3b4350 !important;
+}
+
+.pt.on .pt-chips .chip.NotStarted,
+.pt.on .pt-chips .chip.Not,
+[data-theme="logo"] .pt.on .pt-chips .chip.NotStarted,
+[data-theme="logo"] .pt.on .pt-chips .chip.Not {
+  background: #1f3247 !important;
+  color: #c9d8e8 !important;
+}
+.pt.on .pt-chips .chip.NotStarted .chip-lbl,
+.pt.on .pt-chips .chip.Not .chip-lbl,
+.pt.on .pt-chips .chip.NotStarted b,
+.pt.on .pt-chips .chip.Not b,
+.pt.on .pt-chips .chip.NotStarted span,
+.pt.on .pt-chips .chip.Not span {
+  color: #c9d8e8 !important;
+}
+
+/* Patient list text: pure black on resting cards, pure white on the selected card */
+.pt b.pt-id,
+.pt-head b,
+.pt-name,
+.pt-inv,
+.pt-updated,
+.pt .pt-chips .chip.NotStarted .chip-lbl,
+.pt .pt-chips .chip.Not .chip-lbl,
+.pt .pt-chips .chip.NotStarted b,
+.pt .pt-chips .chip.Not b,
+.pt .pt-chips .chip.NotStarted span,
+.pt .pt-chips .chip.Not span {
+  color: #000000 !important;
+}
+
+.pt.on,
+[data-theme="logo"] .pt.on,
+.pt.on b.pt-id,
+.pt.on .pt-head b,
+.pt.on .pt-name,
+.pt.on .pt-inv,
+.pt.on .pt-updated,
+.pt.on .pt-chips .chip.NotStarted,
+.pt.on .pt-chips .chip.Not,
+.pt.on .pt-chips .chip.NotStarted .chip-lbl,
+.pt.on .pt-chips .chip.Not .chip-lbl,
+.pt.on .pt-chips .chip.NotStarted b,
+.pt.on .pt-chips .chip.Not b,
+.pt.on .pt-chips .chip.NotStarted span,
+.pt.on .pt-chips .chip.Not span {
+  color: #ffffff !important;
+}
+
+/* Due / Overdue / Missed chips on patient cards: yellow = window open, red = late, solid red = missed */
+.pt .pt-chips .chip.Due {
+  background: #fff1a8 !important;
+  color: #7a5c00 !important;
+}
+.pt .pt-chips .chip.Due b,
+.pt .pt-chips .chip.Due span {
+  color: #7a5c00 !important;
+}
+
+.pt .pt-chips .chip.Overdue {
+  background: #fdecec !important;
+  color: #b42318 !important;
+}
+.pt .pt-chips .chip.Overdue b,
+.pt .pt-chips .chip.Overdue span {
+  color: #b42318 !important;
+}
+
+.pt .pt-chips .chip.Missed {
+  background: #b42318 !important;
+  color: #ffffff !important;
+}
+.pt .pt-chips .chip.Missed b,
+.pt .pt-chips .chip.Missed span {
+  color: #ffffff !important;
+}
+
+.pt.on .pt-chips .chip.Due {
+  background: #3a2e0f !important;
+  color: #fcd34d !important;
+}
+.pt.on .pt-chips .chip.Due b,
+.pt.on .pt-chips .chip.Due span {
+  color: #fcd34d !important;
+}
+
+.pt.on .pt-chips .chip.Overdue {
+  background: #3a1616 !important;
+  color: #f87171 !important;
+}
+.pt.on .pt-chips .chip.Overdue b,
+.pt.on .pt-chips .chip.Overdue span {
+  color: #f87171 !important;
+}
+
+.pt.on .pt-chips .chip.Missed {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
+.pt.on .pt-chips .chip.Missed b,
+.pt.on .pt-chips .chip.Missed span {
+  color: #ffffff !important;
+}
+
+/* Chip colours per reference screenshots: Overdue is solid red with white text on both card states,
+   Due on the selected card is bright yellow with dark text */
+.pt .pt-chips .chip.Overdue,
+.pt.on .pt-chips .chip.Overdue {
+  background: #b3261e !important;
+  color: #ffffff !important;
+}
+.pt .pt-chips .chip.Overdue .chip-lbl,
+.pt .pt-chips .chip.Overdue b,
+.pt .pt-chips .chip.Overdue span,
+.pt.on .pt-chips .chip.Overdue .chip-lbl,
+.pt.on .pt-chips .chip.Overdue b,
+.pt.on .pt-chips .chip.Overdue span {
+  color: #ffffff !important;
+}
+
+.pt.on .pt-chips .chip.Due {
+  background: #facc15 !important;
+  color: #1c1917 !important;
+}
+.pt.on .pt-chips .chip.Due b,
+.pt.on .pt-chips .chip.Due span {
+  color: #1c1917 !important;
 }
