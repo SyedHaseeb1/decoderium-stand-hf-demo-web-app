@@ -41,26 +41,36 @@ function accessStore(){
     if(s&&Array.isArray(s.sites)&&Array.isArray(s.users)&&s.perms){
       if(!Array.isArray(s.zones))s.zones=['North','Central','South'];
       s.sites.forEach(st=>{if(!st.zone)st.zone='Central'});
-      /* Ensure central role is strictly read-only monitoring + export */
-      if(s.perms.central){
-        delete s.perms.central.assign_investigators;
-        delete s.perms.central.add_patient;
-        delete s.perms.central.enter_data;
-        delete s.perms.central.mark_complete;
-        delete s.perms.central.load_demo;
-        delete s.perms.central.clear_all;
-        s.perms.central.view_all_sites=true;
-        s.perms.central.export_data=true;
-      }
       /* Ensure superadmin role has no clinical patient form modification permissions */
       if(s.perms.superadmin){
         SUPER_NO.forEach(p=>{delete s.perms.superadmin[p]});
         s.perms.superadmin.view_all_sites=true;
         s.perms.superadmin.export_data=true;
-        s.perms.superadmin.assign_investigators=true;
         s.perms.superadmin.manage_users=true;
         s.perms.superadmin.manage_sites=true;
       }
+      /* Ensure central role has essential defaults if not set */
+      if(s.perms.central){
+        // Central Team sees every site; locked on (not editable in the matrix)
+        s.perms.central.view_all_sites = true;
+        if(s.perms.central.export_data === undefined) s.perms.central.export_data = true;
+        s.perms.central.load_demo = s.perms.central.load_demo === undefined ? true : s.perms.central.load_demo;
+        s.perms.central.clear_all = s.perms.central.clear_all === undefined ? true : s.perms.central.clear_all;
+      }
+      /* Site Investigators are locked to their assigned site(s); this cannot be enabled from the matrix */
+      if(s.perms.investigator) s.perms.investigator.view_all_sites = false;
+      /* Visit data entry: Site Investigators always on, Central Team always off (locked in the matrix) */
+      if(s.perms.investigator) s.perms.investigator.enter_data = true;
+      if(s.perms.central) s.perms.central.enter_data = false;
+      /* Adding patients: Central Team always off (locked in the matrix) */
+      if(s.perms.central) s.perms.central.add_patient = false;
+      /* Ensure other roles have essential defaults if not set */
+      Object.keys(s.perms).forEach(role => {
+          if(role !== 'central' && role !== 'superadmin'){
+              if(s.perms[role].load_demo === undefined) s.perms[role].load_demo = true;
+              if(s.perms[role].clear_all === undefined) s.perms[role].clear_all = true;
+          }
+      });
       /* One-time migration: default investigator role export_data to false (per Developer Brief v2), while preserving any subsequent admin toggles */
       if(!s._migrated_inv_export_v2){
         if(s.perms.investigator) delete s.perms.investigator.export_data;
@@ -180,16 +190,25 @@ function verifyUserPassword(identifier, pass){
 function can(perm){
   const r=session().role;
   if(!r)return false;
+  if(r==='investigator' && perm==='mark_complete') return true;
+  // Site Investigators never see patients outside their assigned site(s)
+  if(r==='investigator' && perm==='view_all_sites') return false;
+  
+  // 'enter_data' allows entry and edit
+  if(perm==='enter_data') return r==='investigator';
+
   if(r==='superadmin'){
     if(SUPER_NO.includes(perm))return false;
     return true;
   }
-  if(r==='central'){
-    /* Read-only super admins: can see everything and export, but cannot edit or create */
-    if(perm==='view_all_sites'||perm==='export_data'||perm==='view_admin')return true;
-    return false;
-  }
+  
   const perms=accessStore().perms[r]||{};
+  if(r==='central'){
+    // Central Team sees every site; this is locked on in the matrix
+    if(perm==='view_all_sites'||perm==='view_admin') return true;
+    return !!perms[perm];
+  }
+  
   return !!perms[perm];
 }
 
@@ -304,9 +323,8 @@ function recordVisible(p){
   const r=session().role;
   if(r==='superadmin') return true;
   if(r==='central'){
-    const allowed=userAssignedSites(currentUser());
-    if(!allowed.length) return true;
-    return !p.site || allowed.includes(p.site);
+    if(can('view_all_sites')) return true;
+    return !!p.site && userAssignedSites(currentUser()).includes(p.site);
   }
   if(r==='investigator'){
     const allowed=userAssignedSites(currentUser());

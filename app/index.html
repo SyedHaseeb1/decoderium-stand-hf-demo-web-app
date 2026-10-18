@@ -145,6 +145,13 @@
     }
 
     function show(screen, search, hash) {
+      // Permission Gate: Enforce export_data for export route
+      if (screen === 'dashboard' && hash === '#export' && typeof can === 'function' && !can('export_data')) {
+        toast('Permission denied: You do not have data export permissions.');
+        show('dashboard', '', ''); // Redirect to overview
+        return;
+      }
+
       var target = new URL(SCREENS[screen] + (search || '') + (hash || ''), location.href).href;
       /* Compare with the address the frame is really on (a screen can move the frame itself) */
       var now = view.contentWindow && view.contentWindow.location ? view.contentWindow.location.href : '';

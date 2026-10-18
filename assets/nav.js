@@ -197,6 +197,17 @@
   window.addEventListener('hashchange',window.standhfUpdateNav);
   window.addEventListener('popstate',window.standhfUpdateNav);
 
+  /* Show or hide Data Export when an admin changes the export_data permission */
+  const exportItem={key:'export',label:'Data Export',href:DASH+'#export',icon:'file_download'};
+  window.addEventListener('storage',e=>{
+    if(e.key!=='standhf_access_v1'||compact)return;
+    const want=(typeof can==='function')?can('export_data'):!isInv;
+    const have=root.querySelector('a.nav[data-key="export"]');
+    if(want&&!have){const sites=root.querySelector('a.nav[data-key="sites"]');if(sites)sites.insertAdjacentHTML('afterend',link(exportItem))}
+    else if(!want&&have)have.remove();
+    window.standhfUpdateNav();
+  });
+
   document.getElementById('navOut').onclick=()=>window.standhfSignOut(LOGIN);
 })();
 

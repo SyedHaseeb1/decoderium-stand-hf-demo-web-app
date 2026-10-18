@@ -9245,13 +9245,16 @@ html[data-skel-role="admin"] .skel-role-inv { display: none; }
 html:not([data-skel-role="admin"]) .skel-role-admin { display: none; }
 
 /* Dialogs inside the shell: centred on the visible part of the window (the shell sets --dlg-top) */
+/* No transform here: a transformed dialog becomes the containing block for position:fixed
+   children, which shifted the combobox dropdowns away from their fields */
 html.embedded dialog[open] {
-  top: var(--dlg-top, 50%) !important;
-  bottom: auto !important;
-  left: 50% !important;
-  right: auto !important;
-  transform: translate(-50%, -50%);
-  margin: 0 !important;
+  /* Centre on --dlg-top: the free space runs from this top edge down to the frame bottom */
+  top: calc(2 * var(--dlg-top, 50vh) - 100vh) !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: fit-content;
+  margin: auto !important;
 }
 
 /* Toasts inside the shell sit at the bottom of the visible window (the shell sets --snack-bottom) */

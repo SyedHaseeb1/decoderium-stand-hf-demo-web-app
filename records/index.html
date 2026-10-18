@@ -1406,7 +1406,7 @@ window.addEventListener('standhf:connection',e=>setConnection(e.detail.online,e.
 window.addEventListener('standhf_threshold_changed', ()=>{ pane(); dash(); });
 window.addEventListener('storage', e=>{
   if(e.key==='standhf_followup_threshold_days'||e.key==='standhf_access_v1'){
-    pane(); dash();
+    applyPerms(); pane(); dash();
   }
 });
 if(typeof window.isStandhfOnline==='function') DB.off=!window.isStandhfOnline();

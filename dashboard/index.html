@@ -1005,14 +1005,19 @@ function renderSuperAdminView(allPts){
     };
   });
 
+  // Export follows the admin-set export_data permission (Super Admin always; Central Directorate when enabled)
+  const canExp = typeof can === 'function' && can('export_data');
+  if (!canExp && currentSuperTab === 'export') currentSuperTab = 'all';
   const tabs = [
     { id: 'all', label: 'Executive Overview', shortLabel: 'Overview', icon: 'space_dashboard' },
     { id: 'teams', label: 'Teams & Oversight', shortLabel: 'Teams', icon: 'diversity_3', badge: `${invUsers.length + centralUsers.length}` },
     { id: 'analytics', label: 'Visual Analytics', shortLabel: 'Analytics', icon: 'analytics' },
     { id: 'league', label: 'Site League Table', shortLabel: 'League', icon: 'leaderboard', badge: s.sites.length },
-    { id: 'queue', label: 'Overdue Queue', shortLabel: 'Overdue', icon: 'warning', badge: st.overdueCount },
-    { id: 'export', label: 'Data Export & Reports', shortLabel: 'Export', icon: 'file_download' }
+    { id: 'queue', label: 'Overdue Queue', shortLabel: 'Overdue', icon: 'warning', badge: st.overdueCount }
   ];
+  if (canExp) {
+    tabs.push({ id: 'export', label: 'Data Export & Reports', shortLabel: 'Export', icon: 'file_download' });
+  }
 
   const isCentral = ROLE === 'central';
   const headerHtml = isCentral ? `
@@ -1025,7 +1030,7 @@ function renderSuperAdminView(allPts){
         <p id="meta">Unified read-only executive oversight &amp; export across ${s.sites.length} Cardiology Centres in Pakistan</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn primary" id="btnExportModal"><i class="ms">download</i>Export All Data</button>
+        ${canExp ? '<button type="button" class="btn primary" id="btnExportModal"><i class="ms">download</i>Export All Data</button>' : ''}
         <a class="btn" href="../records/"><i class="ms">visibility</i>View Patient Records</a>
         <a class="btn" href="${ADMIN}#users"><i class="ms">visibility</i>View Teams &amp; Scoping</a>
       </div>
@@ -1043,7 +1048,7 @@ function renderSuperAdminView(allPts){
       <div class="actions">
         <a class="btn primary" href="${ADMIN}#users"><i class="ms">manage_accounts</i>Manage Teams</a>
         <a class="btn" href="${ADMIN}#sites"><i class="ms">add_location_alt</i>Manage Sites</a>
-        <button type="button" class="btn" id="btnExportModal"><i class="ms">download</i>Export All Data</button>
+        ${canExp ? '<button type="button" class="btn" id="btnExportModal"><i class="ms">download</i>Export All Data</button>' : ''}
       </div>
     </div>
     ${DashUI.viewTabs(tabs, currentSuperTab)}
@@ -1150,7 +1155,7 @@ function renderSuperAdminView(allPts){
             <input id="leagueSearchInput" type="search" placeholder="Search centre, code or investigator..." autocomplete="off" maxlength="70">
             <button type="button" class="search-clear" aria-label="Clear"><i class="ms">close</i></button>
           </div>
-          <button type="button" class="btn btn-sm" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>
+          ${canExp ? '<button type="button" class="btn btn-sm" id="btnExportLeague"><i class="ms">table_view</i>Export League CSV</button>' : ''}
         </div>
       </div>
       ${DashUI.siteLeagueTable(s.sites, allPts, allPts)}
@@ -1186,7 +1191,7 @@ function renderSuperAdminView(allPts){
     bodyHtml = `<div class="dash-fade-in">${leagueHtml}</div>`;
   } else if (currentSuperTab === 'queue') {
     bodyHtml = `<div class="dash-fade-in">${queueHtml}</div>`;
-  } else if (currentSuperTab === 'export') {
+  } else if (currentSuperTab === 'export' && canExp) {
     const scopeTitle = isCentral
       ? 'Central Directorate National Scope (All Centres & Teams)'
       : 'Super Admin Global Scope (All Centres & Teams)';
@@ -1343,6 +1348,7 @@ function downloadJson(dataObj, filenamePrefix, targetDescription, recordCount){
 
 // Backward compatibility handler
 function generateAndDownloadExport(scope, visits, only4Pillars, format){
+  if (typeof can === 'function' && !can('export_data')) { toast('Permission denied: you do not have data export permissions.'); return; }
   const allPts = loadData();
   let targetPts = allPts.slice();
   let targetDesc = 'All Registry Patients';

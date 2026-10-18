@@ -505,19 +505,23 @@ const tabFromHash=()=>{
 };
 let currentTab=tabFromHash();
 
-/* Security gate: Super Admin, Central Team (Read-only Governance), or users with 'assign_investigators' */
+/* Security gate: Super Admin, Central Team (Read-only Governance), or users with 'manage_users' */
 if(sessionVal('standhf_auth')!=='1')(window.top||window).location.replace(LOGIN);
 if(sessionVal('standhf_must_change_pw')==='1')location.replace('../setup/');
-else if(session().role!==SUPER&&session().role!=='central'&&!can('assign_investigators'))location.replace(ECRF);
+else if(session().role!==SUPER&&session().role!=='central'&&!can('manage_users'))location.replace(ECRF);
 
 const isReadOnlyAdmin = session().role === 'central';
+/* Site creation and editing follow the Manage sites permission (Super Admin always; Central Team when enabled) */
+const siteReadOnly = () => !can('manage_sites');
+/* User accounts follow the Manage users permission; site assignment also needs Assign investigators */
+const userReadOnly = () => !can('manage_users');
 
 function readOnlyNoticeHtml(){
   if(!isReadOnlyAdmin) return '';
   return `
     <div class="banner info" style="margin-bottom:18px;display:flex;align-items:center;gap:12px;background:var(--soft-2);border:1px solid var(--line);border-radius:12px;padding:12px 18px;font-size:13px;color:var(--ink-2)">
       <i class="ms" style="color:var(--primary);font-size:22px">visibility</i>
-      <div><b>Central Directorate Access (Read-Only Governance):</b> You have national oversight across all users, participating cardiology centres, permissions, and audit logs. User provisioning and site configuration modifications are restricted to Super Admin.</div>
+      <div><b>Central Directorate Access (Read-Only Governance):</b> You have national oversight across all users, participating cardiology centres, permissions, and audit logs. User accounts and site assignment follow the Manage users and Assign investigators permissions; centre creation follows Manage sites.</div>
     </div>
   `;
 }
@@ -537,8 +541,9 @@ function patients(){
 
 const activeSupers=s=>s.users.filter(u=>u.role===SUPER&&u.active).length;
 
-function commit(mutate){
-  if(isReadOnlyAdmin){
+function commit(mutate, opts){
+  const allowed = !!opts && ((opts.sites && can('manage_sites')) || (opts.users && can('manage_users')));
+  if(isReadOnlyAdmin && !allowed){
     toast('Read-only access: Central Directorate cannot modify configuration.');
     return false;
   }
@@ -986,7 +991,7 @@ function usersView(){
         </div>
       </div>
       <div>
-        ${isReadOnlyAdmin ? '' : `
+        ${userReadOnly() ? '' : `
         <button type="button" class="btn primary" id="btnOpenAddUser">
           <i class="ms">person_add</i> Add New User
         </button>
@@ -1045,8 +1050,8 @@ function usersView(){
                     }
                   </td>
                   <td style="text-align:right;white-space:nowrap">
-                    <button type="button" class="btn btn-sm" data-edit-user="${esc(u.username)}" title="${isReadOnlyAdmin ? 'View user scoping and assignments' : 'Assign or reassign sites and role'}">
-                      <i class="ms">${isReadOnlyAdmin ? 'visibility' : 'tune'}</i> ${isReadOnlyAdmin ? 'View Details' : 'Edit Access'}
+                    <button type="button" class="btn btn-sm" data-edit-user="${esc(u.username)}" title="${userReadOnly() ? 'View user scoping and assignments' : 'Assign or reassign sites and role'}">
+                      <i class="ms">${userReadOnly() ? 'visibility' : 'tune'}</i> ${userReadOnly() ? 'View Details' : 'Edit Access'}
                     </button>
                   </td>
                 </tr>
@@ -1167,7 +1172,7 @@ function sitesView(){
         </div>
       </div>
       <div>
-        ${isReadOnlyAdmin ? '' : `
+        ${siteReadOnly() ? '' : `
         <button type="button" class="btn primary" id="btnOpenAddSite">
           <i class="ms">add_business</i> Add Medical Centre
         </button>
@@ -1212,8 +1217,8 @@ function sitesView(){
                   </td>
                   <td class="num"><b>${pts}</b></td>
                   <td style="text-align:right">
-                    <button type="button" class="btn btn-sm" data-edit-site="${esc(x.code)}" title="${isReadOnlyAdmin ? 'View hospital centre details' : 'Edit centre name or zone'}">
-                      <i class="ms">${isReadOnlyAdmin ? 'visibility' : 'edit'}</i> ${isReadOnlyAdmin ? 'View' : 'Edit'}
+                    <button type="button" class="btn btn-sm" data-edit-site="${esc(x.code)}" title="${siteReadOnly() ? 'View hospital centre details' : 'Edit centre name or zone'}">
+                      <i class="ms">${siteReadOnly() ? 'visibility' : 'edit'}</i> ${siteReadOnly() ? 'View' : 'Edit'}
                     </button>
                   </td>
                 </tr>
@@ -1234,8 +1239,11 @@ function permsView(){
   const leadDays = (typeof followupAlertThresholdDays === 'function') ? followupAlertThresholdDays() : 14;
   const head=`<tr><th>Permission</th>${roles.map(r=>`<th class="num">${ROLE_NAMES[r]}</th>`).join('')}<th class="num">${ROLE_NAMES[SUPER]}</th></tr>`;
   const rows=PERMS.map(([k,l])=>`<tr><td>${l}</td>
-    ${roles.map(r=>`<td class="num"><input type="checkbox" data-perm-role="${r}" data-perm-key="${k}" ${s.perms[r]&&s.perms[r][k]?'checked':''} ${isReadOnlyAdmin?'disabled':''} aria-label="${ROLE_NAMES[r]}: ${l}"></td>`).join('')}
-    <td class="num"><input type="checkbox" ${SUPER_NO.includes(k)?'':'checked'} disabled aria-label="${ROLE_NAMES[SUPER]}: ${l}"></td></tr>`).join('');
+    ${roles.map(r=>{
+      const isDisabled = (r === 'investigator' && ['manage_users', 'manage_sites', 'view_all_sites', 'enter_data'].includes(k)) ||
+                         (r === 'central' && ['view_all_sites', 'enter_data', 'add_patient'].includes(k));
+      return `<td class="num"><input type="checkbox" data-perm-role="${r}" data-perm-key="${k}" ${s.perms[r]&&s.perms[r][k]?'checked':''} ${isDisabled?'disabled':''} aria-label="${ROLE_NAMES[r]}: ${l}"></td>`;
+    }).join('')}<td class="num"><input type="checkbox" data-perm-role="${SUPER}" data-perm-key="${k}" checked disabled aria-label="${ROLE_NAMES[SUPER]}: ${l}"></td></tr>`).join('');
 
   return `
     ${adminTabsNav()}
@@ -1531,7 +1539,7 @@ $('euPhone')?.addEventListener('input',e=>{
 // Submit Add User Form
 $('fAddUser')?.addEventListener('submit',e=>{
   e.preventDefault();
-  if(isReadOnlyAdmin){
+  if(userReadOnly()){
     toast('Action prohibited: Central Directorate team has read-only administrative access.');
     return;
   }
@@ -1658,7 +1666,7 @@ $('fAddUser')?.addEventListener('submit',e=>{
       personal:{designation:desig,phone,email}
     });
     return '';
-  });
+  },{users:true});
 
   if(saved){
     $('dlgAddUser').close();
@@ -1678,12 +1686,12 @@ function openEditUserModal(username){
   if(!user){toast('User not found');return}
 
   const titleEl = $('editUsrTitle');
-  if(titleEl) titleEl.textContent = isReadOnlyAdmin ? 'User Access & Scoping (Read-Only)' : 'Edit User Access & Assignments';
+  if(titleEl) titleEl.textContent = userReadOnly() ? 'User Access & Scoping (Read-Only)' : 'Edit User Access & Assignments';
 
   const subBtn = dlg.querySelector('button[type="submit"]');
-  if(subBtn) subBtn.style.display = isReadOnlyAdmin ? 'none' : '';
+  if(subBtn) subBtn.style.display = userReadOnly() ? 'none' : '';
   const cancelBtn = dlg.querySelector('[data-close-modal="dlgEditUser"]');
-  if(cancelBtn) cancelBtn.textContent = isReadOnlyAdmin ? 'Close' : 'Cancel';
+  if(cancelBtn) cancelBtn.textContent = userReadOnly() ? 'Close' : 'Cancel';
 
   $('euUsername').value=user.username;
   if(user.avatar) {
@@ -1699,7 +1707,7 @@ function openEditUserModal(username){
     $('euMustChangeNotice').style.display = user.mustChangePassword ? 'flex' : 'none';
   }
   if($('btnResetEuPass')) {
-    $('btnResetEuPass').style.display = isReadOnlyAdmin ? 'none' : 'inline-flex';
+    $('btnResetEuPass').style.display = userReadOnly() ? 'none' : 'inline-flex';
   }
   
   $('euName').value=user.name;
@@ -1708,17 +1716,17 @@ function openEditUserModal(username){
   $('euEmail').value=user.personal?.email||'';
   $('euActive').checked=!!user.active;
 
-  $('euName').disabled = isReadOnlyAdmin;
-  $('euDesig').disabled = isReadOnlyAdmin;
-  $('euDesig').closest('.cb')?.setAttribute('data-disabled', isReadOnlyAdmin ? 'true' : 'false');
-  $('euPhone').disabled = isReadOnlyAdmin;
-  $('euEmail').disabled = isReadOnlyAdmin;
-  $('euActive').disabled = isReadOnlyAdmin;
+  $('euName').disabled = userReadOnly();
+  $('euDesig').disabled = userReadOnly();
+  $('euDesig').closest('.cb')?.setAttribute('data-disabled', userReadOnly() ? 'true' : 'false');
+  $('euPhone').disabled = userReadOnly();
+  $('euEmail').disabled = userReadOnly();
+  $('euActive').disabled = userReadOnly();
 
-  $('euRoleInput').disabled = isReadOnlyAdmin;
-  $('euRoleInput').closest('.cb')?.setAttribute('data-disabled', isReadOnlyAdmin ? 'true' : 'false');
+  $('euRoleInput').disabled = userReadOnly();
+  $('euRoleInput').closest('.cb')?.setAttribute('data-disabled', userReadOnly() ? 'true' : 'false');
   const roleReq = $('euRoleInput').closest('.form-field')?.querySelector('.req');
-  if(roleReq) roleReq.style.display = isReadOnlyAdmin ? 'none' : '';
+  if(roleReq) roleReq.style.display = userReadOnly() ? 'none' : '';
 
   setMsg('euPhone','',false);
   setMsg('euEmail','',false);
@@ -1732,8 +1740,8 @@ function openEditUserModal(username){
   if($('euSiteCode')) $('euSiteCode').value = primarySite;
   if($('euSiteInput')) {
     $('euSiteInput').value = siteObj ? `[${siteObj.code}] ${siteObj.name}` : (primarySite ? `[${primarySite}]` : '');
-    $('euSiteInput').disabled = isReadOnlyAdmin;
-    $('euSiteInput').closest('.cb')?.setAttribute('data-disabled', isReadOnlyAdmin ? 'true' : 'false');
+    $('euSiteInput').disabled = userReadOnly();
+    $('euSiteInput').closest('.cb')?.setAttribute('data-disabled', userReadOnly() ? 'true' : 'false');
   }
   renderAssignedSiteCard('eu', primarySite);
 
@@ -1749,12 +1757,12 @@ function updateEditUserScopeNotice(role){
   const secTitle = $('euSiteSecTitle');
 
   if(role === 'investigator'){
-    if(sitePicker) sitePicker.hidden = isReadOnlyAdmin;
+    if(sitePicker) sitePicker.hidden = userReadOnly();
     if(siteCard) siteCard.style.display = ($('euSiteCode')?.value || $('euSiteInput')?.value) ? 'flex' : 'none';
     if(scopeNotice) scopeNotice.hidden = true;
     if(secTitle){
       secTitle.style.display = '';
-      secTitle.innerHTML = `<i class="ms">local_hospital</i> Assigned Hospital Centre ${isReadOnlyAdmin ? '' : '<span class="req">*</span>'}`;
+      secTitle.innerHTML = `<i class="ms">local_hospital</i> Assigned Hospital Centre ${userReadOnly() ? '' : '<span class="req">*</span>'}`;
     }
   } else if(role === 'central'){
     if(sitePicker) sitePicker.hidden = true;
@@ -1802,7 +1810,7 @@ $('euRoleInput')?.addEventListener('change',e=>{
 
 $('fEditUser')?.addEventListener('submit',e=>{
   e.preventDefault();
-  if(isReadOnlyAdmin){
+  if(userReadOnly()){
     toast('Action prohibited: Central Directorate team has read-only administrative access.');
     return;
   }
@@ -1869,6 +1877,10 @@ $('fEditUser')?.addEventListener('submit',e=>{
     if(!centralMay(user,user.role))return CENTRAL_MSG;
     if(!centralMay(user,role))return CENTRAL_MSG;
 
+    const nextSites = role==='investigator'
+      ? (s.sites.some(st=>st.code===selectedSite) ? [selectedSite] : (selectedSite?[selectedSite]:[]))
+      : role==='central' ? s.sites.map(st=>st.code) : [];
+
     if(username===me&&role!==SUPER&&user.role===SUPER)return 'You cannot revoke your own Super Admin role';
     if(username===me&&!active)return 'You cannot deactivate your own account';
     if(user.role===SUPER&&(!active||role!==SUPER)&&activeSupers(s)<=1){
@@ -1884,16 +1896,9 @@ $('fEditUser')?.addEventListener('submit',e=>{
     user.personal.phone=phone;
     user.personal.email=email;
 
-    if(role==='investigator'){
-      const targetSiteObj=s.sites.find(st=>st.code===selectedSite);
-      user.sites=targetSiteObj?[targetSiteObj.code]:(selectedSite?[selectedSite]:[]);
-    } else if(role==='central'){
-      user.sites=s.sites.map(st=>st.code);
-    } else {
-      user.sites=[];
-    }
+    user.sites=nextSites;
     return '';
-  });
+  },{users:true});
 
   if(saved){
     $('dlgEditUser').close();
@@ -1904,7 +1909,7 @@ $('fEditUser')?.addEventListener('submit',e=>{
 let pendingResetUsername = '';
 
 $('btnResetEuPass')?.addEventListener('click', () => {
-  if(isReadOnlyAdmin) return;
+  if(userReadOnly()) return;
   const username = $('euUsername')?.value;
   const s = accessStore();
   const user = s.users.find(u => u.username === username);
@@ -1917,7 +1922,7 @@ $('btnResetEuPass')?.addEventListener('click', () => {
 });
 
 $('btnExecuteResetPass')?.addEventListener('click', () => {
-  if(!pendingResetUsername || isReadOnlyAdmin) return;
+  if(!pendingResetUsername || userReadOnly()) return;
   const username = pendingResetUsername;
   const s = accessStore();
   const user = s.users.find(u => u.username === username);
@@ -1962,7 +1967,7 @@ $('nsCode')?.addEventListener('input',e=>{
 
 $('fAddSite')?.addEventListener('submit',e=>{
   e.preventDefault();
-  if(isReadOnlyAdmin){
+  if(siteReadOnly()){
     toast('Action prohibited: Central Directorate team has read-only administrative access.');
     return;
   }
@@ -2005,7 +2010,7 @@ $('fAddSite')?.addEventListener('submit',e=>{
     if(!s.zones) s.zones=['North','Central','South'];
     if(!s.zones.includes(zone)) s.zones.push(zone);
     return '';
-  });
+  },{sites:true});
 
   if(saved){
     $('dlgAddSite').close();
@@ -2024,25 +2029,25 @@ function openEditSiteModal(code){
   if(!site){toast('Centre not found');return}
 
   const titleEl = $('editSiteTitle');
-  if(titleEl) titleEl.textContent = isReadOnlyAdmin ? 'Hospital Centre Details (Read-Only)' : 'Edit Medical Centre';
+  if(titleEl) titleEl.textContent = siteReadOnly() ? 'Hospital Centre Details (Read-Only)' : 'Edit Medical Centre';
   const subEl = $('editSiteSub');
-  if(subEl) subEl.textContent = isReadOnlyAdmin ? 'Participating cardiology hospital centre scoping' : 'Update hospital name or geographic zone';
+  if(subEl) subEl.textContent = siteReadOnly() ? 'Participating cardiology hospital centre scoping' : 'Update hospital name or geographic zone';
 
   const subBtn = dlg.querySelector('button[type="submit"]');
-  if(subBtn) subBtn.style.display = isReadOnlyAdmin ? 'none' : '';
+  if(subBtn) subBtn.style.display = siteReadOnly() ? 'none' : '';
   const cancelBtn = dlg.querySelector('[data-close-modal="dlgEditSite"]');
-  if(cancelBtn) cancelBtn.textContent = isReadOnlyAdmin ? 'Close' : 'Cancel';
+  if(cancelBtn) cancelBtn.textContent = siteReadOnly() ? 'Close' : 'Cancel';
 
   $('esCode').value=site.code;
   $('esCodeDisplay').value=`${site.code} (Centre Code)`;
   $('esName').value=site.name;
   $('esZone').value=site.zone||'Central';
 
-  $('esName').disabled = isReadOnlyAdmin;
-  $('esZone').disabled = isReadOnlyAdmin;
-  $('esZone').closest('.cb')?.setAttribute('data-disabled', isReadOnlyAdmin ? 'true' : 'false');
+  $('esName').disabled = siteReadOnly();
+  $('esZone').disabled = siteReadOnly();
+  $('esZone').closest('.cb')?.setAttribute('data-disabled', siteReadOnly() ? 'true' : 'false');
   const esZoneReq = $('esZone').closest('.form-field')?.querySelector('.req');
-  if(esZoneReq) esZoneReq.style.display = isReadOnlyAdmin ? 'none' : '';
+  if(esZoneReq) esZoneReq.style.display = siteReadOnly() ? 'none' : '';
 
   setMsg('esName','',false);
   setMsg('esZone','',false);
@@ -2052,7 +2057,7 @@ function openEditSiteModal(code){
 
 $('fEditSite')?.addEventListener('submit',e=>{
   e.preventDefault();
-  if(isReadOnlyAdmin){
+  if(siteReadOnly()){
     toast('Action prohibited: Central Directorate team has read-only administrative access.');
     return;
   }
@@ -2089,7 +2094,7 @@ $('fEditSite')?.addEventListener('submit',e=>{
     if(!s.zones.includes(zone)) s.zones.push(zone);
 
     return '';
-  });
+  },{sites:true});
 
   if(saved){
     $('dlgEditSite').close();

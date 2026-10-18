@@ -54,7 +54,6 @@ const ACCESS_DATA = {
     superadmin: {
       view_all_sites: true,
       export_data: true,
-      assign_investigators: true,
       manage_users: true,
       manage_sites: true
     },
