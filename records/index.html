@@ -1035,13 +1035,20 @@ function cbClose(wrap){
 
 function cbOpenNow(wrap){return !wrap.querySelector('.cb-list').hidden}
 
+let cbSwallowClick=false;
+document.addEventListener('click',e=>{if(cbSwallowClick){cbSwallowClick=false;e.stopPropagation();e.preventDefault()}},true);
+
 function cbChoose(wrap,i){
   const it=wrap._items&&wrap._items[i];if(!it)return;
   const inp=wrap.querySelector('[data-cb-input]');
   inp.value=it.v;cbClose(wrap);
+  cbSwallowClick=true;  // the click that ends this pick must not reach the page underneath
+  setTimeout(()=>{cbSwallowClick=false},400);
   if(inp) inp.blur();
+  wrap._justChose=true;  // the events below must not reopen the list
   inp.dispatchEvent(new Event('change',{bubbles:true}));
   inp.dispatchEvent(new Event('input',{bubbles:true}));
+  wrap._justChose=false;
 }
 
 function cbMove(wrap,d){
@@ -1092,7 +1099,7 @@ if(window.visualViewport){
   });
 }
 
-document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('[data-cb-input]'))cbOpen(e.target.closest('[data-cb]'),e.target.value)});
+document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('[data-cb-input]')){const w=e.target.closest('[data-cb]');if(!w._justChose)cbOpen(w,e.target.value)}});
 
 document.addEventListener('pointerdown',e=>{const li=e.target.closest&&e.target.closest('.cb-list li[data-i]');if(li){e.preventDefault();cbChoose(li.closest('[data-cb]'),+li.dataset.i)}});
 
