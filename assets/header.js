@@ -89,22 +89,24 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
     }catch(e){return true}
   };
 
+  /* The real request decides. navigator.onLine is not trusted: tablets and some browsers keep reporting offline after Wi-Fi returns */
   var probeNet=function(){
-    if(sessionStorage.getItem('standhf_manual_offline')==='1')return Promise.resolve(false);
-    if(typeof navigator!=='undefined'&&navigator.onLine===false)return Promise.resolve(false);
     var c=new AbortController(),t=setTimeout(function(){c.abort()},2500);
-    var probeUrl=isLocalHost()?
-      'https://www.google.com/generate_204':
-      new URL(root+'assets/base.css',location.href);
+    /* Local runs check two public hosts, so one blocked host does not keep the app offline after the network returns */
+    var probeUrls=isLocalHost()?
+      ['https://www.google.com/generate_204','https://www.gstatic.com/generate_204']:
+      [new URL(root+'assets/base.css',location.href)];
     var fetchOpts=isLocalHost()?
       {method:'GET',mode:'no-cors',cache:'no-store',signal:c.signal}:
       {method:'HEAD',cache:'no-store',signal:c.signal};
 
-    return fetch(probeUrl,fetchOpts)
-      .then(function(){clearTimeout(t);return true})
-      .catch(function(){clearTimeout(t);return false})};
+    return Promise.all(probeUrls.map(function(u){
+      return fetch(u,fetchOpts).then(function(){return true},function(){return false})
+    })).then(function(r){clearTimeout(t);return r.indexOf(true)>-1})};
 
+  /* A simulated offline (the pill) holds the app offline, exactly like a real drop, until the real connection returns */
   var applyNet=function(on,quiet){
+    on=on&&sessionStorage.getItem('standhf_manual_offline')!=='1';
     if(!quiet&&last===on)return;
     last=on;
     var bar=document.getElementById('offBar');
@@ -143,15 +145,17 @@ var HEADER_SRC=document.currentScript&&document.currentScript.src;
     });
   }
 
+  /* The browser's online event fires when the real connection returns, so it also ends a simulated offline */
   window.addEventListener('online',function(){
-    if(sessionStorage.getItem('standhf_manual_offline')!=='1'){
-      probeNet().then(function(on){applyNet(on,false)});
-    }
+    sessionStorage.removeItem('standhf_manual_offline');
+    probeNet().then(function(on){applyNet(on,false)});
   });
   window.addEventListener('offline',function(){applyNet(false,false)});
-  setInterval(function(){
-    probeNet().then(function(on){applyNet(on,false)});
-  },15000);
+  /* Check every 4 seconds while offline and every 15 while online. Coming back to the app also checks at once */
+  var recheck=function(){probeNet().then(function(on){applyNet(on,false)})};
+  var scheduleCheck=function(){setTimeout(function(){recheck();scheduleCheck()},last?15000:4000)};
+  scheduleCheck();
+  ['visibilitychange','focus','pageshow'].forEach(function(evt){window.addEventListener(evt,recheck)});
   probeNet().then(function(on){applyNet(on,true)});
   /* Notifications: the dummy list for this user, limited to the sites they may see */
   var ICON={deleted:'delete',due:'event',overdue:'warning',missing:'event_busy',admin:'person_add',info:'description'};

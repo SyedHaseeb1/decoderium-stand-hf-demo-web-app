@@ -134,6 +134,7 @@
 <script type="text/plain" data-src="file-card.js?v=20261015b"></script>
 <script type="text/plain" data-src="dialog.js?v=20261015c"></script>
 <script type="text/plain" data-src="btn-loader.js"></script>
+<script type="text/plain" data-src="sync.js"></script>
 <script type="text/plain" data-src="header.js?v=20261018l" data-root="../"></script>
 <script type="text/plain" data-src="nav.js?v=20261018h"></script>
 <script type="text/plain" data-src="dash-charts.js?v=20261015c"></script>
@@ -2746,10 +2747,33 @@ window.addEventListener('standhf_threshold_changed', () => {
   renderDashboard();
 });
 window.addEventListener('storage', e => {
-  if (e.key === 'standhf_followup_threshold_days' || e.key === 'standhf_access_v1') {
-    renderDashboard();
+  if (e.key === 'standhf_followup_threshold_days' || e.key === 'standhf_access_v1' || e.key === KEY) {
+    scheduleRender();
   }
 });
+/* Pending sync count follows the connection: offline saves queue, reconnecting flushes them */
+/* Queue and sync events fire in this window too, so the tiles follow every change without a reload */
+/* One sync writes the store and the queue, which fires several events. Re-render once for the burst, not for each event */
+let renderTimer = null;
+const scheduleRender = () => {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(() => {
+    syncSig = currentSyncSig();   /* this render already reflects the change, so the safety net must not render again */
+    renderDashboard();
+  }, 150);
+};
+['standhf:connection', 'standhf:queue', 'standhf:sync'].forEach(evt => window.addEventListener(evt, scheduleRender));
+/* Safety net: re-render when the shared queue or the record store changes, even if an event was missed */
+let syncSig = '';
+const currentSyncSig = () => {
+  const store = localStorage.getItem(KEY) || '';
+  return (localStorage.getItem('standhf_sync_queue_v1') || '') + '|' + store.length + '|' + store.split('"sync":"Pending"').length;
+};
+syncSig = currentSyncSig();
+setInterval(() => {
+  const sig = currentSyncSig();
+  if (sig !== syncSig) { syncSig = sig; scheduleRender(); }
+}, 2000);
 
 })();
 </script>

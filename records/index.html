@@ -188,6 +188,7 @@
 <script type="text/plain" data-src="file-card.js?v=20261016a"></script>
 <script type="text/plain" data-src="dialog.js?v=20261016a"></script>
 <script type="text/plain" data-src="btn-loader.js"></script>
+<script type="text/plain" data-src="sync.js"></script>
 <script type="text/plain" data-src="header.js?v=20261018l" data-root="../"></script>
 <script type="text/plain" data-src="nav.js?v=20261018h"></script>
 <script type="text/plain">
@@ -246,7 +247,8 @@ const VK=[['b','Baseline'],['m3','3 Months'],['m6','6 Months']],PL=STANDHF_DATA.
 const RS=Object.entries(STANDHF_DATA.gdmt.notUsedReasons);
 const STOP=['',...STANDHF_DATA.clinicalOptions.stopReasons];
 
-const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}};
+/* Sync status comes from the app-level queue (assets/sync.js), so every save writes the current status */
+const persist=()=>{DB.pts.forEach(p=>{p.sync=StandhfSync.isPending(p.id)?'Pending':'Synced'});try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}};
 const cur=()=>DB.pts.find(p=>p.id===sel&&inScope(p));
 // Canonical contactOk and contactClean are provided by access.js; provide fallback if access.js is absent
 if(typeof window.contactOk !== 'function'){
@@ -345,10 +347,19 @@ async function removePatient(){
   DB.removed=(DB.removed||[]).concat([{id:p.id,name:p.name||'',site:p.site,by:signedIn(),at:new Date().toLocaleString('en-GB')}]);
   sel=firstVisibleId();tab='info';
   persist();pane();dash();toast('Patient '+p.id+' removed')}
+/* Sync status shown in the record header; updated in place while typing so the field keeps focus */
+const syncBadge=p=>p.sync==='Pending'
+  ?'<span class="pill pending" id="paneSync" title="Saved on this device. Will sync when the connection returns"><i class="ms" style="font-size:14px">cloud_off</i> Not synced · saved offline</span>'
+  :'<span class="pill synced" id="paneSync"><i class="ms" style="font-size:14px">cloud_done</i> Synced</span>';
 /* Online saves are Synced at once; only saves made while offline stay Pending until the connection returns */
-function save(p){if(!canEditPatient(p))return;p.updated=Date.now();
+function save(p, change=null){
+  if(!canEditPatient(p))return;
+  p.updated=Date.now();
 /* Baseline visit date is the consent date (it is not shown), so keep it in step until Baseline is complete */
-if(!p.v.b.done&&p.consent)p.v.b.date=p.consent;if(tab!=='info'&&tab!=='sum'&&!p.v[tab].date){p.v[tab].date=(tab==='b'&&p.consent)?p.consent:new Date().toISOString().slice(0,10)}p.sync=DB.off?'Pending':'Synced';persist();dash()}
+if(!p.v.b.done&&p.consent)p.v.b.date=p.consent;if(tab!=='info'&&tab!=='sum'&&!p.v[tab].date){p.v[tab].date=(tab==='b'&&p.consent)?p.consent:new Date().toISOString().slice(0,10)}
+if(StandhfSync.offline()){DB.off=true;StandhfSync.enqueue(p.id,change||'edit')}
+else{p.sync='Synced'}
+persist();dash()}
 
 /* Validation rules: fieldState gives the level ('e' error, 'w' warning or '') and message for one field */
 const VREQ=['wt','hr','sbp','dbp','nyha','msts','lvef'], IREQ={name:1,contact:1,consent:1,age:1,sex:1,etio:1};
@@ -531,10 +542,10 @@ function ptVisitChip(p,k,n){
 function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).length,od=k=>P.filter(p=>vstat(p,k)==='Overdue'||vstat(p,k)==='Missed').length;
  const mean=k=>{const a=P.filter(p=>p.v[k].msts!==''&&p.v[k].msts!=null).map(p=>+p.v[k].msts);return a.length?Math.round(a.reduce((x,y)=>x+y)/a.length):'–'};
  const full=P.filter(p=>{const d=VK.filter(([k])=>p.v[k].done).pop();return d&&act(p.v[d[0]])===4}).length;
- const pend=P.filter(p=>p.sync==='Pending').length;
  /* Sync capsule: yellow only while records wait to sync (offline saves); reconnecting shows its own toast */
  const chip=$('syncChip');
- if(pend){chip.hidden=false;chip.textContent=pend+' to sync'}
+ const pendingCount = P.filter(p=>p.sync==='Pending').length;
+ if(pendingCount > 0){chip.hidden=false;chip.textContent=pendingCount+' to sync'}
  else chip.hidden=true;
   $('tiles').innerHTML=[
     ['Participants',P.length,'records'],
@@ -549,10 +560,9 @@ function dash(){const P=DB.pts.filter(inScope),c=k=>P.filter(p=>p.v[k].done).len
   const noMatchHtml=`<div id="plNoMatch" class="empty" hidden style="padding:24px 12px"><i class="ms">search_off</i>No matching patients.</div>`;
   const sortBtnHtml=P.length?`<button type="button" class="icon-btn list-sort" data-a="sortMenu" aria-label="Sort patients" title="Sort: ${esc(listSort)}"><i class="ms">sort</i></button><div class="sort-menu" hidden>${SORT_LABELS.map(l=>`<button type="button" class="sort-opt${l===listSort?' on':''}" data-sortopt="${esc(l)}">${esc(l)}</button>`).join('')}</div>`:'';
   $('list').innerHTML=`<button type="button" class="list-head" id="listToggle" aria-expanded="${listOpen}" aria-controls="list"><span>Patients</span><span class="list-count">${P.length}</span><i class="ms chev">${listChevron()}</i></button>`+sortBtnHtml+searchBarHtml+(P.length?'':'<div class="empty"><i class="ms">groups</i>No patients yet. Create one or load the demo data.</div>')+'<div class="pl-scroll">'+noMatchHtml+sortPts(P).map(p=>{
-    const rawSync=p.sync||(DB.off?'Pending':'Synced');
-    const isPending=rawSync==='Pending'||rawSync==='Not Synced';
-    const syncIcon=isPending?'cloud_off':'cloud_done';
-    const syncTxt=isPending?'Not Synced':'Synced';
+    const isPending = (p.sync === 'Pending');
+    const syncIcon = isPending ? 'cloud_off' : 'cloud_done';
+    const syncTxt = isPending ? 'Not Synced' : 'Synced';
     return `<div class="pt ${!newMode && p.id===sel?'on':''}" data-id="${p.id}"><div class="pt-head"><b class="pt-id">${p.id}</b><span class="pt-sync ${isPending?'pending':'synced'}" title="Sync status: ${syncTxt}"><i class="ms pt-sync-icon">${syncIcon}</i><span class="pt-sync-text">${syncTxt}</span></span></div><span class="pt-name">${esc(p.name||'Name missing')}</span>${p.inv&&p.inv!=='–'?`<span class="pt-inv">${esc(p.inv)}</span>`:''}<span class="pt-updated">Updated ${updatedTxt(p)}</span><span class="sr-only">${esc(p.contact||'')} ${esc(p.inv||'')}${p.id||''}</span><div class="pt-chips">${VK.map(([k,n])=>ptVisitChip(p,k,n)).join('<span class="pt-chip-sep"></span>')}</div></div>`;
   }).join('')+'</div>';
   const scrollBox=document.querySelector('#list .pl-scroll');if(scrollBox)scrollBox.scrollTop=keepScroll;keepSelectedVisible();
@@ -617,7 +627,7 @@ function pane(){saveView();
  if(tabLocked(p,tab))tab='b';
  const tabs=`<div class="tabs"><button class="${tab==='info'?'on':''}" data-t="info" title="Participant Info"><span class="tab-full">Participant info</span><span class="tab-short">Info</span></button>${VK.map(([k,n])=>{const lk=tabLocked(p,k);const shortN=k==='b'?'Baseline':k==='m3'?'3M':'6M';return `<button class="${tab===k?'on':''}${lk?' locked':''}${p.v[k].done?' done':''}" data-t="${k}" ${lk?'disabled title="Complete '+ORDER_LABEL[LOCK_ORDER[k]]+' first"':`title="${n}"`}>${lk?'<i class="ms">lock</i>':p.v[k].done?'<i class="ms">check_circle</i>':''}<span class="tab-full">${n}</span><span class="tab-short">${shortN}</span></button>`}).join('')}<button class="${tab==='sum'?'on':''}" data-t="sum" title="Summary & Audit"><span class="tab-full">Summary & audit</span><span class="tab-short">Audit</span></button></div>`;
  const readOnlyNotice=!editable?`<div class="lock-banner" style="background:var(--primary-soft);color:var(--primary);border-color:rgba(26,95,180,0.2);margin-bottom:14px"><i class="ms">visibility</i><span><b>Read-Only Mode:</b> You are viewing this record with oversight permissions. Clinical data entry and edits are restricted to authorized Site Investigators.</span></div>`:'';
-  let h=`<div class="pane-head-sticky"><div class="pane-title"><span>Participant record</span><b>${p.id}</b></div>`+tabs+`</div>`+readOnlyNotice;
+  let h=`<div class="pane-head-sticky"><div class="pane-title"><span>Participant record</span><b>${p.id}</b>${syncBadge(p)}</div>`+tabs+`</div>`+readOnlyNotice;
   if(tab==='info')h+=`${p.v.b.done?banner('Baseline is complete. Consent, age, sex and etiology are locked. Reopen Baseline to edit them.'):''}${editable&&(!p.name||!p.contact)?banner('Patient name and contact number are required. Add them below.'):''}${secHeader('info-pt','Participant')}<div class="g tint" ${secBodyAttrs('info-pt')}><label>Study ID (auto-generated)<input value="${p.id}" disabled></label>${inp(p,'name','Patient name','text')}${inp(p,'contact','Contact number','tel','inputmode="numeric" placeholder="e.g. 03001234567"')}${inp(p,'site','Site code','text','disabled')}${combo('inv','inv','Investigator name',G(p,'inv'))}${inp(p,'consent','Consent date','date')}${inp(p,'age','Age (years)','number','min=18 max=150')}${sel_(p,'sex','Sex',['','Male','Female'])}${sel_(p,'etio','HF etiology',['','Ischemic','Non-ischemic','Other'])}${inp(p,'etioO','If other, specify')}</div>${canRemovePatient(p)?`<div class="upl"><button type="button" class="danger" data-a="removePatient"><i class="ms">delete</i>Delete record</button><span class="mut">Deletes this patient, all visit data and files. Demo only.</span></div>`:''}${navBar('info')}`;
   else if(tab==='sum')h+=summary(p);
  else{const k=tab,v=p.v[k],name=VK.find(a=>a[0]===k)[1],b=p.v.b.date||p.consent;
@@ -691,7 +701,8 @@ document.addEventListener('change',e=>{const el=e.target;if(el.id==='off'){DB.of
    const curFreq=G(p,basePath+'.freq')||'';
    S(p,basePath+'.dose',curStr?(curStr+(curFreq?' '+curFreq:'')):'');
  }
- p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:el.dataset.p,o:old??'',n:nv});save(p);
+ console.log('Change detected in field:', el.dataset.p, 'New value:', nv);
+ p.audit.push({by:signedIn(),t:new Date().toLocaleString('en-GB'),f:el.dataset.p,o:old??'',n:nv});save(p, {field: el.dataset.p, old: old??'', new: nv});
  if(/\.drug$/.test(el.dataset.p)){pane()}else{paintFields();dash()}});
 
 document.addEventListener('dragover',e=>{if(e.target.closest&&e.target.closest('.rx-drop')){const p=cur();if(!canEditPatient(p))return;e.preventDefault()}});
@@ -1389,20 +1400,21 @@ applyPerms();
   if(v&&mine.some(x=>x.id===v.sel)&&v.sel===sel) tab=v.tab;
 }
 
-/* Connection comes from the shared header: it announces each change; saves stay Pending while offline */
-function setConnection(on,quiet){
-  const wasOff=!!DB.off;
+/* Connection comes from the shared header. The queue and auto-sync run in assets/sync.js on every page */
+function setConnection(on){
   DB.off=!on;
-  if(on){
-    let n=0;DB.pts.forEach(q=>{if(q.sync==='Pending'){q.sync='Synced';n++}});persist();
-    if(!quiet&&wasOff)toast(n?`Back online: ${n} record${n>1?'s':''} synced`:'Back online');
-  } else {
-    persist();
-    if(!quiet&&!wasOff)toast('Offline: changes are saved on this device');
-  }
+  refreshSync();
+}
+window.addEventListener('standhf:connection',e=>setConnection(e.detail.online));
+/* A record is Pending while it is in the shared queue. Refresh the header badge, list and tiles to match */
+function refreshSync(){
+  DB.pts.forEach(p=>{p.sync=StandhfSync.isPending(p.id)?'Pending':'Synced'});
+  const badge=$('paneSync'),cp=cur();
+  if(badge&&cp)badge.outerHTML=syncBadge(cp);
   dash();
 }
-window.addEventListener('standhf:connection',e=>setConnection(e.detail.online,e.detail.quiet));
+window.addEventListener('standhf:queue',refreshSync);
+window.addEventListener('standhf:sync',refreshSync);
 window.addEventListener('standhf_threshold_changed', ()=>{ pane(); dash(); });
 window.addEventListener('storage', e=>{
   if(e.key==='standhf_followup_threshold_days'||e.key==='standhf_access_v1'){
@@ -1504,6 +1516,16 @@ document.addEventListener('focusin', e => {
 });
 document.addEventListener('input', e => {
   if(e.target && e.target.closest('#pane')) autoCollapsePatientListOnEdit(e);
+});
+/* Offline: the first keystroke in a form queues the record, before the field is saved on change */
+document.addEventListener('input', e => {
+  const el = e.target;
+  if(!el.dataset || !el.dataset.p || !el.closest('#pane') || !StandhfSync.offline()) return;
+  const p = cur();
+  if(!p || StandhfSync.isPending(p.id) || !canEditPatient(p)) return;
+  DB.off = true;
+  StandhfSync.enqueue(p.id, 'edit:' + el.dataset.p);
+  persist();
 });
 document.addEventListener('change', e => {
   if(e.target && e.target.closest('#pane')) autoCollapsePatientListOnEdit(e);
